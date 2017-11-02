@@ -8,7 +8,7 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 ## Solving Cartpole the right way
 
 
-![Cartpole screenshot](/img/screenshot3.gif?raw=true "Cartpole")
+![Cartpole screenshot](/img/ScreenShot1.jpg?raw=true "Cartpole")
 
 
 ### Our results
