@@ -11,7 +11,7 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 
 
 ### Our results
-After observing the environment for 100 episode our agent is able to balence the pole for all subsequent games indefinitely.
+After observing the environment for 100 episode our agent is able to balance the pole for all subsequent games indefinitely.
 We get the best results by observing 4-8 steps in advance. The more the agent can anticipate (larger number of steps) the more stable the pole is balanced. You can see how it behaves with different depth settings in the video link below. 
 
 https://www.youtube.com/watch?v=TguWjWvRp8c
