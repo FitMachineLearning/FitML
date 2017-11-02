@@ -14,6 +14,10 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 After observing the environment for 100 episode our agent is able to balence the pole for all subsequent games indefinitely.
 We get the best results by observing 4-8 steps in advance. The more the agent can anticipate (larger number of steps) the more stable the pole is balanced. You can see how it behaves with different depth settings in the video link below. 
 
+https://www.youtube.com/watch?v=TguWjWvRp8c
+
+
+
 ### Our approach
 
 Our solution of the Open AI Cartpole combines many different aspects of Machine Learning to solve the problem in the most modular, yet efficient way possible.
