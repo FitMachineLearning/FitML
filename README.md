@@ -19,7 +19,7 @@ https://www.youtube.com/watch?v=TguWjWvRp8c
 
 ### Our approach
 
-Our solution of the Open AI Cartpole combines many different aspects of Machine Learning to solve the problem in the most modular, yet efficient way possible.
+Our solution of the Open AI Cartpole combines many different aspects of Machine Learning to solve the problem.
 
 Our solution learns by observing the first 100 games, then trains a sequential model made of 2 stateful LSTMs, one relu and a regular dense model for output.
 Once the model is trained, we do not store any discrete information about the environment. 
