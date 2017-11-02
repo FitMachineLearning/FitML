@@ -20,7 +20,9 @@ num_env_actions = 1
 num_training_exmaples = 100
 timesteps = 1
 num_initial_observation = 4000
-training_epochs = 300
+
+#recommend 850 for tensorflow backend , but 500 should be enough for theano backend
+training_epochs = 850
 num_anticipation_steps = 6
 load_previous_weights = True
 observe_and_train = False
