@@ -1,6 +1,8 @@
 '''
-Cartpole solution by the Author of the Fit Machine Learning Blog
+Cartpole solution by Michel Aka the Author of the Fit Machine Learning Blog
 
+Demo here
+https://www.youtube.com/watch?v=TguWjWvRp8c
 '''
 import numpy as np
 import keras
