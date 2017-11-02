@@ -7,7 +7,7 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 
 ## Solving Cartpole the right way
 
-<img alt="CartPole-Fit-ML" src="/img/ScreenShot1.jpg" width="500">
+[![Cartpole Demo](https://img.youtube.com/vi/TguWjWvRp8c/0.jpg)](https://www.youtube.com/watch?v=TguWjWvRp8c)
 
 
 ### Our results
