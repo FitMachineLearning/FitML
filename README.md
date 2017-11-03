@@ -21,6 +21,8 @@ https://www.youtube.com/watch?v=TguWjWvRp8c
 
 Our solution of the Open AI Cartpole combines many different aspects of Machine Learning to solve the problem.
 
+Find the code here: https://github.com/FitMachineLearning/FitML/blob/master/Cartpole_MDP.py
+
 Our solution learns by observing the first 100 games, then trains a sequential model made of 2 stateful LSTMs, one relu and a regular dense model for output.
 Once the model is trained, we do not store any discrete information about the environment. 
 However, we first teach the model to anticipate the next state of the environment given any plausible action. In essence, the LSTMs learn that given a series of event (states + actions) this next state and reward are most probable. This is most useful because it avoids data explosion of traditional discrete MDP solutions, it is also computationally efficient.
