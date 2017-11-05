@@ -1,7 +1,5 @@
 '''
-Cartpole-v0 solution with QLearning MDP, Bellman
-
-https://github.com/FitMachineLearning/FitML/
+Cartpole-v0 solution by the Author of the Fit Machine Learning Blog
 
 '''
 import numpy as np
@@ -26,14 +24,15 @@ learning_rate = 0.001
 weigths_filename = "Cartpole-weights_DQN.h5"
 
 b_discount = 0.95
-num_failures_for_retrain = 5
+max_memory_len = 2000
+num_failures_for_retrain = 10
 starting_explore_prob = 0.05
-initial_training_epochs = 500
-RL_training_eporcs = 2
+initial_training_epochs = 1000
+RL_training_eporcs = 1000
 num_anticipation_steps = 6
 load_previous_weights = False
 observe_and_train = True
-Do_RL = False
+Do_RL = True
 save_weights = True
 Learning_cycles = 1500
 
@@ -81,6 +80,10 @@ total_steps = 0
 dataX = np.zeros(shape=(1,num_env_variables+num_env_actions))
 dataY = np.zeros(shape=(1,1))
 
+memoryX = np.zeros(shape=(1,num_env_variables+num_env_actions))
+memoryY = np.zeros(shape=(1,1))
+
+
 print("dataX shape", dataX.shape)
 print("dataY shape", dataY.shape)
 
@@ -110,9 +113,23 @@ if observe_and_train:
             if step ==0:
                 gameX[0] = qs_a
                 gameY[0] = np.array([r])
+                memoryX[0] = qs_a
+                memoryY[0] = np.array([r])
 
             gameX = np.vstack((gameX,qs_a))
             gameY = np.vstack((gameY,np.array([r])))
+
+            memoryX = np.vstack((memoryX,qs_a))
+            memoryY = np.vstack((memoryY,np.array([r])))
+
+            #if memory is full remove first element
+            if np.alen(memoryX) >= max_memory_len:
+                print("memory full. mem len ", np.alen(memoryX))
+                memoryX = np.delete(memoryX, 0, axis=0)
+                memoryY = np.delete(memoryY, 0, axis=0)
+
+
+
 
             #Update the states
             qs=s
@@ -121,17 +138,17 @@ if observe_and_train:
             if done :
                 #print("total steps ", total_steps)
                 #Set total score on all recorded gamestates
-                print("total at the last step ", r)
+                #print("total at the last step ", r)
                 #Set total score on all recorded gamestates
                 for i in range(0,gameY.shape[0]):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                     if i==0:
-                        print("reward at the last step ",gameY[(gameY.shape[0]-1)-i][0])
+                        #print("reward at the last step ",gameY[(gameY.shape[0]-1)-i][0])
                         gameY[(gameY.shape[0]-1)-i][0] = gameY[(gameY.shape[0]-1)-i][0]
                     else:
-                        print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
+                        #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
                         gameY[(gameY.shape[0]-1)-i][0] = gameY[(gameY.shape[0]-1)-i][0]+b_discount*gameY[(gameY.shape[0]-1)-i+1][0]
-                        print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
+                        #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
                     if i==gameY.shape[0]-1:
                         print("Training Game #",game, " steps = ", step ,"last reward", r," finished with headscore ", gameY[(gameY.shape[0]-1)-i][0])
 
@@ -140,7 +157,7 @@ if observe_and_train:
                     dataX = gameX
                     dataY = gameY
                 else:
-                    print("Adding Game X to data X",)
+                    #print("Adding Game X to data X",)
                     dataX = np.concatenate((dataX,gameX), axis=0)
                     dataY = np.concatenate((dataY,gameY), axis=0)
                 break
@@ -187,7 +204,7 @@ def predictTotalRewards(qstate, action):
 #Play the game for X rounds using the Bellman with LSTM anticipation model
 
 explore_prob = starting_explore_prob
-failures = 0
+failures = 1
 for game in range(Learning_cycles):
 
     gameX = np.zeros(shape=(1,num_env_variables+num_env_actions))
@@ -230,6 +247,7 @@ for game in range(Learning_cycles):
 
         if done and step <=196:
             r = -1
+            failures+=1
 
         qs=s
 
@@ -244,6 +262,16 @@ for game in range(Learning_cycles):
         else:
             gameX = np.vstack((gameX,qs_a))
             gameY = np.vstack((gameY,np.array([r])))
+
+        memoryX = np.vstack((memoryX,qs_a))
+        memoryY = np.vstack((memoryY,np.array([r])))
+
+        #if memory is full remove first element
+        if np.alen(memoryX) >= max_memory_len:
+            #print("memory full. mem len ", np.alen(memoryX))
+            memoryX = np.delete(memoryX, 0, axis=0)
+            memoryY = np.delete(memoryY, 0, axis=0)
+
 
         #Update the states
         qs=s
@@ -271,25 +299,18 @@ for game in range(Learning_cycles):
                 print("***GAME WON")
             else:
                 print("Game lost")
-            #print("Last reward = ",r)
-            #print("Error at the top of the game ",gameY[0][0] )
-            if dataX.shape[0] ==1:
-                dataX = gameX
-                dataY = gameY
-            else:
-                dataX = gameX
-                dataY = gameY
 
-            #Retraing the model with the latest failure
-            feedX = gameX
-            feedY = gameY
-            failures +=1
-            #if failures >= num_failures_for_retrain
+            #print("gameX last 5",gameX[-5:])
+            #print("gameY last 5",gameY[-5:])
 
-            if Do_RL:
-                #print("Retraining the network after failure ", failures)
-                model.fit(feedX,feedY, batch_size=1,epochs=RL_training_eporcs,verbose=0)
-            failures = 0
+
+
+
+            if Do_RL and failures%num_failures_for_retrain == 0:
+                print("Retraining the network with memoryX.len  ",np.alen(memoryX))
+                model.fit(memoryX,memoryY, batch_size=32,epochs=RL_training_eporcs,verbose=2)
+
+
 
             break
 
