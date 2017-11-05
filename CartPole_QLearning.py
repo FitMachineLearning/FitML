@@ -1,8 +1,6 @@
 '''
 Cartpole-v0 solution by Michel Aka
-
 https://github.com/FitMachineLearning/FitML/
-
 Using DeepQ Learning
 
 '''
@@ -28,7 +26,7 @@ learning_rate = 0.001
 weigths_filename = "Cartpole-weights_DQN_Mem_1Loop.h5"
 
 b_discount = 0.95
-max_memory_len = 2000
+max_memory_len = 5000
 num_failures_for_retrain = 10
 starting_explore_prob = 0.05
 initial_training_epochs = 2
@@ -194,8 +192,9 @@ if observe_and_train:
                 #if memory is full remove first element
                 if np.alen(memoryX) >= max_memory_len:
                     print("memory full. mem len ", np.alen(memoryX))
-                    memoryX = np.delete(memoryX, 0, axis=0)
-                    memoryY = np.delete(memoryY, 0, axis=0)
+                    for l in range(np.alen(gameX)):
+                        memoryX = np.delete(memoryX, 0, axis=0)
+                        memoryY = np.delete(memoryY, 0, axis=0)
 
             #Update the states
             qs=s
@@ -207,6 +206,8 @@ if observe_and_train:
                     model.fit(memoryX,memoryY, batch_size=32,epochs=initial_training_epochs,verbose=2)
 
             if done:
+                if r > 0:
+                    print("Game ",game," WON***")
                 #Game ended - Break
                 break
 
@@ -221,18 +222,7 @@ if observe_and_train:
 
 
 
-    #The more epochs you train the model, the better is becomes at predicting future states
-    #This in turn will improve the results of the Bellman equation and thus will lead us to
-    # better decisions in our MDP process
-    #model.fit(feedX,feedY, batch_size=32,epochs=initial_training_epochs,verbose=2)
 
-    #print("total_steps ", total_steps)
-    #print("dataX ", dataX[0:10])
-    #print("dataY ", dataY[0:10])
-    #print("dataY ", dataY)
-
-
-#dataX = np.random.random((1,9))
 
 
 if save_weights:
