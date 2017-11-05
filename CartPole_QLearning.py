@@ -1,6 +1,7 @@
 '''
 Cartpole-v0 solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
+https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using DeepQ Learning
 
 '''
