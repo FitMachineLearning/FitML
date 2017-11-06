@@ -5,13 +5,36 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 
 *Michel is an AI researcher and a graduate from University of Montreal*
 
+## QLearning in OpenAI
+Implementation of a Q Learning Algorithm on the OpenAI LunarLander. 
+After 150 itterations the agent can more or less fly safely.
+After 400 itterations the agent is able to land safely most of the time.
+After 600 itterations the agent is able to land safely on the pad the majority of the time.
+
+Demo of the agent can be seen here
+
+https://www.youtube.com/watch?v=p0rGjAgykOU
+
+You can find the code here
+
+https://github.com/FitMachineLearning/FitML/blob/master/LunarLander_QL.py
+
+In our example we use the following
+* Markov Decision Process
+* Bellman equation
+* Reinforcement Learning with epsilon discovery probability reduced over time
+* Q / utility estimation with NN
+* RL Memory
+
+You can play with the parameters to experiment.
+
 ## Solving Cartpole the right way
 
 [![Cartpole Demo](https://img.youtube.com/vi/TguWjWvRp8c/0.jpg)](https://www.youtube.com/watch?v=TguWjWvRp8c)
 
 
 ### Our results
-After observing the environment for 100 episode our agent is able to balance the pole for all subsequent games indefinitely. We get the best results by anticipating 4-8 steps in advance. The more the agent can anticipate (larger number of predicted steps) the more stable the pole is balanced. You can see how it behaves with different depth settings in the video link below. 
+After observing the environment for 30 episode our agent is able to balance the pole for all subsequent games indefinitely. We get the best results by anticipating 4-8 steps in advance. The more the agent can anticipate (larger number of predicted steps) the more stable the pole is balanced. You can see how it behaves with different depth settings in the video link below. 
 
 https://www.youtube.com/watch?v=TguWjWvRp8c
 
@@ -88,7 +111,4 @@ import h5py
 
 Make sure you also set `observe_and_train` to True the first time you run the model. After the first run, the model will save the weights for future use so you can set it back to False. You will find this variable along with other variables you can tweak right after the header/import section of the file.
 
-### possible improvements
-Many... So many...
 
-### Please comment and provide feedback.
