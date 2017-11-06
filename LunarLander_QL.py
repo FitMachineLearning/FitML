@@ -22,22 +22,22 @@ num_env_variables = 8
 num_env_actions = 4
 num_training_exmaples = 30
 timesteps = 1
-num_initial_observation = 60
+num_initial_observation = 10
 learning_rate = 0.001
 weigths_filename = "LL-QL-v2-weights.h5"
 
-b_discount = 0.95
-max_memory_len = 5000
+b_discount = 0.98
+max_memory_len = 60000
 num_failures_for_retrain = 10
 starting_explore_prob = 0.05
 initial_training_epochs = 2
 RL_training_eporcs = 2
 num_anticipation_steps = 6
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 Do_RL = True
 save_weights = True
-Learning_cycles = 1500
+Learning_cycles = 500
 
 
 #One hot encoding array
@@ -105,15 +105,14 @@ def predictTotalRewards(qstate, action):
 
 
 if observe_and_train:
-    #observe for 100 games
 
-
+    #Play the game 500 times
     for game in range(500):
         gameX = np.zeros(shape=(1,num_env_variables+num_env_actions))
         gameY = np.zeros(shape=(1,1))
         #Get the Q state
         qs = env.reset()
-        for step in range (1000):
+        for step in range (40000):
 
             if game < num_initial_observation:
                 #take a radmon action
@@ -200,26 +199,18 @@ if observe_and_train:
             qs=s
 
             #Retrain every X failures after num_initial_observation
-            if done and game >= num_env_actions:
+            if done and game >= num_initial_observation:
                 if game%10 == 0:
                     print("Training  game# ", game,"momory size", memoryX.shape[0])
                     model.fit(memoryX,memoryY, batch_size=32,epochs=initial_training_epochs,verbose=2)
 
             if done:
-                if r > 0:
-                    print("Game ",game," WON***")
+                if r > 0 and r <99:
+                    print("Game ",game," ended with positive reward ")
+                if r > 100:
+                    print("Game ", game," WON *** " )
                 #Game ended - Break
                 break
-
-    #print("Observation complete. - Begin LSTM training")
-
-    #print("dataX shape", dataX.shape)
-    #print(dataX[0:20])
-    #print("dataY shape", dataY.shape)
-    #print(dataY)
-
-
-
 
 
 
