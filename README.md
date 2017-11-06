@@ -5,7 +5,10 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 
 *Michel is an AI researcher and a graduate from University of Montreal*
 
-## QLearning in OpenAI
+## QLearning in OpenAI Lunar Lander
+
+<img src="/img/LunarLander_QL.py" width="350"/>
+
 Implementation of a Q Learning Algorithm on the OpenAI LunarLander. 
 After 150 itterations the agent can more or less fly safely.
 After 400 itterations the agent is able to land safely most of the time.
