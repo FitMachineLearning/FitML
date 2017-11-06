@@ -36,14 +36,14 @@ You can play with the parameters to experiment.
 [![Cartpole Demo](https://img.youtube.com/vi/TguWjWvRp8c/0.jpg)](https://www.youtube.com/watch?v=TguWjWvRp8c)
 
 
-### Our results
+### Results
 After observing the environment for 30 episode our agent is able to balance the pole for all subsequent games indefinitely. We get the best results by anticipating 4-8 steps in advance. The more the agent can anticipate (larger number of predicted steps) the more stable the pole is balanced. You can see how it behaves with different depth settings in the video link below. 
 
 https://www.youtube.com/watch?v=TguWjWvRp8c
 
 
 
-### Our approach
+### Approach
 
 Our solution of the Open AI Cartpole combines many different aspects of Machine Learning to solve the problem.
 
