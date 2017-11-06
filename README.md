@@ -31,7 +31,7 @@ In our example we use the following
 
 You can play with the parameters to experiment.
 
-## Solving Cartpole the right way
+## Solving Cartpole with Bellman Equation using recursive Future-Sate-And-Reward-Prediction
 
 [![Cartpole Demo](https://img.youtube.com/vi/TguWjWvRp8c/0.jpg)](https://www.youtube.com/watch?v=TguWjWvRp8c)
 
@@ -51,8 +51,12 @@ Find the code here: https://github.com/FitMachineLearning/FitML/blob/master/Cart
 
 Our solution learns by observing the first 100 games, then trains a sequential model made of 2 stateful LSTMs, one relu and a regular dense model for output.
 Once the model is trained, we do not store any discrete information about the environment. 
-However, we first teach the model to anticipate the next state of the environment given any plausible action. In essence, the LSTMs learn that given a series of event (states + actions) this next state and reward are most probable. This is most useful because it avoids data explosion of traditional discrete MDP solutions, it is also computationally efficient.
+However, we first teach the model to anticipate the next state of the environment given any plausible action. In essence, the LSTMs learn that given a series of event (states + actions) this next state and reward are most probable. This is most useful because it avoids data explosion of traditional discrete MDP solutions, or large data requirements needed for Reinforcement Learning Memory. 
 
+### Drawbacks
+This solution isn't computationally effective, as it does not scale well for problems with multiple actions (beyond binary). It also is inneffective at being able to discover and learn new scenarios.
+
+### The code
 Once our model can anticipate future states correctly, even for events it has never encountered, we used it in an MDP, solved using a Bellman approach 
 (utility/reward at state 1 = reward + sum of discounted expected rewards of future steps given all possible actions). The twist here is that we recursively calculate expected reward using the LSTM models which 
 is now adept at anticipating future states and rewards given a series of state-actions.
