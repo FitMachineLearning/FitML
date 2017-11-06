@@ -20,24 +20,18 @@ from keras import optimizers
 
 num_env_variables = 8
 num_env_actions = 4
-num_training_exmaples = 30
-timesteps = 1
-num_initial_observation = 10
+num_initial_observation = 0
 learning_rate = 0.001
 weigths_filename = "LL-QL-v2-weights.h5"
 
 b_discount = 0.98
 max_memory_len = 60000
-num_failures_for_retrain = 10
 starting_explore_prob = 0.05
-initial_training_epochs = 2
-RL_training_eporcs = 2
-num_anticipation_steps = 6
+training_epochs = 2
 load_previous_weights = True
 observe_and_train = True
-Do_RL = True
 save_weights = True
-Learning_cycles = 500
+num_games_to_play = 500
 
 
 #One hot encoding array
@@ -50,9 +44,9 @@ env = gym.make('LunarLander-v2')
 env.reset()
 
 #initialize training matrix with random states and actions
-dataX = np.random.random(( num_training_exmaples,num_env_variables+num_env_actions ))
+dataX = np.random.random(( 5,num_env_variables+num_env_actions ))
 #Only one output for the total score
-dataY = np.random.random((num_training_exmaples,1))
+dataY = np.random.random((5,1))
 
 
 
@@ -107,7 +101,7 @@ def predictTotalRewards(qstate, action):
 if observe_and_train:
 
     #Play the game 500 times
-    for game in range(500):
+    for game in range(num_games_to_play):
         gameX = np.zeros(shape=(1,num_env_variables+num_env_actions))
         gameY = np.zeros(shape=(1,1))
         #Get the Q state
@@ -119,7 +113,7 @@ if observe_and_train:
                 a = env.action_space.sample()
             else:
                 prob = np.random.rand(1)
-                explore_prob = starting_explore_prob-(starting_explore_prob/Learning_cycles)*game
+                explore_prob = starting_explore_prob-(starting_explore_prob/num_games_to_play)*game
 
                 #Chose between prediction and chance
                 if prob < explore_prob:
@@ -129,9 +123,12 @@ if observe_and_train:
                     #print("prob ", prob, "explore_prob", explore_prob)
 
                 else:
-                    ##chose an action by estimating consequences of actions for the next num_anticipation_steps steps ahead
-                    #works best with looking 6 steps ahead
-                    #Also works best if you train the model more itterations
+                    ##chose an action by estimating function-estimator remembered consequences of all possible actions
+                    ## Bellman states that the best policy (i.e. action) is the one that maximizez expected rewards for future states
+                    ## to caculate rewards we compute the reward a this state t + the discounted (b_discount) reward at all possible state t+1
+                    ## all states t+1 are estimated by our function estimator (our Neural Network)
+
+
                     utility_possible_actions = np.zeros(shape=(num_env_actions))
 
                     utility_possible_actions[0] = predictTotalRewards(qs,0)
@@ -190,7 +187,7 @@ if observe_and_train:
 
                 #if memory is full remove first element
                 if np.alen(memoryX) >= max_memory_len:
-                    print("memory full. mem len ", np.alen(memoryX))
+                    #print("memory full. mem len ", np.alen(memoryX))
                     for l in range(np.alen(gameX)):
                         memoryX = np.delete(memoryX, 0, axis=0)
                         memoryY = np.delete(memoryY, 0, axis=0)
@@ -202,12 +199,12 @@ if observe_and_train:
             if done and game >= num_initial_observation:
                 if game%10 == 0:
                     print("Training  game# ", game,"momory size", memoryX.shape[0])
-                    model.fit(memoryX,memoryY, batch_size=32,epochs=initial_training_epochs,verbose=2)
+                    model.fit(memoryX,memoryY, batch_size=32,epochs=training_epochs,verbose=2)
 
             if done:
-                if r > 0 and r <99:
+                if r >= 0 and r <99:
                     print("Game ",game," ended with positive reward ")
-                if r > 100:
+                if r > 50:
                     print("Game ", game," WON *** " )
                 #Game ended - Break
                 break
