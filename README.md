@@ -7,7 +7,7 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 
 ## QLearning in OpenAI Lunar Lander
 
-<img src="/img/LunarLandQLearning.png" width="350"/>
+<a href="https://www.youtube.com/watch?v=p0rGjAgykOU"><img src="/img/LunarLandQLearning.png" width="350"/><a>
 
 Implementation of a Q Learning Algorithm on the OpenAI LunarLander. 
 After 150 itterations the agent can more or less fly safely.
