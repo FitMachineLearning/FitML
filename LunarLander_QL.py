@@ -2,7 +2,7 @@
 LunarLander-v2 solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
-Using Q Learning
+Using Modified Q Learning, Bellman, Reinforcement Learning, RL memory
 
 '''
 import numpy as np
@@ -14,7 +14,6 @@ import h5py
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.layers import Embedding
-from keras.layers import LSTM
 from keras import optimizers
 
 
@@ -50,7 +49,7 @@ dataY = np.random.random((5,1))
 
 
 
-#nitialize the LSTM with random weights
+#nitialize the Neural Network with random weights
 
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
@@ -72,11 +71,12 @@ if load_previous_weights:
     else:
         print("File ",weigths_filename," does not exis. Retraining... ")
 
-#Record first 500 in a sequence and add them to the training sequence
+#Initialize training data array 
 total_steps = 0
 dataX = np.zeros(shape=(1,num_env_variables+num_env_actions))
 dataY = np.zeros(shape=(1,1))
 
+#Initialize Memory Array data array 
 memoryX = np.zeros(shape=(1,num_env_variables+num_env_actions))
 memoryY = np.zeros(shape=(1,1))
 
@@ -85,7 +85,7 @@ print("dataX shape", dataX.shape)
 print("dataY shape", dataY.shape)
 
 
-
+#This function predicts the reward that will result from taking an "action" at a state "qstate"
 def predictTotalRewards(qstate, action):
     qs_a = np.concatenate((qstate,actions_1_hot[action]), axis=0)
     predX = np.zeros(shape=(1,num_env_variables+num_env_actions))
@@ -100,18 +100,22 @@ def predictTotalRewards(qstate, action):
 
 if observe_and_train:
 
-    #Play the game 500 times
+    #Play the game a determine number of times
     for game in range(num_games_to_play):
         gameX = np.zeros(shape=(1,num_env_variables+num_env_actions))
         gameY = np.zeros(shape=(1,1))
-        #Get the Q state
+        #Get the initial Q state
         qs = env.reset()
         for step in range (40000):
 
+            #Learn from observation and not playing 
             if game < num_initial_observation:
                 #take a radmon action
                 a = env.action_space.sample()
             else:
+                #Now playing and also learning from experience during play
+                
+                #Calculate probability to take deterministic action vs random action (epsilon)
                 prob = np.random.rand(1)
                 explore_prob = starting_explore_prob-(starting_explore_prob/num_games_to_play)*game
 
@@ -123,7 +127,7 @@ if observe_and_train:
                     #print("prob ", prob, "explore_prob", explore_prob)
 
                 else:
-                    ##chose an action by estimating function-estimator remembered consequences of all possible actions
+                    ##chose an action by estimating the function-estimator remembered consequences of all possible actions
                     ## Bellman states that the best policy (i.e. action) is the one that maximizez expected rewards for future states
                     ## to caculate rewards we compute the reward a this state t + the discounted (b_discount) reward at all possible state t+1
                     ## all states t+1 are estimated by our function estimator (our Neural Network)
@@ -148,10 +152,11 @@ if observe_and_train:
             qs_a = np.concatenate((qs,actions_1_hot[a]), axis=0)
 
             #print("action",a," qs_a",qs_a)
-            #get the target state and reward
+            #Perform the optimal action and get the target state and reward
             s,r,done,info = env.step(a)
-            #record only the first x number of states
-
+            
+            
+            #record information for training and memory
             if step ==0:
                 gameX[0] = qs_a
                 gameY[0] = np.array([r])
@@ -164,7 +169,7 @@ if observe_and_train:
 
             if done :
                 #GAME ENDED
-                #Calculate Q values from end to start of game
+                #Calculate Q values from end to start of game (From last step to first)
                 for i in range(0,gameY.shape[0]):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                     if i==0:
@@ -195,7 +200,7 @@ if observe_and_train:
             #Update the states
             qs=s
 
-            #Retrain every X failures after num_initial_observation
+            #Retrain every X game after num_initial_observation
             if done and game >= num_initial_observation:
                 if game%10 == 0:
                     print("Training  game# ", game,"momory size", memoryX.shape[0])
