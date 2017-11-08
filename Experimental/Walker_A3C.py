@@ -1,5 +1,6 @@
 '''
-LunarLander-v2 solution by Michel Aka
+Walker-v2 solution by Michel Aka
+**Experimentatl**
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using DeepQ Learning
