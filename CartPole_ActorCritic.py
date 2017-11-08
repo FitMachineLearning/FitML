@@ -3,9 +3,9 @@ CartPole solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
-
 Note that I prefe the terms Action Predictor Network and Q/Reward Predictor network better
 
+** Comments and code need clean up.
 '''
 import numpy as np
 import keras
@@ -199,11 +199,9 @@ if observe_and_train:
                     #Generate a set of num_env_action*10
                     possible_actions = np.zeros(shape=(num_env_actions*4,num_env_actions))
                     utility_possible_actions = np.zeros(shape=(num_env_actions*4))
-
                     for i in range(num_env_actions*4):
                         possible_actions[i] = SmartCrossEntropy(remembered_optimal_policy)
                         utility_possible_actions[i] = predictTotalRewards(qs,possible_actions[i])
-
                     #print("utility_possible_actions", utility_possible_actions)
                     #chose argmax action of estimated anticipated rewards
                     #print("utility_possible_actions ",utility_possible_actions)
@@ -223,6 +221,10 @@ if observe_and_train:
                         #print(" - selecting generated optimal policy ",a)
 
 
+            if a[0] > 1:
+                a[0] = 1
+            if a[0] < 0:
+                a[0] = 0
 
 
             env.render()
