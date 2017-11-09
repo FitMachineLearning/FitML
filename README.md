@@ -45,7 +45,7 @@ Note that this method takes longer to solve the problem. Higher rates of success
 
 On thing to note, this agent exhibits more complex behaviors (i.e. more tricks) than its Q Learning counterpart. 
 
-Optimal policy is chosen between highest function-estimator Q value between remembered action and random sample.
+Optimal policy is chosen by taking highest returned function-estimator Q value between remembered action and random sample.
 
 ```python
 if predictTotalRewards(qs,remembered_optimal_policy) > predictTotalRewards(qs,randaction):
