@@ -309,7 +309,7 @@ if observe_and_train:
                     action_predictor_model.fit(apmemoryX,apmemoryY, batch_size=32, epochs=training_epochs,verbose=2)
 
             if done and game >= num_initial_observation:
-                if save_weights and game%100 == 0:
+                if save_weights and game%20 == 0:
                     #Save model
                     print("Saving weights")
                     model.save_weights(weigths_filename)
