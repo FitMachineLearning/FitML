@@ -3,9 +3,9 @@ CartPole solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
+
 Note that I prefe the terms Action Predictor Network and Q/Reward Predictor network better
 
-** Comments and code need clean up.
 '''
 import numpy as np
 import keras
@@ -32,9 +32,9 @@ apWeights_filename = "CartPole_ap-QL-v2-weights.h5"
 sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 6000
-starting_explore_prob = 0.1
+starting_explore_prob = 0.05
 training_epochs = 2
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 num_games_to_play = 1000
@@ -199,9 +199,11 @@ if observe_and_train:
                     #Generate a set of num_env_action*10
                     possible_actions = np.zeros(shape=(num_env_actions*4,num_env_actions))
                     utility_possible_actions = np.zeros(shape=(num_env_actions*4))
+
                     for i in range(num_env_actions*4):
                         possible_actions[i] = SmartCrossEntropy(remembered_optimal_policy)
                         utility_possible_actions[i] = predictTotalRewards(qs,possible_actions[i])
+
                     #print("utility_possible_actions", utility_possible_actions)
                     #chose argmax action of estimated anticipated rewards
                     #print("utility_possible_actions ",utility_possible_actions)
@@ -221,11 +223,12 @@ if observe_and_train:
                         #print(" - selecting generated optimal policy ",a)
 
 
+
+
+            if a[0] <0:
+                a [0]= 0
             if a[0] > 1:
                 a[0] = 1
-            if a[0] < 0:
-                a[0] = 0
-
 
             env.render()
             a = np.around(a)
@@ -296,7 +299,7 @@ if observe_and_train:
                 done = True
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
-                if game%10 == 0:
+                if game%3 == 0:
                     print("Training  game# ", game,"momory size", memoryX.shape[0])
 
                     #training Reward predictor model
