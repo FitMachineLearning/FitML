@@ -77,9 +77,9 @@ Here is a write up of a typical scenario in Actor Critic epoch
 * Env: "After taking action a3', you got reward R'' "
 * Critic: "Oh, my.... I was wrong. That's Ok, I'll do better next time (Critic adjust it's weights to converge towards R'' for this state action (s'+a3')
 
-In essence, the actor always improve towards what the Critic thinks is best. The Critic keep getting better understanding of its environment every iteration.
+In essence, the Actor always improves towards what the Critic thinks is best at that moment in time. The Critic keep getting better understanding of its environment every iteration. The Actor provides the adventage of a state dependant memory. If the Actor wasn't there we would always have to select from randon; And this is not guarantied to display expected behavior.
 
-There are multiple strategies to chose the sample actions to be evaluated each epochs by the Critic. But one thing remains. Eventually, the Actor will learn to exceed the long-term reward at all epochs of random selected sample actions (or actions selected otherwise). The critic will understand how reward works within the environment and the Action will remember or generalize to figure out what action to take in any given situation.
+There are multiple strategies to chose the sample actions to be evaluated each epochs by the Critic. But one thing remains. Eventually, the Actor will learn to exceed the long-term reward at all epochs of random selected sample actions (or actions selected otherwise). The Critic will understand how reward works within the environment and the Actior will remember or generalize to figure out what action to take in any given situation.
 
 
 I highly recommend reading the Actor-Critic Algorithm paper from Vijay Konda and John Tsitsiklis.
