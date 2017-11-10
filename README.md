@@ -37,10 +37,10 @@ This solution of the OpenAi LunarLander uses 2 networks. One action predictor (c
 
 https://github.com/FitMachineLearning/FitML/blob/master/LunarLander_ActorCritic.py
 
-Note that this method takes longer to solve the problem. Higher rates of successful landing start to appear after 1200 tries. There are definately optimizaations that can be brought by playing with
+Note that this method takes longer to solve the problem. Higher rates of successful landing start to appear after 1200 tries. There are definitely optimizations that can be brought by playing with
 1) Learning rate
 2) Monte-Carlo randomness i.e. number of random samples polled for Q value comparisons
-3) Network width / Number of Nerones
+3) Network width / Number of Neurons
 4) ... Many others
 
 On thing to note, this agent exhibits more complex behaviors (i.e. more tricks) than its Q Learning counterpart. 
@@ -52,6 +52,36 @@ if predictTotalRewards(qs,remembered_optimal_policy) > predictTotalRewards(qs,ra
     a = remembered_optimal_policy
 else
 ```
+
+### Understanding Actor Critic
+
+The best way to think about Actor Critic is to have an intuitive understanding of it first.
+
+The Actor always tries to predict the best action based on experience.
+The Critic is responsible for determining which policies, taken from a sample, yield the best long-term reward. 
+Here is a write up of a typical scenario in Actor Critic epoch
+
+* Env: "Hey we have a new state, it's called s' ."
+* Actor: "Oh, Oh, I know the best action to take. I remember, I've seen this before... We should do Action aa' "
+* Critic: "Not so fast buddy, let me check first if aa' is better than these other actions".
+* Actor: "But, but, these samples are random, there is no way that ..."
+* Critic: "Well according to my calculations Sample A3 with action a3' yields the highest long term reward."
+* Actor: "Dude... "
+* Critic: "Trust me. I learn faster than you" (It is optimal for critic to have a higher learning rate)
+* Actor: "Ok.. You're the boss" (Actor adjusts it's optimal action for this state to Sample Action a3' )
+* Env: "After taking action a3', you got reward R'' "
+* Critic: "Oh, my.... I was wrong. That's Ok, I'll do better next time (Critic adjust it's weights to converge towards R'' for this state action (s'+a3')
+
+In essence, the actor always improve towards what the Critic thinks is best. The Critic keep getting better understanding of its environment every iteration.
+
+There are multiple strategies to chose the sample actions to be evaluated each epochs by the Critic. But one thing remains. Eventually, the Actor will learn to exceed the long-term reward at all epochs of random selected sample actions (or actions selected otherwise). The critic will understand how reward works within the environment and the Action will remember or generalize to figure out what action to take in any given situation.
+
+
+I highly recommend reading the Actor-Critic Algorithm paper from Vijay Konda and John Tsitsiklis.
+https://papers.nips.cc/paper/1786-actor-critic-algorithms.pdf
+
+
+
 
 ## CartPole with recursive Tree Search Bellman reward computation 
 
