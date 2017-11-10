@@ -1,7 +1,7 @@
 # FitML
 *model.fit(Machine_Learning, epochs=Inf)* 
 
-A collection of python Machine Learning articles and examples. Here, you will find code related to MDP, Bellman, OpenAI solutions and others...
+A collection of python Machine Learning articles and examples. Here, you will find code related to Q Learning, Actor-Critic, MDP, Bellman, OpenAI solutions and others...
 
 *Michel is an AI researcher and a graduate from University of Montreal*
 
@@ -88,7 +88,7 @@ https://papers.nips.cc/paper/1786-actor-critic-algorithms.pdf
 
 
 
-## CartPole with recursive Tree Search Bellman reward computation 
+## CartPole with function estimator recursive Tree Search Bellman reward computation 
 
 [![Cartpole Demo](https://img.youtube.com/vi/TguWjWvRp8c/0.jpg)](https://www.youtube.com/watch?v=TguWjWvRp8c)
 
