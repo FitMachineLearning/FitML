@@ -34,9 +34,11 @@ You can play with the parameters to experiment.
 ## Lunar Lander using Actor Critic
 
 This solution of the OpenAi LunarLander uses 2 networks. One action predictor (commonly referred to as actor) and one future reward predictor (commonly referred to as critic). It is computationaly more effective than the recursive tree search, but takes longer to solve the problem.
+
 https://github.com/FitMachineLearning/FitML/blob/master/LunarLander_ActorCritic.py
 
 You can see the agent in action here:
+
 https://www.youtube.com/watch?v=z9R5hDT6vUQ
 
 
