@@ -125,3 +125,8 @@ utility_possible_actions[1] = predictTotalRewards(qs,1)
 ```
 We then select the policy/action with the highest estimated Q value.
 
+## Experimental A2C algorithm for Bipedal Walker
+
+Find the code here. I would be interested to see what results you guys get if you happen to play with the parameters.
+https://github.com/FitMachineLearning/FitML/blob/master/BepedalWalker_A2C.py
+
