@@ -1,7 +1,10 @@
 '''
 LunarLander solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
-https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
+
+Check out its performance here.
+https://www.youtube.com/watch?v=z9R5hDT6vUQ
+
 Using Actor Critic
 Note that I prefe the terms Action Predictor Network and Q/Reward Predictor network better
 '''
