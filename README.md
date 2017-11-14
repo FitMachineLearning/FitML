@@ -5,7 +5,12 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 
 *Michel is an AI researcher and a graduate from University of Montreal*
 
-## OpenAI Lunar Lander with Modified Q Learning
+### Great explanation of Policy Gradient and Deterministic Policy Gradient by David Silver
+This one is a must watch
+
+http://techtalks.tv/talks/deterministic-policy-gradient-algorithms/61098/
+
+### OpenAI Lunar Lander with Modified Q Learning
 
 <a href="https://www.youtube.com/watch?v=p0rGjAgykOU"><img src="/img/LunarLandQLearning.png" width="350"/><a>
 
@@ -31,7 +36,7 @@ In our example we use the following
 
 You can play with the parameters to experiment.
 
-## Lunar Lander using Actor Critic
+### Lunar Lander using Actor Critic
 
 This solution of the OpenAi LunarLander uses 2 networks. One action predictor (commonly referred to as actor) and one future reward predictor (commonly referred to as critic). It is computationaly more effective than the recursive tree search, but takes longer to solve the problem.
 
@@ -58,7 +63,7 @@ if predictTotalRewards(qs,remembered_optimal_policy) > predictTotalRewards(qs,ra
 else
 ```
 
-### Understanding Actor Critic
+#### Understanding Actor Critic
 
 The best way to think about Actor Critic is to have an intuitive understanding of it first.
 
@@ -88,19 +93,19 @@ https://papers.nips.cc/paper/1786-actor-critic-algorithms.pdf
 
 
 
-## CartPole with function estimator recursive Tree Search Bellman reward computation 
+### CartPole with function estimator recursive Tree Search Bellman reward computation 
 
 [![Cartpole Demo](https://img.youtube.com/vi/TguWjWvRp8c/0.jpg)](https://www.youtube.com/watch?v=TguWjWvRp8c)
 
 
-### Results
+#### Results
 After observing the environment for 30 episode our agent is able to balance the pole for all subsequent games indefinitely. We get the best results by anticipating 4-8 steps in advance. The more the agent can anticipate (larger number of predicted steps) the more stable the pole is balanced. You can see how it behaves with different depth settings in the video link below. 
 
 https://www.youtube.com/watch?v=TguWjWvRp8c
 
 
 
-### Approach
+#### Approach
 
 We use a function approximator and teach it to predict/estimate the next state and reward pair base on current state and action. Once our function approximator learns the relationship betwenn (s',a') and (s'',r'') we then use it to recusively calculate estimated longterm reward using bellman for x future steps.
 
@@ -108,13 +113,13 @@ We use a function approximator and teach it to predict/estimate the next state a
 Find the code here: https://github.com/FitMachineLearning/FitML/blob/master/Cartpole_MDP.py
 
 
-## CarPole with Actor Critic
+### CarPole with Actor Critic
 
 This solution of the CartPole uses 2 networks. One action predictor (commonly referred to as actor) and one future reward predictor (commonly referred to as critic). It is computationaly more effective than the recursive tree search, but takes longer to solve the problem.
 
 https://github.com/FitMachineLearning/FitML/blob/master/CartPole_ActorCritic.py
 
-## CartPole with Modified Q Learning
+### CartPole with Modified Q Learning
 
 This solution of the CartPole uses a function approximator to estimate the Q/Utilities of all possible future states.
 (qs',a') => (R'').
@@ -125,7 +130,7 @@ utility_possible_actions[1] = predictTotalRewards(qs,1)
 ```
 We then select the policy/action with the highest estimated Q value.
 
-## Experimental A2C algorithm for Bipedal Walker
+### Experimental A2C algorithm for Bipedal Walker
 
 Find the code here. I would be interested to see what results you guys get if you happen to play with the parameters.
 https://github.com/FitMachineLearning/FitML/blob/master/BepedalWalker_A2C.py
