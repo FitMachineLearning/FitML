@@ -1,12 +1,14 @@
 '''
 CartPole solution by Michel Aka
 
-Cleaned up variables and more readable memory
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
-
 Note that I prefe the terms Action Predictor Network and Q/Reward Predictor network better
+
+Update
+Cleaned up variables and more readable memory
+Improved hyper parameters for better performance
 
 '''
 import numpy as np
@@ -34,10 +36,10 @@ apWeights_filename = "CartPole_ap-QL-v2-weights.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.98
+b_discount = 0.995
 max_memory_len = 6000
 starting_explore_prob = 0.05
-training_epochs = 4
+training_epochs = 8
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
