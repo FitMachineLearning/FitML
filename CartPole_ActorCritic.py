@@ -1,5 +1,6 @@
 '''
 CartPole solution by Michel Aka
+Cleaned up memory variables
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
@@ -12,6 +13,7 @@ import keras
 import gym
 import os
 import h5py
+import matplotlib.pyplot as plt
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -22,8 +24,9 @@ from keras import optimizers
 
 num_env_variables = 4
 num_env_actions = 1
-num_initial_observation = 1
-learning_rate = 0.001
+num_initial_observation = 10
+learning_rate =  0.0005
+apLearning_rate = 0.0001
 weigths_filename = "CartPole-QL-v2-weights.h5"
 apWeights_filename = "CartPole_ap-QL-v2-weights.h5"
 
@@ -33,11 +36,11 @@ sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 6000
 starting_explore_prob = 0.05
-training_epochs = 2
-load_previous_weights = False
+training_epochs = 4
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
-num_games_to_play = 1000
+num_games_to_play = 200
 
 
 #One hot encoding array
@@ -58,6 +61,11 @@ dataY = np.random.random((5,1))
 apdataX = np.random.random(( 5,num_env_variables ))
 apdataY = np.random.random((5,num_env_actions))
 
+def custom_error(y_true, y_pred, Qsa):
+    cce=0.001*(y_true - y_pred)*Qsa
+    return cce
+
+
 #nitialize the Reward predictor model
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
@@ -75,9 +83,10 @@ action_predictor_model = Sequential()
 action_predictor_model.add(Dense(128, activation='relu', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
-opt2 = optimizers.adam(lr=learning_rate)
+opt2 = optimizers.adam(lr=apLearning_rate)
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
+
 
 
 #load previous model weights if they exist
@@ -108,17 +117,11 @@ if load_previous_weights:
 
 #Record first 500 in a sequence and add them to the training sequence
 total_steps = 0
-dataX = np.zeros(shape=(1,num_env_variables+num_env_actions))
-dataY = np.zeros(shape=(1,1))
 
-memoryX = np.zeros(shape=(1,num_env_variables+num_env_actions))
-memoryY = np.zeros(shape=(1,1))
-
-apmemoryX = np.zeros(shape=(1,num_env_variables))
-apmemoryY = np.zeros(shape=(1,num_env_actions))
-
-print("dataX shape", dataX.shape)
-print("dataY shape", dataY.shape)
+memorySA = np.zeros(shape=(1,num_env_variables+num_env_actions))
+memoryS = np.zeros(shape=(1,num_env_variables))
+memoryA = np.zeros(shape=(1,1))
+memoryR = np.zeros(shape=(1,1))
 
 
 
@@ -160,8 +163,10 @@ if observe_and_train:
 
     #Play the game 500 times
     for game in range(num_games_to_play):
-        gameX = np.zeros(shape=(1,num_env_variables+num_env_actions))
-        gameY = np.zeros(shape=(1,1))
+        gameSA = np.zeros(shape=(1,num_env_variables+num_env_actions))
+        gameS = np.zeros(shape=(1,num_env_variables))
+        gameA = np.zeros(shape=(1,1))
+        gameR = np.zeros(shape=(1,1))
         #Get the Q state
         qs = env.reset()
         #print("qs ", qs)
@@ -183,33 +188,10 @@ if observe_and_train:
                     #take a random action
                     a=np.array([env.action_space.sample()])
 
-                    #print("taking random action",a, "at total_steps" , total_steps)
-                    #print("prob ", prob, "explore_prob", explore_prob)
-
                 else:
-                    ##chose an action by estimating function-estimator remembered consequences of all possible actions
-                    ## Bellman states that the best policy (i.e. action) is the one that maximizez expected rewards for future states
-                    ## to caculate rewards we compute the reward a this state t + the discounted (b_discount) reward at all possible state t+1
-                    ## all states t+1 are estimated by our function estimator (our Neural Network)
 
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
-
-                    '''
-                    #Generate a set of num_env_action*10
-                    possible_actions = np.zeros(shape=(num_env_actions*4,num_env_actions))
-                    utility_possible_actions = np.zeros(shape=(num_env_actions*4))
-
-                    for i in range(num_env_actions*4):
-                        possible_actions[i] = SmartCrossEntropy(remembered_optimal_policy)
-                        utility_possible_actions[i] = predictTotalRewards(qs,possible_actions[i])
-
-                    #print("utility_possible_actions", utility_possible_actions)
-                    #chose argmax action of estimated anticipated rewards
-                    #print("utility_possible_actions ",utility_possible_actions)
-                    #print("argmax of utitity", np.argmax(utility_possible_actions))
-                    best_sce_i = np.argmax(utility_possible_actions)
-                    '''
 
                     randaction = np.array([env.action_space.sample()])
 
@@ -223,8 +205,6 @@ if observe_and_train:
                         #print(" - selecting generated optimal policy ",a)
 
 
-
-
             if a[0] <0:
                 a [0]= 0
             if a[0] > 1:
@@ -235,7 +215,6 @@ if observe_and_train:
             a = a.astype(int)
             qs_a = np.concatenate((qs,a), axis=0)
 
-            #print("action",a," qs_a",qs_a)
             #get the target state and reward
             s,r,done,info = env.step(a[0])
             #record only the first x number of states
@@ -244,52 +223,52 @@ if observe_and_train:
                 r=-1
 
             if step ==0:
-                gameX[0] = qs_a
-                gameY[0] = np.array([r])
-                memoryX[0] = qs_a
-                memoryY[0] = np.array([r])
-                apmemoryX[0] = qs
-                apmemoryY[0] = a
-
-            gameX = np.vstack((gameX,qs_a))
-            gameY = np.vstack((gameY,np.array([r])))
-            apmemoryX = np.vstack((apmemoryX,qs))
-            apmemoryY = np.vstack((apmemoryY,a))
-
+                gameSA[0] = qs_a
+                gameS[0] = qs
+                gameR[0] = np.array([r])
+                gameA[0] = np.array([r])
+            else:
+                gameSA= np.vstack((gameSA, qs_a))
+                gameS= np.vstack((gameS, qs))
+                gameR = np.vstack((gameR, np.array([r])))
+                gameA = np.vstack((gameA, np.array([a])))
 
 
             if done :
-                #GAME ENDED
-
                 #Calculate Q values from end to start of game
-                for i in range(0,gameY.shape[0]):
+                for i in range(0,gameR.shape[0]):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                     if i==0:
                         #print("reward at the last step ",gameY[(gameY.shape[0]-1)-i][0])
-                        gameY[(gameY.shape[0]-1)-i][0] = gameY[(gameY.shape[0]-1)-i][0]
+                        gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]
                     else:
                         #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
-                        gameY[(gameY.shape[0]-1)-i][0] = gameY[(gameY.shape[0]-1)-i][0]+b_discount*gameY[(gameY.shape[0]-1)-i+1][0]
+                        gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
-                    if i==gameY.shape[0]-1:
-                        print("Training Game #",game, " steps = ", step ,"last reward", r," finished with headscore ", gameY[(gameY.shape[0]-1)-i][0])
+                    if i==gameR.shape[0]-1:
+                        print("Training Game #",game, " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
 
-                if memoryX.shape[0] ==1:
-                    memoryX = gameX
-                    memoryY = gameY
+                if memoryR.shape[0] ==1:
+                    memorySA = gameSA
+                    memoryR = gameR
+                    memoryA = gameA
+                    memoryS = gameS
                 else:
                     #Add experience to memory
-                    memoryX = np.concatenate((memoryX,gameX),axis=0)
-                    memoryY = np.concatenate((memoryY,gameY),axis=0)
+                    memorySA = np.concatenate((memorySA,gameSA),axis=0)
+                    memoryS = np.concatenate((memoryS,gameS),axis=0)
+                    memoryR = np.concatenate((memoryR,gameR),axis=0)
+                    memoryA = np.concatenate((memoryA,gameA),axis=0)
+
 
                 #if memory is full remove first element
-                if np.alen(memoryX) >= max_memory_len:
+                if np.alen(memorySA) >= max_memory_len:
                     #print("memory full. mem len ", np.alen(memoryX))
-                    for l in range(np.alen(gameX)):
-                        memoryX = np.delete(memoryX, 0, axis=0)
-                        memoryY = np.delete(memoryY, 0, axis=0)
-                        apmemoryX = np.delete(apmemoryX, 0 , axis=0)
-                        apmemoryY = np.delete(apmemoryY, 0 , axis=0)
+                    for l in range(np.alen(gameR)):
+                        memorySA = np.delete(memorySA, 0, axis=0)
+                        memoryR = np.delete(memoryR, 0, axis=0)
+                        memoryA = np.delete(memoryA, 0, axis=0)
+                        memoryS = np.delete(memoryS, 0, axis=0)
 
 
             #Update the states
@@ -300,13 +279,13 @@ if observe_and_train:
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
                 if game%3 == 0:
-                    print("Training  game# ", game,"momory size", memoryX.shape[0])
+                    print("Training  game# ", game,"momory size", memorySA.shape[0])
 
                     #training Reward predictor model
-                    model.fit(memoryX,memoryY, batch_size=32,epochs=training_epochs,verbose=2)
+                    model.fit(memorySA,memoryR, batch_size=32,epochs=training_epochs,verbose=2)
 
                     #training action predictor model
-                    action_predictor_model.fit(apmemoryX,apmemoryY, batch_size=32, epochs=training_epochs,verbose=2)
+                    action_predictor_model.fit(memoryS,memoryA, batch_size=32, epochs=training_epochs,verbose=2)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0:
@@ -323,7 +302,6 @@ if observe_and_train:
                     print("Game ",game," ended with positive reward ")
                 #Game ended - Break
                 break
-
 
 
 
