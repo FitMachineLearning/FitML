@@ -1,6 +1,7 @@
 '''
 CartPole solution by Michel Aka
-Cleaned up memory variables
+
+Cleaned up variables and more readable memory
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
@@ -25,8 +26,8 @@ from keras import optimizers
 num_env_variables = 4
 num_env_actions = 1
 num_initial_observation = 10
-learning_rate =  0.0005
-apLearning_rate = 0.0001
+learning_rate =  0.003
+apLearning_rate = 0.001
 weigths_filename = "CartPole-QL-v2-weights.h5"
 apWeights_filename = "CartPole_ap-QL-v2-weights.h5"
 
@@ -37,7 +38,7 @@ b_discount = 0.98
 max_memory_len = 6000
 starting_explore_prob = 0.05
 training_epochs = 4
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 num_games_to_play = 200
