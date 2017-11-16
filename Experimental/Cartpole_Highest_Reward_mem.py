@@ -16,6 +16,8 @@ import keras
 import gym
 import os
 import h5py
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 from keras.models import Sequential
@@ -43,7 +45,7 @@ training_epochs = 5
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
-num_games_to_play = 800
+num_games_to_play = 500
 
 
 #One hot encoding array
@@ -84,7 +86,7 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 action_sate_reward_matcher = Sequential()
 action_sate_reward_matcher.add(Dense(128, activation='relu', input_dim=num_env_variables+1))
 action_sate_reward_matcher.add(Dense(num_env_actions))
-opt2 = optimizers.adam(lr=apLearning_rate*3)
+opt2 = optimizers.adam(lr=learning_rate)
 action_sate_reward_matcher.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
 
@@ -96,9 +98,10 @@ action_sate_reward_matcher.compile(loss='mse', optimizer=opt2, metrics=['accurac
 # This network will be initialized to remember only negative events. It will then update its weights based on experience
 highest_reward_memory_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-highest_reward_memory_model.add(Dense(128, activation='tanh', input_dim=num_env_variables))
+highest_reward_memory_model.add(Dense(1024, activation='tanh', input_dim=num_env_variables))
+highest_reward_memory_model.add(Dense(512, activation='tanh'))
 highest_reward_memory_model.add(Dense(1))
-opt2 = optimizers.adam(lr=learning_rate)
+opt2 = optimizers.adam(lr=apLearning_rate*3)
 highest_reward_memory_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
 
@@ -146,7 +149,7 @@ memoryHR = np.zeros(shape=(1,1))
 #Best Action array
 memoryBA = np.zeros(shape=(1,1))
 
-mstats = np.zeros(shape=(1))
+mstats = []
 
 
 def initilizeHighestRewardMemory():
@@ -330,7 +333,7 @@ if observe_and_train:
 
 
             if done :
-                mstats = np.concatenate( (mstats, np.array([step])), axis=0   )
+                mstats.append(step)
                 #Calculate Q values from end to start of game
                 for i in range(0,gameR.shape[0]):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
@@ -395,14 +398,14 @@ if observe_and_train:
                     print("Training  game# ", game,"momory size", memorySA.shape[0])
 
                     #training Reward predictor model
-                    model.fit(memorySA,memoryR, batch_size=32,epochs=training_epochs,verbose=0)
+                    model.fit(memorySA,memoryR, batch_size=128,epochs=training_epochs,verbose=0)
 
-                    highest_reward_memory_model.fit(memoryS,memoryHR,batch_size=32,epochs=training_epochs,verbose=0)
+                    highest_reward_memory_model.fit(memoryS,memoryHR,batch_size=128,epochs=training_epochs,verbose=0)
 
-                    action_sate_reward_matcher.fit(memorySHR,memoryBA,batch_size=32,epochs=training_epochs,verbose=0)
+                    action_sate_reward_matcher.fit(memorySHR,memoryBA,batch_size=128,epochs=training_epochs,verbose=0)
 
                     #training action predictor model
-                    action_predictor_model.fit(memoryS,memoryBA, batch_size=32, epochs=training_epochs,verbose=0)
+                    action_predictor_model.fit(memoryS,memoryBA, batch_size=128, epochs=training_epochs,verbose=0)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0:
