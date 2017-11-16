@@ -3,11 +3,12 @@ CartPole solution by Michel Aka
 
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
-Using Highest Reward Memory
+Using Actor Critic
 Note that I prefe the terms Action Predictor Network and Q/Reward Predictor network better
 
 Update
-Experimental November 15th 2017
+Cleaned up variables and more readable memory
+Improved hyper parameters for better performance
 
 '''
 import numpy as np
@@ -27,22 +28,22 @@ from keras import optimizers
 num_env_variables = 4
 num_env_actions = 1
 num_initial_observation = 10
-learning_rate =  0.003
-apLearning_rate = 0.001
-weigths_filename = "CartPole-QL-v2-weights.h5"
-apWeights_filename = "CartPole_ap-QL-v2-weights.h5"
+learning_rate =  0.001
+apLearning_rate = 0.003
+weigths_filename = "CartPole-HRM-v2-weights.h5"
+apWeights_filename = "CartPole_HRM-QL-v2-weights.h5"
 
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.995
-max_memory_len = 6000
+b_discount = 0.98
+max_memory_len = 10000
 starting_explore_prob = 0.05
-training_epochs = 8
+training_epochs = 5
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
-num_games_to_play = 200
+num_games_to_play = 800
 
 
 #One hot encoding array
@@ -53,6 +54,7 @@ actions_1_hot[np.arange(num_env_actions),possible_actions] = 1
 #Create testing enviroment
 env = gym.make('CartPole-v0')
 env.reset()
+
 
 
 
@@ -82,7 +84,7 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 action_sate_reward_matcher = Sequential()
 action_sate_reward_matcher.add(Dense(128, activation='relu', input_dim=num_env_variables+1))
 action_sate_reward_matcher.add(Dense(num_env_actions))
-opt2 = optimizers.adam(lr=apLearning_rate)
+opt2 = optimizers.adam(lr=apLearning_rate*3)
 action_sate_reward_matcher.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
 
@@ -96,7 +98,7 @@ highest_reward_memory_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 highest_reward_memory_model.add(Dense(128, activation='tanh', input_dim=num_env_variables))
 highest_reward_memory_model.add(Dense(1))
-opt2 = optimizers.adam(lr=apLearning_rate)
+opt2 = optimizers.adam(lr=learning_rate)
 highest_reward_memory_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
 
@@ -144,11 +146,13 @@ memoryHR = np.zeros(shape=(1,1))
 #Best Action array
 memoryBA = np.zeros(shape=(1,1))
 
+mstats = np.zeros(shape=(1))
+
 
 def initilizeHighestRewardMemory():
-    dataS = np.random.rand(1000,num_env_variables)
-    dataR = np.full((1000,1),-309)
-    highest_reward_memory_model.fit(dataS,dataR, batch_size=32, epochs=30,verbose=0)
+    dataS = np.random.rand(20,num_env_variables)
+    dataR = np.full((20,1),-1)
+    highest_reward_memory_model.fit(dataS,dataR, batch_size=32, epochs=5,verbose=0)
 
 
 def predictTotalRewards(qstate, action):
@@ -162,21 +166,24 @@ def predictTotalRewards(qstate, action):
     return remembered_total_reward
 
 def GetActionForThisStateReward(qstate,R):
-    predS = np.zeros(shape=(1,num_env_variables+1))
+
+    predX = np.zeros(shape=(1,num_env_variables+1))
+    #print("predX",predX)
     predX[0] = np.concatenate( (qstate, np.array([R])) , axis=0)
 
 
     pred = action_sate_reward_matcher.predict(predX[0].reshape(1,predX.shape[1]))
-    action4StateReward = pred[0]
+    action4StateReward = pred[0][0]
     return action4StateReward
 
 def GetHighestRewardForState(qstate):
-    predS = np.zeros(shape=(1,num_env_variables))
+    predX = np.zeros(shape=(1,num_env_variables))
     predX[0] = qstate
 
     #print("trying to predict reward at qs_a", predX[0])
     pred = highest_reward_memory_model.predict(predX[0].reshape(1,predX.shape[1]))
-    highest_remembered_Reward = pred[0]
+    highest_remembered_Reward = pred[0][0]
+    #print ("highest_remembered_Reward",highest_remembered_Reward)
     return highest_remembered_Reward
 
 def GetRememberedOptimalPolicy(qstate):
@@ -237,7 +244,7 @@ if observe_and_train:
         else:
             print("Learning & playing game ", game)
         for step in range (500):
-            highest_reward = -999
+            highest_reward = GetHighestRewardForState(qs)
             best_action = 0
             if game < num_initial_observation:
                 #take a radmon action
@@ -253,16 +260,27 @@ if observe_and_train:
 
                 else:
                     # Get highest remembered reward for this state
-                    highest_reward = GetHighestRewardForState(qs)
+
 
                     action4StateReward = GetActionForThisStateReward(qs,highest_reward)
                     best_action = action4StateReward
 
+                    action4StateReward = np.array([action4StateReward])
 
                     #Get Remembered optiomal policy
-                    #remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
+                    remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
+
+                    #print("action4StateReward", action4StateReward,"remembered_optimal_policy", remembered_optimal_policy)
+
+
+                    if predictTotalRewards(qs,remembered_optimal_policy) > predictTotalRewards(qs,action4StateReward):
+                        action4StateReward = remembered_optimal_policy
+
 
                     randaction = np.array([env.action_space.sample()])
+
+                    #print("highest_reward", highest_reward)
+                    #mstatsR.append(highest_reward)
 
                     #Compare R for SmartCrossEntropy action with remembered_optimal_policy and select the best
                     #if predictTotalRewards(qs,remembered_optimal_policy) > utility_possible_actions[best_sce_i]:
@@ -312,6 +330,7 @@ if observe_and_train:
 
 
             if done :
+                mstats = np.concatenate( (mstats, np.array([step])), axis=0   )
                 #Calculate Q values from end to start of game
                 for i in range(0,gameR.shape[0]):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
@@ -324,9 +343,9 @@ if observe_and_train:
                         #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
 
                     if gameR[(gameR.shape[0]-1)-i][0] > gameHR[(gameHR.shape[0]-1)-i][0]:
-                        print ("Old HR",gameHR[(gameHR.shape[0]-1)-i][0], "New HR",gameR[(gameR.shape[0]-1)-i][0] )
-                        gameHR[(gameR.shape[0]-1)-i][0] = gameR[(gameHR.shape[0]-1)-i][0]
-                        gameSHR[(gameR.shape[0]-1)-i][0] = np.concatenate( (qs, np.array([highest_reward])), axis=0   )
+                        #print ("Old HR",gameHR[(gameHR.shape[0]-1)-i][0], "New HR",gameR[(gameR.shape[0]-1)-i][0] )
+                        gameHR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]
+                        gameSHR[(gameR.shape[0]-1)-i] = np.concatenate( (qs, np.array([highest_reward])), axis=0   )
                         gameBA[(gameR.shape[0]-1)-i][0] = gameA[(gameR.shape[0]-1)-i][0]
 
                     if i==gameR.shape[0]-1:
@@ -360,6 +379,7 @@ if observe_and_train:
                         memoryA = np.delete(memoryA, 0, axis=0)
                         memoryS = np.delete(memoryS, 0, axis=0)
                         memoryHR = np.delete(memoryHR, 0, axis=0)
+                        memoryBA = np.delete(memoryBA, 0, axis=0)
                         memorySHR = np.delete(memorySHR, 0, axis=0)
 
 
@@ -375,14 +395,14 @@ if observe_and_train:
                     print("Training  game# ", game,"momory size", memorySA.shape[0])
 
                     #training Reward predictor model
-                    model.fit(memorySA,memoryR, batch_size=32,epochs=training_epochs,verbose=2)
+                    model.fit(memorySA,memoryR, batch_size=32,epochs=training_epochs,verbose=0)
 
-                    highest_reward_memory_model.fit(memoryS,memoryHR,batch_size=32,epochs=training_epochs,verbose=2)
+                    highest_reward_memory_model.fit(memoryS,memoryHR,batch_size=32,epochs=training_epochs,verbose=0)
 
-                    action_sate_reward_matcher.fit(memorySHR,memoryBA,batch_size=32,epochs=training_epochs,verbose=2)
+                    action_sate_reward_matcher.fit(memorySHR,memoryBA,batch_size=32,epochs=training_epochs,verbose=0)
 
                     #training action predictor model
-                    action_predictor_model.fit(memoryS,memoryA, batch_size=32, epochs=training_epochs,verbose=2)
+                    action_predictor_model.fit(memoryS,memoryBA, batch_size=32, epochs=training_epochs,verbose=0)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0:
@@ -401,7 +421,11 @@ if observe_and_train:
                 break
 
 
+plt.plot(mstats)
+plt.show()
 
+#plt.plot(mstatsR)
+#plt.show()
 
 if save_weights:
     #Save model
