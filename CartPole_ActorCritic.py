@@ -1,12 +1,15 @@
 '''
 CartPole solution by Michel Aka
+
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
 Note that I prefe the terms Action Predictor Network and Q/Reward Predictor network better
+
 Update
 Cleaned up variables and more readable memory
 Improved hyper parameters for better performance
+
 '''
 import numpy as np
 import keras
@@ -24,7 +27,7 @@ from keras import optimizers
 
 num_env_variables = 4
 num_env_actions = 1
-num_initial_observation = 10
+num_initial_observation = 50
 learning_rate =  0.003
 apLearning_rate = 0.001
 weigths_filename = "CartPole-QL-v2-weights.h5"
@@ -34,7 +37,7 @@ apWeights_filename = "CartPole_ap-QL-v2-weights.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.995
-max_memory_len = 6000
+max_memory_len = 15000
 starting_explore_prob = 0.05
 training_epochs = 8
 load_previous_weights = False
@@ -69,7 +72,8 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-model.add(Dense(128, activation='relu', input_dim=dataX.shape[1]))
+model.add(Dense(256, activation='relu', input_dim=dataX.shape[1]))
+model.add(Dense(128, activation='tanh'))
 model.add(Dense(dataY.shape[1]))
 
 opt = optimizers.adam(lr=learning_rate)
@@ -80,7 +84,8 @@ model.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(128, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(256, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(128, activation='relu'))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
 opt2 = optimizers.adam(lr=apLearning_rate)
@@ -282,10 +287,10 @@ if observe_and_train:
                     print("Training  game# ", game,"momory size", memorySA.shape[0])
 
                     #training Reward predictor model
-                    model.fit(memorySA,memoryR, batch_size=32,epochs=training_epochs,verbose=2)
+                    model.fit(memorySA,memoryR, batch_size=32,epochs=training_epochs,verbose=0)
 
                     #training action predictor model
-                    action_predictor_model.fit(memoryS,memoryA, batch_size=32, epochs=training_epochs,verbose=2)
+                    action_predictor_model.fit(memoryS,memoryA, batch_size=32, epochs=training_epochs,verbose=0)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0:
