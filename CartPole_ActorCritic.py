@@ -36,7 +36,7 @@ apWeights_filename = "CartPole_ap-QL-v2-weights.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.995
+b_discount = 0.95
 max_memory_len = 15000
 starting_explore_prob = 0.05
 training_epochs = 8
@@ -128,7 +128,7 @@ memoryS = np.zeros(shape=(1,num_env_variables))
 memoryA = np.zeros(shape=(1,1))
 memoryR = np.zeros(shape=(1,1))
 
-
+mstats = []
 
 def predictTotalRewards(qstate, action):
     qs_a = np.concatenate((qstate,action), axis=0)
@@ -241,6 +241,7 @@ if observe_and_train:
 
             if done :
                 #Calculate Q values from end to start of game
+                mstats.append(step)
                 for i in range(0,gameR.shape[0]):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                     if i==0:
@@ -309,7 +310,8 @@ if observe_and_train:
                 break
 
 
-
+plt.plot(mstats)
+plt.show()
 
 if save_weights:
     #Save model
