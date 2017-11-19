@@ -28,6 +28,14 @@ def addToMemory(reward,rangeL,rangeH):
         return False
 ```
 
+```python
+    for i in range(0,gameR.shape[0]):
+        if addToMemory(gameR[i][0],-1,50):
+            tempGameSA = np.vstack((tempGameSA, gameSA[i]))
+            tempGameA = np.vstack((tempGameA,gameA[i]))
+            tempGameR = np.vstack((tempGameR,gameR[i]))
+            tempGameS = np.vstack((tempGameS,gameS[i]))
+```
 
 When we get a new state we then act based on optimal policy which has been trained on memory primed with only the best results yeilding actions.
 ```python
