@@ -7,7 +7,7 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 
 ### Selective Memory
 
-This new approach that I am Naming Selective Memory optmizes what to remember based on how good an action was. This approach has yeilded significantly improved results compared to Q-Learning and Actor Critic.
+This new approach, that I am naming Selective Memory, optmizes what to remember based on how good an action was. This approach has yeilded significantly improved results compared to Q-Learning and Actor Critic.
 
 It is able to solve CartPole by only using 10 samples and balancing the beam for all future itteration after the 15th try.
 You can find the code here.
