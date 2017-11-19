@@ -5,6 +5,39 @@ A collection of python Machine Learning articles and examples. Here, you will fi
 
 *Michel is an AI researcher and a graduate from University of Montreal*
 
+### Selective Memory
+
+This new approach that I am Naming Selective Memory optmizes what to remember based on how good an action was. This approach has yeilded significantly improved results compared to Q-Learning and Actor Critic.
+
+It is able to solve CartPole by only using 10 samples and balancing the beam for all future itteration after the 15th try.
+You can find the code here.
+
+https://github.com/FitMachineLearning/FitML/blob/master/CartPole_SelectiveMemory.py
+
+first we calculate sum of rewards at the end of each rollout using bellman
+
+The we careful select what we want to remember i.e. store in memory
+```python
+def addToMemory(reward,rangeL,rangeH):
+    prob = reward - rangeL
+    prob = prob / (rangeH - rangeL)
+    if np.random.rand(1)<=prob :
+        #print("Adding reward",reward," based on prob ", prob)
+        return True
+    else:
+        return False
+```
+
+
+When we get a new state we then act based on optimal policy which has been trained on memory primed with only the best results yeilding actions.
+```python
+    #Get Remembered optiomal policy
+    remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
+    a = remembered_optimal_policy
+```
+
+
+
 ### Great explanation of Policy Gradient and Deterministic Policy Gradient by David Silver
 This one is a must watch
 
