@@ -49,8 +49,11 @@ def addToMemory(reward,rangeL,rangeH):
             tempGameS = np.vstack((tempGameS,gameS[i]))
 ```
 
+Here gameSA, gameA, gameR and gameS represent the various State-Action pairs, Actions, actual discounted sum of rewards and States respectively.
+
 When we get a new state we then act based on optimal policy which has been trained on memory primed with only the best results yeilding actions.
 ```python
     #Get Remembered optiomal policy
     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
     a = remembered_optimal_policy
+```
