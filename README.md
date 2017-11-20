@@ -76,3 +76,26 @@ Find out more about Q-Learning here.
 Actor Critique is an RL technique which combines Policy Gradient appraoch with a Critique (Q value estimator)
 
 Find out more about Actor-Critique here.
+
+### Recommended Progression for the Newcomer
+
+[coming soon]
+
+###
+
+### Code Samples
+
+<table style="width:100%">
+  <tr>
+    <th>Approach</th>
+    <th>Examples</th> 
+  </tr>
+  <tr>
+    <td>CNN</td>
+    <td>[coming soon]</td> 
+  </tr>
+  <tr>
+    <td>Optimal Policy Tree Search</td>
+    <td><a href ="https://github.com/FitMachineLearning/FitML/blob/master/OptimalPolicyTreeSearch/Cartpole_OPTS.py">Cartpole_OPTS.py</a> </td> 
+  </tr>
+</table>
