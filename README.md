@@ -93,7 +93,7 @@ Find out more about Actor-Critique <a href="https://github.com/FitMachineLearnin
     <td>
         <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/CartPole_ActorCritic.py">CartPole_AC.py</a> <BR>
         <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/LunarLander_ActorCritic.py">LunarLander_AC.py</a>   <BR>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/BepedalWalker_A2C.py">BipedalWalker_AC.py</a> 
+        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/BepedalWalker_A2C.py">BipedalWalker_AC.py</a> <BR>
         <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/Acrobot_ActorCritic.py">Acrobot_AC.py</a>      
     </td>      
   <tr>   
