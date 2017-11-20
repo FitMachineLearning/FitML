@@ -1,7 +1,7 @@
 # FitML
-'''python
+```python
 *model.fit(Machine_Learning, epochs=Inf)* 
-'''
+```
 [images coming soon]
 
 ### What is Fit ML
