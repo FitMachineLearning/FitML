@@ -2,7 +2,14 @@
 ```python
 *model.fit(Machine_Learning, epochs=Inf)* 
 ```
-[images coming soon]
+<table style="width:100%">
+  <tr>
+    <th><img src="/img/cCartPole.jpg" width="250"/></th>      
+    <th><img src="/img/LunarLandQLearning.png" width="250"/></th>
+    <th><img src="/img/cWalker.jpg" width="250"/></th> 
+    <th><img src="/img/cPong.jpg" width="250"/></th>      
+  </tr>
+</Table>
 
 ### What is Fit ML
 Fit Machine Learning (FitML) is blog that houses a collection of python Machine Learning articles and examples, often focusing on Reinforcement Learning. Here, you will find code related to Q Learning, Actor-Critic, MDP, Bellman, OpenAI solutions and custom implemented approaches to solving some of the toughest and most interesting problems to date (Yes, I am "baised").
