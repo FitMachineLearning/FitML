@@ -2,7 +2,7 @@
 ```python
 *model.fit(Machine_Learning, epochs=Inf)* 
 ```
-<table style="width:100%">
+<table style="width:100%" border=0>
   <tr>
     <th><img src="/img/cCartPole.jpg" width="250"/></th>      
     <th><img src="/img/LunarLandQLearning.png" width="250"/></th>
