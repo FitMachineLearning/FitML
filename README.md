@@ -14,7 +14,11 @@ You can find the code here.
 
 https://github.com/FitMachineLearning/FitML/blob/master/CartPole_SelectiveMemory.py
 
-first we calculate sum of rewards at the end of each rollout using bellman
+There is also an implementation of Lunar Lander with our Selective Memory Approach
+
+https://github.com/FitMachineLearning/FitML/blob/master/LunarLander_Selective_Memory.py
+
+First we calculate sum of rewards at the end of each rollout using bellman.
 
 The we careful select what we want to remember i.e. store in memory
 ```python
