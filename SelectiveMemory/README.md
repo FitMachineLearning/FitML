@@ -16,11 +16,11 @@ As far as I know, I haven't seen anyone in the litterature implement this techni
 
 The intuition behind Policy Gradient is that it optimizes the parameters of the network in the direction of higher expected sum of rewards. What if we could do the same in a computationally more effective way that also turns out to be more intuitive: enter what I am calling Selective Memory.
 
-1)Our objective here is to ensure that the Policy function approximator tends to higher rewards. 
+1) Our objective here is to ensure that the Policy function approximator tends to higher rewards. 
 
 2) We know that Neural Networks will converge towards assigned labeled of our data set and will also generalize (function approximation). 
 
-3)What if there was a way to select our training (reinforcement) data set so that it ensures that we converge towards our objective; Higher expected rewards.
+3) What if there was a way to select our training (reinforcement) data set so that it ensures that we converge towards our objective; Higher expected rewards.
 
 What if we selectively remember actions based on the how high a reward was. In other words, the probability *P* of recording an action state into memory is dependent on the actual sum of reward yeilded by this action trajectory. (Notice that we are not using the expected sum of reward here).
 
