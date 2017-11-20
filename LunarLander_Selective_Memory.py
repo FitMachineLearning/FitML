@@ -237,7 +237,7 @@ if observe_and_train:
                 gameSA[0] = qs_a
                 gameS[0] = qs
                 gameR[0] = np.array([r])
-                gameA[0] = np.array([r])
+                gameA[0] = np.array([a])
             else:
                 gameSA= np.vstack((gameSA, qs_a))
                 gameS= np.vstack((gameS, qs))
