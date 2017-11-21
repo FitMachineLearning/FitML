@@ -20,23 +20,23 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 30
-learning_rate =  0.0001
-apLearning_rate = 0.0001
+num_initial_observation = 0
+learning_rate =  0.0003
+apLearning_rate = 0.0003
 weigths_filename = "BipedWalker-SM-weights.h5"
 apWeights_filename = "BipedWalker-SM-weights-ap.h5"
 
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.8
-max_memory_len = 30000
+b_discount = 0.95
+max_memory_len = 4000
 starting_explore_prob = 0.15
 training_epochs = 8
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
-num_games_to_play = 60000
+num_games_to_play = 6000
 
 
 #One hot encoding array
@@ -65,8 +65,8 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-model.add(Dense(256, activation='relu', input_dim=dataX.shape[1]))
-model.add(Dense(128, activation='tanh'))
+model.add(Dense(1024, activation='relu', input_dim=dataX.shape[1]))
+model.add(Dense(256, activation='tanh'))
 model.add(Dense(dataY.shape[1]))
 
 opt = optimizers.adam(lr=learning_rate)
@@ -77,8 +77,8 @@ model.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(256, activation='relu', input_dim=apdataX.shape[1]))
-action_predictor_model.add(Dense(128, activation='relu'))
+action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(512, activation='relu'))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
 opt2 = optimizers.adam(lr=apLearning_rate)
@@ -170,7 +170,7 @@ if observe_and_train:
             print("Observing game ", game)
         else:
             print("Learning & playing game ", game)
-        for step in range (1500):
+        for step in range (5000):
 
             if game < num_initial_observation:
                 #take a radmon action
@@ -189,9 +189,9 @@ if observe_and_train:
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
 
-                    stock = np.zeros(4)
-                    stockAction = np.zeros(shape=(4,num_env_actions))
-                    for i in range(4):
+                    stock = np.zeros(9)
+                    stockAction = np.zeros(shape=(9,num_env_actions))
+                    for i in range(9):
                         stockAction[i] = env.action_space.sample()
                         stock[i] = predictTotalRewards(qs,stockAction[i])
                     best_index = np.argmax(stock)
@@ -248,11 +248,11 @@ if observe_and_train:
                         #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
                     #print("reward ", gameR[(gameR.shape[0]-1)-i][0])
                     if i==gameR.shape[0]-1:
-                        print("Training Game #",game, " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
+                        print("Training Game #",game,"memory size ",memoryR.shape[0], " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
 
                 #selective Memeory
                 for i in range(0,gameR.shape[0]):
-                    if addToMemory(gameR[i][0],-48,30):
+                    if addToMemory(gameR[i][0],-0.5,8):
                         tempGameSA = np.vstack((tempGameSA, gameSA[i]))
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameR = np.vstack((tempGameR,gameR[i]))
@@ -290,11 +290,11 @@ if observe_and_train:
             #Update the states
             qs=s
 
-            if step > 500:
+            if step > 1998:
                 done = True
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
-                if game%3 == 0:
+                if game%10 == 0:
                     print("Training  game# ", game,"momory size", memorySA.shape[0])
 
                     #training Reward predictor model
