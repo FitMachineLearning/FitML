@@ -2,7 +2,7 @@
 BipedWalker solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
-Using Selective Memory
+Using Selective Memory with Actor and Critic agent
 '''
 import numpy as np
 import keras
@@ -10,6 +10,7 @@ import gym
 import os
 import h5py
 import matplotlib.pyplot as plt
+import math
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -20,7 +21,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 100
+num_initial_observation = 10
 learning_rate =  0.003
 apLearning_rate = 0.003
 weigths_filename = "BipedWalker-SM-weights.h5"
@@ -30,10 +31,10 @@ apWeights_filename = "BipedWalker-SM-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.95
-max_memory_len = 6000
+max_memory_len = 2000
 starting_explore_prob = 0.15
 training_epochs = 8
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 num_games_to_play = 6000
@@ -146,9 +147,17 @@ def GetRememberedOptimalPolicy(qstate):
     return r_remembered_optimal_policy
 
 
-def addToMemory(reward,rangeL,rangeH):
-    prob = reward - rangeL
-    prob = prob / (rangeH - rangeL)
+def addToMemory(reward,averageReward):
+
+    prob = 0.1
+    if( reward > averageReward):
+        prob = prob + 0.9 * math.tanh(reward - averageReward)
+    else:
+        prob = prob + 0.1 * math.tanh(reward - averageReward)
+    print("average reward", averageReward, " reward ", reward, " prob", prob)
+    #prob = prob / (rangeH - rangeL)
+    #prob = reward / (1 + math.fabs(reward))
+    #prob = (prob+1)/2
     if np.random.rand(1)<=prob :
         print("Adding reward",reward," based on prob ", prob)
         return True
@@ -248,9 +257,10 @@ if observe_and_train:
                     if i==gameR.shape[0]-1:
                         print("Training Game #",game,"memory size ",memoryR.shape[0], " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
 
+                avgR = np.average(gameR) if memoryR.shape[0]==0 else np.average(memoryR)  
                 #selective Memeory
                 for i in range(0,gameR.shape[0]):
-                    if addToMemory(gameR[i][0],-10,20):
+                    if addToMemory(gameR[i][0],avgR):
                         tempGameSA = np.vstack((tempGameSA, gameSA[i]))
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameR = np.vstack((tempGameR,gameR[i]))
