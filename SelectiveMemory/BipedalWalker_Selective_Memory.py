@@ -20,9 +20,9 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 0
-learning_rate =  0.0003
-apLearning_rate = 0.0003
+num_initial_observation = 100
+learning_rate =  0.003
+apLearning_rate = 0.003
 weigths_filename = "BipedWalker-SM-weights.h5"
 apWeights_filename = "BipedWalker-SM-weights-ap.h5"
 
@@ -30,10 +30,10 @@ apWeights_filename = "BipedWalker-SM-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.95
-max_memory_len = 4000
+max_memory_len = 6000
 starting_explore_prob = 0.15
 training_epochs = 8
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 num_games_to_play = 6000
@@ -79,7 +79,7 @@ action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dense(512, activation='relu'))
-action_predictor_model.add(Dense(apdataY.shape[1]))
+action_predictor_model.add(Dense(apdataY.shape[1],activation='tanh'))
 
 opt2 = optimizers.adam(lr=apLearning_rate)
 
@@ -209,8 +209,6 @@ if observe_and_train:
 
 
             env.render()
-            a = np.around(a)
-            a = a.astype(int)
             qs_a = np.concatenate((qs,a), axis=0)
 
             #get the target state and reward
@@ -252,7 +250,7 @@ if observe_and_train:
 
                 #selective Memeory
                 for i in range(0,gameR.shape[0]):
-                    if addToMemory(gameR[i][0],-0.5,8):
+                    if addToMemory(gameR[i][0],-10,20):
                         tempGameSA = np.vstack((tempGameSA, gameSA[i]))
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameR = np.vstack((tempGameR,gameR[i]))
