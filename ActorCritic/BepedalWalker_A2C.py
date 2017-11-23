@@ -6,9 +6,7 @@ Experimental.
 A2C method.
 The model starts to show promise around 3000 itterations.
 I believe the technique doesn't scale well and needs a new approach. Maybe ACKTR.
-
 If someone is willing to try this and train it for a week to see what results we get, let me know
-
 '''
 import numpy as np
 import keras
@@ -25,7 +23,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 20
+num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
 weigths_filename = "BpW-v3-weights.h5"
@@ -34,9 +32,9 @@ apWeights_filename = "BpW-v3-AP-weights.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.9
-max_memory_len = 10000
-starting_explore_prob = 0.05
+b_discount = 0.95
+max_memory_len = 50000
+starting_explore_prob = 0.15
 training_epochs = 2
 load_previous_weights = True
 observe_and_train = True
@@ -65,9 +63,7 @@ apdataY = np.random.random((5,num_env_actions))
 #nitialize the Reward predictor model
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-model.add(Dense(256, activation='relu', input_dim=dataX.shape[1]))
-model.add(Dense(128, activation='relu'))
-model.add(Dense(64, activation='relu'))
+model.add(Dense(4096, activation='tanh', input_dim=dataX.shape[1]))
 model.add(Dense(dataY.shape[1]))
 
 opt = optimizers.adam(lr=learning_rate)
@@ -78,9 +74,7 @@ model.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(256, activation='relu', input_dim=apdataX.shape[1]))
-action_predictor_model.add(Dense(128, activation='relu'))
-action_predictor_model.add(Dense(64, activation='relu'))
+action_predictor_model.add(Dense(4096, activation='tanh', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
 opt2 = optimizers.adam(lr=apLearning_rate)
@@ -177,7 +171,7 @@ if observe_and_train:
             print("Observing game ", game)
         else:
             print("Learning & playing game ", game)
-        for step in range (3000):
+        for step in range (4000):
 
             if game < num_initial_observation:
                 #take a radmon action
@@ -206,30 +200,31 @@ if observe_and_train:
                     #Generate a set of num_env_action*10
                     possible_actions = np.zeros(shape=(num_env_actions*4,num_env_actions))
                     utility_possible_actions = np.zeros(shape=(num_env_actions*4))
-
                     for i in range(num_env_actions*4):
                         possible_actions[i] = SmartCrossEntropy(remembered_optimal_policy)
                         utility_possible_actions[i] = predictTotalRewards(qs,possible_actions[i])
-
                     #print("utility_possible_actions", utility_possible_actions)
                     #chose argmax action of estimated anticipated rewards
                     #print("utility_possible_actions ",utility_possible_actions)
                     #print("argmax of utitity", np.argmax(utility_possible_actions))
                     best_sce_i = np.argmax(utility_possible_actions)
                     '''
+                    stock = np.zeros(9)
+                    stockAction = np.zeros(shape=(9,num_env_actions))
+                    for i in range(9):
+                        stockAction[i] = env.action_space.sample()
+                        stock[i] = predictTotalRewards(qs,stockAction[i])
+                    best_index = np.argmax(stock)
+                    randaction = stockAction[best_index]
 
-                    for j in range (10):
-                        randaction = env.action_space.sample()
-                        #Compare R for SmartCrossEntropy action with remembered_optimal_policy and select the best
-                        #if predictTotalRewards(qs,remembered_optimal_policy) > utility_possible_actions[best_sce_i]:
-                        if predictTotalRewards(qs,remembered_optimal_policy) > predictTotalRewards(qs,randaction):
-                            remembered_optimal_policy = remembered_optimal_policy
-                            #print(" | selecting remembered_optimal_policy ",a)
-                        else:
-                            remembered_optimal_policy = randaction
+                    if predictTotalRewards(qs,remembered_optimal_policy) > predictTotalRewards(qs,randaction):
+                        a = remembered_optimal_policy
+                        #print(" | selecting remembered_optimal_policy ",a)
+                    else:
+                        a = randaction
 
                             #print(" - selecting generated optimal policy ",a)
-                    a = remembered_optimal_policy
+                    #a = remembered_optimal_policy
 
 
 
@@ -254,9 +249,9 @@ if observe_and_train:
             apmemoryX = np.vstack((apmemoryX,qs))
             apmemoryY = np.vstack((apmemoryY,a))
 
-            if step > 500:
+            if step > 3500:
                 done = True
-                print("Too many steps. Game ended at step", step)
+                #print("Too many steps. Game ended at step", step)
 
             if done :
                 #GAME ENDED
@@ -283,15 +278,13 @@ if observe_and_train:
 
                 #if memory is full remove first element
                 if np.alen(memoryX) >= max_memory_len:
-                    #print("memory full. mem len ", np.alen(memoryX))
-                    for l in range(np.alen(gameX)):
-                        memoryX = np.delete(memoryX, 0, axis=0)
-                        memoryY = np.delete(memoryY, 0, axis=0)
+                    memoryX = memoryX[gameX.shape[0]:]
+                    memoryY = memoryY[gameX.shape[0]:]
 
                 if np.alen(apmemoryX) >= max_memory_len:
                     for l in range(np.alen(gameX)):
-                        apmemoryX = np.delete(apmemoryX, 0 , axis=0)
-                        apmemoryY = np.delete(apmemoryY, 0 , axis=0)
+                        apmemoryX = apmemoryX[gameX.shape[0]:]
+                        apmemoryY = apmemoryY[gameX.shape[0]:]
 
 
             #Update the states
@@ -300,17 +293,17 @@ if observe_and_train:
 
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
-                if game%1 == 0:
+                if game%8 == 0 and game>20:
                     print("Training  game# ", game,"momory size", memoryX.shape[0])
 
                     #training Reward predictor model
-                    model.fit(memoryX,memoryY, batch_size=128,epochs=training_epochs,verbose=2)
+                    model.fit(memoryX,memoryY, batch_size=256,epochs=training_epochs,verbose=2)
 
                     #training action predictor model
-                    action_predictor_model.fit(apmemoryX,apmemoryY, batch_size=128, epochs=training_epochs,verbose=2)
+                    action_predictor_model.fit(apmemoryX,apmemoryY, batch_size=256, epochs=training_epochs,verbose=2)
 
             if done and game >= num_initial_observation:
-                if save_weights and game%10 == 0:
+                if save_weights and game%10 == 0 and game>20:
                     #Save model
                     print("Saving weights")
                     model.save_weights(weigths_filename)
