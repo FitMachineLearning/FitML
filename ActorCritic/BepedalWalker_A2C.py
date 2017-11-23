@@ -282,9 +282,8 @@ if observe_and_train:
                     memoryY = memoryY[gameX.shape[0]:]
 
                 if np.alen(apmemoryX) >= max_memory_len:
-                    for l in range(np.alen(gameX)):
-                        apmemoryX = apmemoryX[gameX.shape[0]:]
-                        apmemoryY = apmemoryY[gameX.shape[0]:]
+                    apmemoryX = apmemoryX[gameX.shape[0]:]
+                    apmemoryY = apmemoryY[gameX.shape[0]:]
 
 
             #Update the states
