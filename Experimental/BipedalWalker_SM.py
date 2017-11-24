@@ -25,7 +25,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 10
+num_initial_observation = 30
 learning_rate =  0.01
 apLearning_rate = 0.008
 weigths_filename = "Waker-SM-v5-weights.h5"
@@ -35,11 +35,11 @@ apWeights_filename = "Walker-SM-v5-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 15000
+max_memory_len = 38000
 starting_explore_prob = 0.15
 training_epochs = 4
 mini_batch = 256
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 num_games_to_play = 6000
@@ -141,12 +141,12 @@ def GetRememberedOptimalPolicy(qstate):
 
 def addToMemory(reward,averegeReward):
     diff = reward - averegeReward
-    prob = 0.1
+    prob = 0.05
 
     if reward > averegeReward:
-        prob = prob + 0.9 * (diff / (10+math.fabs(diff)))
+        prob = prob + 0.95 * (diff / (30+math.fabs(diff)))
     else:
-        prob = prob + 0.1 * (diff / (10+math.fabs(diff)))
+        prob = prob + 0.05 * (diff / (30+math.fabs(diff)))
 
     if np.random.rand(1)<=prob :
         print("Adding reward",reward," based on prob ", prob)
@@ -226,7 +226,7 @@ if observe_and_train:
                 gameR = np.vstack((gameR, np.array([r])))
                 gameA = np.vstack((gameA, np.array([a])))
 
-            if step > 797:
+            if step > 897:
                 done = True
 
             if done :
@@ -260,11 +260,11 @@ if observe_and_train:
 
                 print("memoryR average", memoryR.mean(axis=0)[0])
                 for i in range(0,gameR.shape[0]):
-                    if game > 6 and addToMemory(gameR[i][0],memoryR.mean(axis=0)[0]):
+                    if game > 25 and addToMemory(gameR[i][0],memoryR.mean(axis=0)[0]):
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameS = np.vstack((tempGameS,gameS[i]))
 
-                if game >6:
+                if game >25:
                     tempGameA = tempGameA[1:]
                     tempGameS = tempGameS[1:]
 
