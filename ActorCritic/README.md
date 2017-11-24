@@ -4,7 +4,7 @@ model.fit(Machine_Learning, epochs=Inf)
 ```
 <table style="width:100% border: none" >
   <tr>
-    <th><img src="/img/DeepQN.png" width="250"/></th>      
+    <th><img src="/img/DeepQN.png" width="500" align="center"/></th>      
   </tr>
 </Table>
 
