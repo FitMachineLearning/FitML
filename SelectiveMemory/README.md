@@ -16,25 +16,53 @@ As far as I know, I haven't seen anyone in the litterature implement this techni
 
 The intuition behind Policy Gradient is that it optimizes the parameters of the network in the direction of higher expected sum of rewards. What if we could do the same in a computationally more effective way that also turns out to be more intuitive: enter what I am calling Selective Memory.
 
-1) Our objective here is to ensure that the Policy function approximator tends to higher rewards. 
+1) Our objective here is to ensure that the Policy function converges towards higher rewards. 
 
 2) We know that Neural Networks will converge towards assigned labeled of our data set and will also generalize (function approximation). 
 
 3) What if there was a way to select our training (reinforcement) data set so that it ensures that we converge towards our objective; Higher expected rewards.
 
-What if we selectively remember actions based on the how high a reward was. In other words, the probability *P* of recording an action state into memory is dependent on the actual sum of reward yeilded by this action trajectory. (Notice that we are not using the expected sum of reward here).
+Here we propose the approach of selectively remembering actions based on the how high a reward was. In other words, the probability *P* of recording an action state into memory (or a rollout) is dependent on the actual sum of reward yeilded by this action trajectory. (Notice that we are not using the expected sum of reward here but the actual computed value at the end of the rollout).
 
 What does this look like in code
 
-First we calculate sum of rewards at the end of each rollout using bellman.
-
-Then we careful select what we want to remember i.e. store in memory
+First we creat our function approximators Neural Networks
 ```python
-def addToMemory(reward,rangeL,rangeH):
-    prob = reward - rangeL
-    prob = prob / (rangeH - rangeL)
+#nitialize the Reward predictor model
+model = Sequential()
+#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
+model.add(Dense(1024, activation='relu', input_dim=dataX.shape[1]))
+model.add(Dense(256, activation='tanh'))
+model.add(Dense(dataY.shape[1]))
+opt = optimizers.adam(lr=learning_rate)
+model.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
+
+
+#initialize the action predictor model
+action_predictor_model = Sequential()
+#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
+action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(512, activation='relu'))
+action_predictor_model.add(Dense(apdataY.shape[1],activation='tanh'))
+```
+
+Then we calculate sum of rewards at the end of each rollout using Bellman.
+
+Then we careful select what we want to remember i.e. store in memory.
+
+There is a number of approaches we have used to discriminate on the nature of the State-Actions or State-Action-Rewards that we will be keeping in memory to train our Actor. One discriminates for each indivudual action state, the other discriminates an entire rollout batch. Reguardless the principle is the same. We determine how good an action is compared to the average remembered good actions.
+
+```python
+def addToMemory(reward,averageReward):
+
+    prob = 0.1
+    if( reward > averageReward):
+        prob = prob + 0.9 * math.tanh(reward - averageReward)
+    else:
+        prob = prob + 0.1 * math.tanh(reward - averageReward)
+
     if np.random.rand(1)<=prob :
-        #print("Adding reward",reward," based on prob ", prob)
+        print("Adding reward",reward," based on prob ", prob)
         return True
     else:
         return False
@@ -57,3 +85,6 @@ When we get a new state we then act based on optimal policy which has been train
     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
     a = remembered_optimal_policy
 ```
+
+### What type of results do we get?
+Our agent is able to crawl, stand up, walk, run, jump after 500 episodes in the famous openAI BipedalWalker test.
