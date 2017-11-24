@@ -1,5 +1,7 @@
 '''
 BipedalWalker solution by Michel Aka
+
+Starts to work after 500 itterations ot training.
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Article about this solution
