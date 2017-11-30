@@ -3,7 +3,7 @@ Atari Pong solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using DeepQ N
-achieves 30% win in 8h over night training
+achieves 33.4% win in 9h over night training
 '''
 import numpy as np
 import keras
