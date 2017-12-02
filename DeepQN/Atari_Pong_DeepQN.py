@@ -2,8 +2,9 @@
 Atari Pong solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
-Using DeepQ N
-
+Without CNN
+achieves 40% score in over night training on PC
+Starts winning consistantly after ~1100 episodes
 '''
 import numpy as np
 import keras
@@ -12,8 +13,12 @@ import os
 import h5py
 
 import matplotlib
-matplotlib.use("TkAgg")
+import scipy
+
 from matplotlib import pyplot as plt
+from scipy import misc
+from keras.models import Sequential
+from keras.layers import Conv2D
 
 
 from keras.models import Sequential
@@ -22,27 +27,27 @@ from keras.layers import Embedding
 from keras.layers import LSTM
 from keras import optimizers
 
-
-num_env_variables = 80*80*2 # each sate is 2 frames of the pong game
-num_env_actions = 1
-num_initial_observation = 10
-learning_rate =  0.0003
-apLearning_rate = 0.0001
-weigths_filename = "Pong-QL-v0-weights.h5"
-apWeights_filename = "Pong-QL-v0-weights-ap.h5"
+img_dim = 40
+num_env_variables = img_dim*img_dim*2 # each sate is 2 frames of the pong game
+num_env_actions = 6
+num_initial_observation = 40
+learning_rate =  0.001
+apLearning_rate = 0.002
+weigths_filename = "Pong-Reduced-v2-weights.h5"
+apWeights_filename = "Pong-Reduced-v2-weights-ap.h5"
 
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.993
-max_memory_len = 1000
-starting_explore_prob = 0.05
-training_epochs = 3
-mini_batch = 32
+b_discount = 0.99
+max_memory_len = 30000
+starting_explore_prob = 0.03
+training_epochs = 5
+mini_batch = 256
 load_previous_weights = True
 observe_and_train = True
 save_weights = True
-num_games_to_play = 3000
+num_games_to_play = 30000
 
 
 #One hot encoding array
@@ -71,11 +76,15 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-model.add(Dense(256, activation='relu', input_dim=dataX.shape[1]))
-model.add(Dense(32, activation='relu'))
+model.add(Dense(2048, activation='relu', input_dim=dataX.shape[1]))
+model.add(Dropout(0.25))
+#model.add(Dense(128, activation='relu'))
+#model.add(Dropout(0.25))
+model.add(Dense(128, activation='relu'))
+model.add(Dropout(0.5))
 model.add(Dense(dataY.shape[1]))
 
-opt = optimizers.RMSprop(lr=learning_rate)
+opt = optimizers.adam(lr=learning_rate)
 
 model.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -87,7 +96,7 @@ action_predictor_model.add(Dense(256, activation='relu', input_dim=apdataX.shape
 action_predictor_model.add(Dense(32, activation='relu'))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
-opt2 = optimizers.RMSprop(lr=apLearning_rate)
+opt2 = optimizers.adam(lr=apLearning_rate)
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -122,12 +131,13 @@ if load_previous_weights:
 #Record first 500 in a sequence and add them to the training sequence
 total_steps = 0
 
-memorySA = np.zeros(shape=(1,num_env_variables+num_env_actions))
-memoryS = np.zeros(shape=(1,num_env_variables))
-memoryA = np.zeros(shape=(1,1))
-memoryR = np.zeros(shape=(1,1))
+memorySA = []
+memoryS = []
+memoryA = []
+memoryR = []
 
 mstats = []
+num_games_won = 0
 
 
 #takes a single game frame as input
@@ -136,9 +146,11 @@ def preprocessing(I):
   """ prepro 210x160x3 uint8 frame into 6400 (80x80) 1D float vector """
   I = I[35:195] # crop
   I = I[::2,::2,0] # downsample by factor of 2
+  I = scipy.misc.imresize(I,size=(img_dim,img_dim))
   I[I == 144] = 0 # erase background (background type 1)
   I[I == 109] = 0 # erase background (background type 2)
-  I[I != 0] = 1 # everything else (paddles, ball) just set to 1
+  #I[I != 0] = 1 # everything else (paddles, ball) just set to 1
+  I = I/255
   return I.astype(np.float).ravel() #flattens
 
 def predictTotalRewards(qstate, action):
@@ -179,28 +191,33 @@ if observe_and_train:
 
     #Play the game 500 times
     for game in range(num_games_to_play):
-        gameSA = np.zeros(shape=(1,num_env_variables+num_env_actions))
-        gameS = np.zeros(shape=(1,num_env_variables))
-        gameA = np.zeros(shape=(1,1))
-        gameR = np.zeros(shape=(1,1))
+        gameSA = []
+        gameS = []
+        gameA = []
+        gameR = []
+        num_points = 0
 
-        previous_state = np.zeros(80*80)
+        previous_state = np.zeros(img_dim*img_dim)
         #Get the Q state
         qs = env.reset()
 
+
         #print("qs ", qs)
-        if game < num_initial_observation:
-            print("Observing game ", game)
-        else:
-            print("Learning & playing game ", game)
-        for step in range (1500):
+        for step in range (7000):
 
             qs = preprocessing(qs)
+            #if np.array_equal(qs,previous_state):
+                #print("Previous state = to Qstate we have a problem")
             sequenceQS = np.concatenate((previous_state,qs),axis=0)
+            #sequenceQS = np.abs(qs - previous_state)
 
-            if game < num_initial_observation:
+            #if step%10==0:
+                #plt.imshow(np.reshape(sequenceQS,(-1,img_dim)))
+                #plt.show()
+
+            if game < num_initial_observation or game%5==0:
                 #take a radmon action
-                a = np.array([env.action_space.sample()])
+                a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
                 #if 'info' in locals():
                 #    print(step, "random action ",a,"reward",r, "info", info)
             else:
@@ -210,7 +227,8 @@ if observe_and_train:
                 #Chose between prediction and chance
                 if prob < explore_prob:
                     #take a random action
-                    a=np.array([env.action_space.sample()])
+                    a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
+
 
                 else:
 
@@ -229,73 +247,97 @@ if observe_and_train:
 
                     predictedRewards = np.zeros(6)
                     for i in range(6):
-                        predictedRewards[i] = predictTotalRewards(sequenceQS,np.array([i]))
+                        predictedRewards[i] = predictTotalRewards(sequenceQS,
+                            keras.utils.to_categorical(i,num_env_actions)[0])
+                        #print("predicting ",keras.utils.to_categorical(i,num_env_actions)[0])
 
-                    a = np.argmax(a)
+                    #print("predictedRewards",predictedRewards)
+                    a = np.argmax(predictedRewards)
 
-                    a = np.array([a])
+                    a = keras.utils.to_categorical(a,num_env_actions)[0]
 
 
-            if a[0] <0:
-                a [0]= 0
-            if a[0] > 5:
-                a[0] = 5
 
             env.render()
-            a = np.around(a)
-            a = a.astype(int)
             qs_a = np.concatenate((sequenceQS,a), axis=0)
 
 
             #get the target state and reward
-            s,r,done,info = env.step(a[0])
+            s,r,done,info = env.step(np.argmax(a))
             #record only the first x number of states
 
-            if r>0:
-                print("positive reward ",r)
+
+            '''
             if step ==0:
                 gameSA[0] = qs_a
                 #gameS[0] = sequenceQS
                 gameR[0] = np.array([r])
                 #gameA[0] = np.array([a])
             else:
-                gameSA= np.vstack((gameSA, qs_a))
-                #gameS= np.vstack((gameS, sequenceQS))
-                gameR = np.vstack((gameR, np.array([r])))
-                #gameA = np.vstack((gameA, np.array([a])))
+            '''
+            gameSA.append(qs_a)
+            #gameS= np.vstack((gameS, sequenceQS))
+            gameR.append([r])
+            #gameA = np.vstack((gameA, np.array([a])))
+
+            #if step > 1898:
+                #done = True
+
+            if r >=1:
+                num_games_won +=1
+                num_points +=1
+            if done:
+                #done = True
+                if num_points >=20:
+                    print("GAME WON ***")
 
 
-            if done or r == 1 or r == -1:
-                done = True
                 #Calculate Q values from end to start of game
-                mstats.append(step)
-                for i in range(0,gameR.shape[0]):
+                #mstats.append(step)
+                for i in range(0,len(gameR)):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                     if i==0:
-                        #print("reward at the last step ",gameY[(gameY.shape[0]-1)-i][0])
-                        gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]
+                        #print("reward at the last step ",gameR[(gameR.shape[0]-1)-i][0])
+                        gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]
                     else:
-                        #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
-                        gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
-                        #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
-                    if i==gameR.shape[0]-1:
-                        print("Training Game #",game, " steps = ", step ,"last reward", r, "memory ",memoryR.shape[0]," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
+                        #print("local error before Bellman", gameR[(gameR.shape[0]-1)-i][0],"Next error ", gameR[(gameR.shape[0]-1)-i+1][0])
+                        gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0]
+                        #print("reward at step",i,"away from the end is",gameR[(gameR.shape[0]-1)-i][0])
+                    if i==len(gameR)-1:
+                        print("Training Game #",game,"#scores", num_points, " total # scores ", num_games_won,"avg scores per match ",num_games_won/(game+1), "memory ",len(memoryR)," finished with headscore ", gameR[(len(gameR)-1)-i][0])
 
+                #Add experience to memory
+                memorySA = memorySA+gameSA
+                #memoryS = np.concatenate((memoryS,gameS),axis=0)
+                memoryR = memoryR+gameR
+                #memoryA = np.concatenate((memoryA,gameA),axis=0)
+
+                #tempGameA = tempGameA[1:]
+                #tempGameS = tempGameS[1:]
+                #tempGameRR = tempGameRR[1:]
+                #tempGameR = tempGameR[1:]
+                #tempGameSA = tempGameSA[1:]
+
+                '''
+                for i in range(gameR.shape[0]):
+                    if np.random.rand(1) < 1:
+                        tempGameSA = np.vstack((tempGameSA,gameSA[i]))
+                        tempGameR = np.vstack((tempGameR,gameR[i]))
+                    '''
+
+
+                '''
                 if memoryR.shape[0] ==1:
-                    memorySA = gameSA
-                    memoryR = gameR
-                    #memoryA = gameA
-                    #memoryS = gameS
+                    memoryR = tempGameR
+                    memorySA = tempGameSA
                 else:
-                    #Add experience to memory
-                    memorySA = np.concatenate((memorySA,gameSA),axis=0)
-                    #memoryS = np.concatenate((memoryS,gameS),axis=0)
-                    memoryR = np.concatenate((memoryR,gameR),axis=0)
-                    #memoryA = np.concatenate((memoryA,gameA),axis=0)
+                    memorySA = np.concatenate((memorySA,tempGameSA),axis=0)
+                    memoryR = np.concatenate((memoryR,tempGameR),axis=0)
+                '''
 
 
                 #if memory is full remove first element
-                if np.alen(memorySA) >= max_memory_len:
+                if len(memoryR) >= max_memory_len:
                     memoryR = memoryR[np.alen(gameR):]
                     memorySA = memorySA[np.alen(gameR):]
                     #print("memory full. mem len ", np.alen(memoryX))
@@ -307,18 +349,17 @@ if observe_and_train:
 
 
             #Update the states
-            previous_state = qs
+            previous_state = np.copy(qs)
             qs=s
 
-            if step > 1498:
-                done = True
+
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
-                if game%3 == 0:
-                    print("Training  game# ", game,"momory size", memorySA.shape[0])
+                if game%5 == 0 and game>15:
+                    print("Training  game# ", game,"momory size", len(memorySA))
 
                     #training Reward predictor model
-                    model.fit(memorySA,memoryR, batch_size=mini_batch,epochs=training_epochs,verbose=0)
+                    model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,epochs=training_epochs,verbose=2)
 
                     #training action predictor model
                     #action_predictor_model.fit(memoryS,memoryA, batch_size=mini_batch, epochs=training_epochs,verbose=0)
@@ -331,11 +372,6 @@ if observe_and_train:
                     action_predictor_model.save_weights(apWeights_filename)
 
             if done:
-                #Game won  conditions
-                if r > 0:
-                    print("Game ", game," WON ***, info", info )
-                else:
-                    print("Game ",game," ended with positive reward. info", info)
                 #Game ended - Break
                 break
 
