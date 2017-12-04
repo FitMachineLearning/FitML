@@ -42,7 +42,7 @@ sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 30000
 starting_explore_prob = 0.18
-training_epochs = 5
+training_epochs = 3
 mini_batch = 256
 load_previous_weights = False
 observe_and_train = True
@@ -96,7 +96,7 @@ action_predictor_model.add(Dense(1024, activation='tanh', input_dim=apdataX.shap
 action_predictor_model.add(Dropout(0.1))
 #action_predictor_model.add(Dense(128, activation='relu'))
 #action_predictor_model.add(Dropout(0.1))
-action_predictor_model.add(Dense(apdataY.shape[1]))
+action_predictor_model.add(Dense(apdataY.shape[1], activation='tanh'))
 
 opt2 = optimizers.adam(lr=apLearning_rate)
 
@@ -137,6 +137,7 @@ memorySA = []
 memoryS = []
 memoryA = []
 memoryR = []
+memoryAdv = []
 
 mstats = []
 num_games_won = 0
@@ -218,7 +219,7 @@ if observe_and_train:
                 #plt.imshow(np.reshape(sequenceQS,(-1,img_dim)))
                 #plt.show()
 
-            if game < num_initial_observation or game%4==0:
+            if game < num_initial_observation or game%3==0:
                 #take a radmon action
                 #a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
                 a = env.action_space.sample()
@@ -344,6 +345,7 @@ if observe_and_train:
                 memoryS = memoryS+gameS
                 memoryR = memoryR+gameR
                 memoryA = memoryA+gameA
+                memoryAdv = memoryAdv+gameAdv
 
                 #tempGameA = tempGameA[1:]
                 #tempGameS = tempGameS[1:]
@@ -375,6 +377,7 @@ if observe_and_train:
                     memorySA = memorySA[np.alen(gameR):]
                     memoryS = memoryS[np.alen(gameR):]
                     memoryA = memoryA[np.alen(gameR):]
+                    memoryAdv = memoryAdv[np.alen(gameR):]
 
 
                     #print("memory full. mem len ", np.alen(memoryX))
@@ -392,11 +395,15 @@ if observe_and_train:
 
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
-                if game%1000 == 0 and game>15:
+                if game%25 == 0 and game>15:
                     print("Training  game# ", game,"momory size", len(memorySA))
 
                     #training Reward predictor model
                     #model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,epochs=training_epochs,verbose=2)
+                    tX = np.asarray(memoryS)
+                    tY = np.asarray(memoryA)
+                    sw = np.asarray(memoryAdv)
+                    action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],epochs=training_epochs,verbose=0)
 
                     #training action predictor model
                     #action_predictor_model.fit(memoryS,memoryA, batch_size=mini_batch, epochs=training_epochs,verbose=0)
