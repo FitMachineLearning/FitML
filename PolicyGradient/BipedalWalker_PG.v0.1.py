@@ -1,10 +1,7 @@
 '''
-Atari Pong solution by Michel Aka
+Bipedal Walker solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
-https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
-Without CNN
-achieves 40% score in over night training on PC
-Starts winning consistantly after ~1100 episodes
+Policy Gradient
 '''
 import numpy as np
 import keras
