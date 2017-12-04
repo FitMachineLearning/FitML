@@ -8,12 +8,13 @@ import keras
 import gym
 import os
 import h5py
+import math
 
 import matplotlib
 import scipy
 
 from matplotlib import pyplot as plt
-from scipy import misc
+#from scipy import misc
 from keras.models import Sequential
 from keras.layers import Conv2D
 
@@ -27,8 +28,9 @@ from keras import optimizers
 img_dim = 40
 num_env_variables = 24 # each sate is 2 frames of the pong game
 num_env_actions = 4
-num_initial_observation = 3
-learning_rate =  0.003
+num_initial_observation = 5
+randomGameEvery = 4
+learning_rate =  0.008
 apLearning_rate = 0.003
 weigths_filename = "Walker-PG-v0-weights.h5"
 apWeights_filename = "Walker-PG-v0-weights-ap.h5"
@@ -36,12 +38,12 @@ apWeights_filename = "Walker-PG-v0-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.99
-max_memory_len = 30000
+b_discount = 0.97
+max_memory_len = 9000
 starting_explore_prob = 0.18
-training_epochs = 3
+training_epochs = 2
 mini_batch = 256
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 num_games_to_play = 30000
@@ -73,7 +75,7 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-model.add(Dense(1025, activation='relu', input_dim=dataX.shape[1]))
+model.add(Dense(1025, activation='tanh', input_dim=dataX.shape[1]))
 model.add(Dropout(0.25))
 #model.add(Dense(128, activation='relu'))
 #model.add(Dropout(0.25))
@@ -216,7 +218,7 @@ if observe_and_train:
                 #plt.imshow(np.reshape(sequenceQS,(-1,img_dim)))
                 #plt.show()
 
-            if game < num_initial_observation or game%3==0:
+            if game < num_initial_observation or game%randomGameEvery==0:
                 #take a radmon action
                 #a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
                 a = env.action_space.sample()
@@ -254,7 +256,6 @@ if observe_and_train:
                         predictedRewards[i] = predictTotalRewards(sequenceQS,
                             keras.utils.to_categorical(i,num_env_actions)[0])
                         #print("predicting ",keras.utils.to_categorical(i,num_env_actions)[0])
-
                     #print("predictedRewards",predictedRewards)
                     '''
                     predX = np.zeros(shape=(1,num_env_variables))
@@ -323,7 +324,14 @@ if observe_and_train:
                         gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameR[(gameR.shape[0]-1)-i][0])
                     if len(memoryR) >0:
-                        gameAdv[(len(gameR)-1)-i][0] = meanR - gameR[(len(gameR)-1)-i][0]
+                        expectedReward = predictTotalRewards(gameS[i],gameA[i])
+                        adv = gameR[(len(gameR)-1)-i][0] - expectedReward 
+                        #print("expectedReward", expectedReward, "advantage",adv)
+                        if(adv <0):
+                            adv = 0.001
+                        gameAdv[(len(gameR)-1)-i][0] = math.tanh(adv)
+
+
                     if i==len(gameR)-1:
                         print("Training Game #",game,"#scores", num_points, " total # scores ", num_games_won,"avg scores per match ",num_games_won/(game+1), "memory ",len(memoryR)," finished with headscore ", gameR[(len(gameR)-1)-i][0])
 
@@ -335,7 +343,7 @@ if observe_and_train:
                     tX = np.asarray(gameS)
                     tY = np.asarray(gameA)
                     sw = np.asarray(gameAdv)
-                    action_predictor_model.fit(tX,tY,batch_size=128,sample_weight=sw[:,0],epochs=1,verbose=0)
+                    #action_predictor_model.fit(tX,tY,batch_size=128,sample_weight=sw[:,0],nb_epoch=1,verbose=0)
                     #action_predictor_model.fit(tX.reshape(1,tX.shape[1]),tY.reshape(1,tY.shape[1]),sample_weight=gameAdv,epochs=3,verbose=0)
                 #Add experience to memory
                 memorySA = memorySA+gameSA
@@ -392,15 +400,15 @@ if observe_and_train:
 
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
-                if game%25 == 0 and game>15:
+                if game%10 == 0 and game>5:
                     print("Training  game# ", game,"momory size", len(memorySA))
 
                     #training Reward predictor model
-                    #model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,epochs=training_epochs,verbose=2)
+                    model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,nb_epoch=training_epochs,verbose=2)
                     tX = np.asarray(memoryS)
                     tY = np.asarray(memoryA)
                     sw = np.asarray(memoryAdv)
-                    action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],epochs=training_epochs,verbose=0)
+                    action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],nb_epoch=training_epochs,verbose=0)
 
                     #training action predictor model
                     #action_predictor_model.fit(memoryS,memoryA, batch_size=mini_batch, epochs=training_epochs,verbose=0)
