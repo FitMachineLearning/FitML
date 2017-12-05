@@ -75,23 +75,17 @@ def custom_error(y_true, y_pred, Qsa):
 
 #nitialize the Reward predictor model
 model = Sequential()
-#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 model.add(Dense(2048, activation='relu', input_dim=dataX.shape[1]))
 model.add(Dropout(0.25))
-#model.add(Dense(128, activation='relu'))
-#model.add(Dropout(0.25))
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
 model.add(Dense(dataY.shape[1]))
-
 opt = optimizers.adam(lr=learning_rate)
-
 model.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
 
 #initialize the action predictor model
 action_predictor_model = Sequential()
-#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 action_predictor_model.add(Dense(256, activation='relu', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dense(32, activation='relu'))
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -182,8 +176,6 @@ def SmartCrossEntropy(current_optimal_policy):
             sce[i] = 1.0
         if sce[i] < -1:
             sce[i] = -1
-    #print("current_optimal_policy", current_optimal_policy)
-    #print("sce", sce)
     return sce
 
 
@@ -204,22 +196,13 @@ if observe_and_train:
 
         #print("qs ", qs)
         for step in range (7000):
-
             qs = preprocessing(qs)
-            #if np.array_equal(qs,previous_state):
-                #print("Previous state = to Qstate we have a problem")
             sequenceQS = np.concatenate((previous_state,qs),axis=0)
             #sequenceQS = np.abs(qs - previous_state)
-
-            #if step%10==0:
-                #plt.imshow(np.reshape(sequenceQS,(-1,img_dim)))
-                #plt.show()
 
             if game < num_initial_observation or game%5==0:
                 #take a radmon action
                 a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
-                #if 'info' in locals():
-                #    print(step, "random action ",a,"reward",r, "info", info)
             else:
                 prob = np.random.rand(1)
                 explore_prob = starting_explore_prob-(starting_explore_prob/num_games_to_play)*game
@@ -231,20 +214,6 @@ if observe_and_train:
 
 
                 else:
-
-                    #Get Remembered optiomal policy
-                    #remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
-
-                    #if step %25 == 0:
-                    #    print("remembered_optimal_policy", remembered_optimal_policy)
-
-                    #randaction = np.array([env.action_space.sample()])
-
-                    #Compare R for SmartCrossEntropy action with remembered_optimal_policy and select the best
-                    #if predictTotalRewards(qs,remembered_optimal_policy) > utility_possible_actions[best_sce_i]:
-
-
-
                     predictedRewards = np.zeros(6)
                     for i in range(6):
                         predictedRewards[i] = predictTotalRewards(sequenceQS,
@@ -255,26 +224,13 @@ if observe_and_train:
                     a = np.argmax(predictedRewards)
 
                     a = keras.utils.to_categorical(a,num_env_actions)[0]
-
-
-
             env.render()
             qs_a = np.concatenate((sequenceQS,a), axis=0)
-
 
             #get the target state and reward
             s,r,done,info = env.step(np.argmax(a))
             #record only the first x number of states
 
-
-            '''
-            if step ==0:
-                gameSA[0] = qs_a
-                #gameS[0] = sequenceQS
-                gameR[0] = np.array([r])
-                #gameA[0] = np.array([a])
-            else:
-            '''
             gameSA.append(qs_a)
             #gameS= np.vstack((gameS, sequenceQS))
             gameR.append([r])
@@ -317,23 +273,6 @@ if observe_and_train:
                 #tempGameRR = tempGameRR[1:]
                 #tempGameR = tempGameR[1:]
                 #tempGameSA = tempGameSA[1:]
-
-                '''
-                for i in range(gameR.shape[0]):
-                    if np.random.rand(1) < 1:
-                        tempGameSA = np.vstack((tempGameSA,gameSA[i]))
-                        tempGameR = np.vstack((tempGameR,gameR[i]))
-                    '''
-
-
-                '''
-                if memoryR.shape[0] ==1:
-                    memoryR = tempGameR
-                    memorySA = tempGameSA
-                else:
-                    memorySA = np.concatenate((memorySA,tempGameSA),axis=0)
-                    memoryR = np.concatenate((memoryR,tempGameR),axis=0)
-                '''
 
 
                 #if memory is full remove first element
