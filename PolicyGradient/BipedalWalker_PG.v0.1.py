@@ -29,9 +29,9 @@ img_dim = 40
 num_env_variables = 24 # each sate is 2 frames of the pong game
 num_env_actions = 4
 num_initial_observation = 1
-randomGameEvery = 4
-learning_rate =  0.008
-apLearning_rate = 0.003
+randomGameEvery = 25
+learning_rate =  0.04
+apLearning_rate = 0.03
 weigths_filename = "Walker-PG-v2-weights.h5"
 apWeights_filename = "Walker-PG-v2-weights-ap.h5"
 
@@ -306,9 +306,9 @@ if observe_and_train:
                         gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameR[(gameR.shape[0]-1)-i][0])
                     if len(memoryR) >0:
-                        #expectedReward = predictTotalRewards(gameS[i],gameA[i])
+                        expectedReward = predictTotalRewards(gameS[i],gameA[i])
 
-                        adv = gameR[(len(gameR)-1)-i][0] - meanR
+                        adv = gameR[(len(gameR)-1)-i][0] - expectedReward
 
 
                         if(adv <0):
@@ -396,10 +396,10 @@ if observe_and_train:
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
                 if game%train_every_num_games == 0 and game>1:
-                    #print("Training  game# ", game,"momory size", len(memorySA))
+                    print("Training  game# ", game,"momory size", len(memorySA))
 
                     #training Reward predictor model
-                    model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,epochs=training_epochs,verbose=2)
+                    model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,epochs=training_epochs,verbose=0)
                     tX = np.asarray(memoryS)
                     tY = np.asarray(memoryA)
                     sw = np.asarray(memoryAdv)
