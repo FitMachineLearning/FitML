@@ -296,7 +296,7 @@ if observe_and_train:
 
                 tX = np.zeros(shape=(1,num_env_variables))
                 tY = np.zeros(shape=(1,num_env_actions))
-                tY = np.zeros(shape=(1,))
+                tA = np.zeros(shape=(1,))
                 for i in range(0,len(gameR)):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                     if i==0:
@@ -324,7 +324,9 @@ if observe_and_train:
                         tX[0] = np.asarray(gameS[(len(gameR)-1)-i])
                         tY[0] = np.asarray(gameA[(len(gameR)-1)-i])
                         tA[0] = np.asarray(gameAdv[(len(gameR)-1)-i])
-                        action_predictor_model.train_on_batch(tX.reshape(1,tX.shape[1]),tY.reshape(1,tY.shape[1]),sample_weight=tA.reshape(1,tA.shape[1]) ,verbose=0)
+
+
+                        action_predictor_model.train_on_batch(tX.reshape(1,tX.shape[1]),tY.reshape(1,tY.shape[1]))
 
                     if i==len(gameR)-1:
                         print("Training Game #",game,"#scores", num_points, " total # scores ", num_games_won,"avg scores per match ",num_games_won/(game+1), "memory ",len(memoryR)," finished with headscore ", gameR[(len(gameR)-1)-i][0])
