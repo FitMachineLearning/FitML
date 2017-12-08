@@ -25,26 +25,26 @@ from keras.layers import Embedding
 from keras.layers import LSTM
 from keras import optimizers
 
-img_dim = 40
+img_dim = 160
 num_env_variables = 24 # each sate is 2 frames of the pong game
 num_env_actions = 4
-num_initial_observation = 1
-randomGameEvery = 25
-learning_rate =  0.04
-apLearning_rate = 0.03
+num_initial_observation = 4
+learning_rate =  0.008
+apLearning_rate = 0.003
 weigths_filename = "Walker-PG-v2-weights.h5"
 apWeights_filename = "Walker-PG-v2-weights-ap.h5"
 
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.985
-max_memory_len = 15000
-starting_explore_prob = 0.4
+b_discount = 0.97
+max_memory_len = 6000
+starting_explore_prob = 0.6
+randomGameEvery = 20
 training_epochs = 6
-train_every_num_games =10
+train_every_num_games =5
 mini_batch = 256
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 num_games_to_play = 3000
@@ -296,6 +296,7 @@ if observe_and_train:
 
                 tX = np.zeros(shape=(1,num_env_variables))
                 tY = np.zeros(shape=(1,num_env_actions))
+                tA = np.zeros(shape=(1,))
                 for i in range(0,len(gameR)):
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                     if i==0:
@@ -306,27 +307,29 @@ if observe_and_train:
                         gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameR[(gameR.shape[0]-1)-i][0])
                     if len(memoryR) >0:
-                        expectedReward = predictTotalRewards(gameS[i],gameA[i])
+                        #expectedReward = predictTotalRewards(gameS[i],gameA[i])
 
-                        adv = gameR[(len(gameR)-1)-i][0] - expectedReward
-
+                        maxR = np.amax(np.asarray(memoryR))
+                        baseline = (meanR + maxR)/2
+                        adv = gameR[(len(gameR)-1)-i][0] - baseline
 
                         if(adv <0):
-                            adv = 1.0
+                            adv = -0.01 / adv
                         else:
-                            adv = adv + 1.0
+                            adv = math.log(adv) + 1.0
                         gameAdv[(len(gameR)-1)-i][0] = adv
-                        '''
+
                         training_repeats = int(math.tanh(adv)*4)
-
                         if i%100 ==0:
-                            print("expectedReward", expectedReward, "advantage",adv,"training_repeats", training_repeats)
-
-
+                            print("advantage",adv,"training_repeats", training_repeats)
+                            #print("expectedReward", expectedReward, "advantage",adv,"training_repeats", training_repeats)
                         tX[0] = np.asarray(gameS[(len(gameR)-1)-i])
                         tY[0] = np.asarray(gameA[(len(gameR)-1)-i])
-                        action_predictor_model.fit(tX.reshape(1,tX.shape[1]),tY.reshape(1,tY.shape[1]),epochs=training_repeats,verbose=0)
-                        '''
+                        tA[0] = np.asarray(gameAdv[(len(gameR)-1)-i])
+
+
+                        #action_predictor_model.train_on_batch(tX.reshape(1,tX.shape[1]),tY.reshape(1,tY.shape[1]),sample_weight=np.array([adv]))
+
                     if i==len(gameR)-1:
                         print("Training Game #",game,"#scores", num_points, " total # scores ", num_games_won,"avg scores per match ",num_games_won/(game+1), "memory ",len(memoryR)," finished with headscore ", gameR[(len(gameR)-1)-i][0])
 
@@ -396,14 +399,14 @@ if observe_and_train:
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation:
                 if game%train_every_num_games == 0 and game>1:
-                    print("Training  game# ", game,"momory size", len(memorySA))
+                    #print("Training  game# ", game,"momory size", len(memorySA))
 
                     #training Reward predictor model
-                    model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,epochs=training_epochs,verbose=0)
+                    #model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,nb_epoch=training_epochs,verbose=2)
                     tX = np.asarray(memoryS)
                     tY = np.asarray(memoryA)
                     sw = np.asarray(memoryAdv)
-                    action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],epochs=training_epochs,verbose=0)
+                    action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],nb_epoch=training_epochs,verbose=0)
 
                     #training action predictor model
                     #action_predictor_model.fit(memoryS,memoryA, batch_size=mini_batch, epochs=training_epochs,verbose=0)
