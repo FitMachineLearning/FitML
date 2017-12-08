@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 #from scipy import misc
 from keras.models import Sequential
 from keras.layers import Conv2D
-
+from keras import utils
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -26,10 +26,11 @@ from keras.layers import Embedding
 from keras.layers import LSTM
 from keras import optimizers
 
+
 img_dim = 160
 num_env_variables = 8 # each sate is 2 frames of the pong game
 num_env_actions = 4
-num_initial_observation = 1
+num_initial_observation = 60
 learning_rate =  0.008
 apLearning_rate = 0.003
 weigths_filename = "Lunar-PG-v2-weights.h5"
@@ -39,13 +40,14 @@ apWeights_filename = "Lunar-PG-v2-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.97
-max_memory_len = 40000
+max_memory_len = 400000
+experience_replay_size = 5000
 starting_explore_prob = 0.2
-randomGameEvery = 50
-training_epochs = 6
+randomGameEvery = 5
+training_epochs = 3
 train_every_num_games =5
 mini_batch = 256
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 num_games_to_play = 3000
@@ -143,6 +145,11 @@ memoryAdv = []
 mstats = []
 num_games_won = 0
 
+def to_one_hot(val, range):
+    retVal = np.zeros(range)
+    retVal[val] = 1
+    return np.array([retVal])
+
 
 #takes a single game frame as input
 #preprocesses before feeding into model
@@ -222,7 +229,7 @@ if observe_and_train:
 
             if game < num_initial_observation or game%randomGameEvery==0:
                 #take a radmon action
-                a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
+                a =to_one_hot(env.action_space.sample(),num_env_actions)[0]
                 #a = env.action_space.sample()
                 #if 'info' in locals():
                 #    print(step, "random action ",a,"reward",r, "info", info)
@@ -235,7 +242,8 @@ if observe_and_train:
                     #take a random action
                     #a = env.action_space.sample()
 
-                    a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
+                    a =to_one_hot(env.action_space.sample(),num_env_actions)[0]
+
 
                 else:
 
@@ -252,7 +260,7 @@ if observe_and_train:
                     #print("predicted action",a)
                     a = np.argmax(a)
 
-                    a = keras.utils.to_categorical(a,num_env_actions)[0]
+                    a = to_one_hot(a,num_env_actions)[0]
 
 
 
@@ -408,11 +416,18 @@ if observe_and_train:
 
                     #training Reward predictor model
                     #model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,nb_epoch=training_epochs,verbose=2)
-                    tX = np.asarray(memoryS)
                     tY = np.asarray(memoryA)
+                    tX = np.asarray(memoryS)
                     sw = np.asarray(memoryAdv)
                     action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],nb_epoch=training_epochs,verbose=0)
 
+                    train_idx = np.random.randint(tY.shape[0],size=experience_replay_size)
+                    #print("train_idx", train_idx)
+                    tX = tX[train_idx,:]
+                    tY = tY[train_idx,:]
+                    sw = sw[train_idx,:]
+
+                    print("tx shape", tX.shape)
                     #training action predictor model
                     #action_predictor_model.fit(memoryS,memoryA, batch_size=mini_batch, epochs=training_epochs,verbose=0)
 
