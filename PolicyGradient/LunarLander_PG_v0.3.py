@@ -2,7 +2,6 @@
 Bipedal Walker solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
 Policy Gradient
-Slow to learn, Starts to fly after 8 hours.
 '''
 import numpy as np
 import keras
@@ -18,14 +17,13 @@ from matplotlib import pyplot as plt
 #from scipy import misc
 from keras.models import Sequential
 from keras.layers import Conv2D
-from keras import utils
+
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.layers import Embedding
 from keras.layers import LSTM
 from keras import optimizers
-
 
 img_dim = 160
 num_env_variables = 8 # each sate is 2 frames of the pong game
@@ -40,17 +38,16 @@ apWeights_filename = "Lunar-PG-v2-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.97
-max_memory_len = 400000
-experience_replay_size = 5000
+max_memory_len = 100000
 starting_explore_prob = 0.2
-randomGameEvery = 5
+randomGameEvery = 9
 training_epochs = 3
 train_every_num_games =5
 mini_batch = 256
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
-num_games_to_play = 3000
+num_games_to_play = 30000
 
 
 #One hot encoding array
@@ -145,11 +142,6 @@ memoryAdv = []
 mstats = []
 num_games_won = 0
 
-def to_one_hot(val, range):
-    retVal = np.zeros(range)
-    retVal[val] = 1
-    return np.array([retVal])
-
 
 #takes a single game frame as input
 #preprocesses before feeding into model
@@ -229,7 +221,7 @@ if observe_and_train:
 
             if game < num_initial_observation or game%randomGameEvery==0:
                 #take a radmon action
-                a =to_one_hot(env.action_space.sample(),num_env_actions)[0]
+                a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
                 #a = env.action_space.sample()
                 #if 'info' in locals():
                 #    print(step, "random action ",a,"reward",r, "info", info)
@@ -242,8 +234,7 @@ if observe_and_train:
                     #take a random action
                     #a = env.action_space.sample()
 
-                    a =to_one_hot(env.action_space.sample(),num_env_actions)[0]
-
+                    a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)[0]
 
                 else:
 
@@ -260,7 +251,7 @@ if observe_and_train:
                     #print("predicted action",a)
                     a = np.argmax(a)
 
-                    a = to_one_hot(a,num_env_actions)[0]
+                    a = keras.utils.to_categorical(a,num_env_actions)[0]
 
 
 
@@ -274,7 +265,7 @@ if observe_and_train:
             #record only the first x number of states
 
 
-
+            r= math.tanh(r)
 
             '''
             if step ==0:
@@ -314,27 +305,45 @@ if observe_and_train:
                     #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                     if i==0:
                         #print("reward at the last step ",gameR[(gameR.shape[0]-1)-i][0])
-                        gameR[(len(gameR)-1)-i][0] = math.tanh(gameR[(len(gameR)-1)-i][0])
+                        gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]
                     else:
                         #print("local error before Bellman", gameR[(gameR.shape[0]-1)-i][0],"Next error ", gameR[(gameR.shape[0]-1)-i+1][0])
-                        gameR[(len(gameR)-1)-i][0] = math.tanh( gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0] )
+                        gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameR[(gameR.shape[0]-1)-i][0])
                     if len(memoryR) >0:
-                        #expectedReward = predictTotalRewards(gameS[i],gameA[i])
+                        expectedReward = predictTotalRewards(gameS[i],gameA[i])
 
-                        maxR = np.amax(np.asarray(memoryR))
-                        baseline = (meanR + maxR)/2
-                        adv = gameR[(len(gameR)-1)-i][0] - baseline
+                        adv = gameR[(len(gameR)-1)-i][0] - expectedReward
+
+                        #TRY : SCORE * Q (How good is this action compare to other * Q)
+
+                        #TRY : POLICY FORMAL GRADIENT EQUATION
 
                         if(adv <0):
-                            adv = -0.01 / adv
+                            #adv = -0.01 / adv
+                            if i%75==0:
+                                print("negative",adv)
                         else:
-                            adv = math.log(adv) + 1.0
+                            maxR = np.amax(np.asarray(memoryR))
+                            baseline = (expectedReward + maxR)/2
+                            if gameR[(len(gameR)-1)-i][0] > baseline:
+                                adv = 1+ 2*adv
+                            else:
+                                adv = 1+adv
+                            #adv = (gameR[(len(gameR)-1)-i][0] - meanR )*gameR[(len(gameR)-1)-i][0]/np.std(memoryR)
+                            #adv = adv + 1.0
+                            #print("maxR", maxR,"baseline", baseline,"adv",adv)
+
+
+
+
+                        #if i%50==1:
+                            #print("adv",adv)
                         gameAdv[(len(gameR)-1)-i][0] = adv
 
                         training_repeats = int(math.tanh(adv)*4)
                         #if i%10 ==0 or adv > 0.1:
-                            #print("advantage",adv,"training_repeats", training_repeats)
+                            #print("advantage",adv,"training_repeats", )
                             #print("expectedReward", expectedReward, "advantage",adv,"training_repeats", training_repeats)
                         tX[0] = np.asarray(gameS[(len(gameR)-1)-i])
                         tY[0] = np.asarray(gameA[(len(gameR)-1)-i])
@@ -415,19 +424,12 @@ if observe_and_train:
                     #print("Training  game# ", game,"momory size", len(memorySA))
 
                     #training Reward predictor model
-                    #model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,nb_epoch=training_epochs,verbose=2)
-                    tY = np.asarray(memoryA)
+                    model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,nb_epoch=training_epochs,verbose=2)
                     tX = np.asarray(memoryS)
+                    tY = np.asarray(memoryA)
                     sw = np.asarray(memoryAdv)
                     action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],nb_epoch=training_epochs,verbose=0)
 
-                    train_idx = np.random.randint(tY.shape[0],size=experience_replay_size)
-                    #print("train_idx", train_idx)
-                    tX = tX[train_idx,:]
-                    tY = tY[train_idx,:]
-                    sw = sw[train_idx,:]
-
-                    print("tx shape", tX.shape)
                     #training action predictor model
                     #action_predictor_model.fit(memoryS,memoryA, batch_size=mini_batch, epochs=training_epochs,verbose=0)
 
