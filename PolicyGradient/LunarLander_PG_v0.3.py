@@ -28,7 +28,7 @@ from keras import optimizers
 img_dim = 160
 num_env_variables = 8 # each sate is 2 frames of the pong game
 num_env_actions = 4
-num_initial_observation = 60
+num_initial_observation = 1
 learning_rate =  0.008
 apLearning_rate = 0.003
 weigths_filename = "Lunar-PG-v2-weights.h5"
@@ -38,7 +38,8 @@ apWeights_filename = "Lunar-PG-v2-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.97
-max_memory_len = 100000
+max_memory_len = 1000000
+experience_replay_size = 10000
 starting_explore_prob = 0.2
 randomGameEvery = 9
 training_epochs = 3
@@ -76,8 +77,8 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-model.add(Dense(2048, activation='tanh', input_dim=dataX.shape[1]))
-model.add(Dropout(0.25))
+model.add(Dense(1024, activation='relu', input_dim=dataX.shape[1]))
+model.add(Dropout(0.1))
 #model.add(Dense(128, activation='relu'))
 #model.add(Dropout(0.25))
 #model.add(Dense(128, activation='relu'))
@@ -92,11 +93,11 @@ model.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(2048, activation='tanh', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dropout(0.1))
 #action_predictor_model.add(Dense(128, activation='relu'))
 #action_predictor_model.add(Dropout(0.1))
-action_predictor_model.add(Dense(apdataY.shape[1], activation='tanh'))
+action_predictor_model.add(Dense(apdataY.shape[1]))
 
 opt2 = optimizers.adam(lr=apLearning_rate)
 
@@ -314,25 +315,28 @@ if observe_and_train:
                         expectedReward = predictTotalRewards(gameS[i],gameA[i])
 
                         adv = gameR[(len(gameR)-1)-i][0] - expectedReward
+                        maxR = np.amax(np.asarray(memoryR))
+                        baseline = (expectedReward + maxR)/2
 
                         #TRY : SCORE * Q (How good is this action compare to other * Q)
 
                         #TRY : POLICY FORMAL GRADIENT EQUATION
 
                         if(adv <0):
-                            #adv = -0.01 / adv
+                            adv = -0.001 / adv
                             if i%75==0:
                                 print("negative",adv)
                         else:
-                            maxR = np.amax(np.asarray(memoryR))
-                            baseline = (expectedReward + maxR)/2
-                            if gameR[(len(gameR)-1)-i][0] > baseline:
-                                adv = 1+ 2*adv
-                            else:
-                                adv = 1+adv
+                            adv = adv * math.fabs(gameR[(len(gameR)-1)-i][0])/ np.std(np.asarray(memoryR))
+                            #adv = 1+adv
+                        #adv = adv/40
+                        if i%75==0:
+                            print("adv",adv, "baseline",baseline,"maxR",maxR,"expectedReward","actualReward", gameR[(len(gameR)-1)-i][0])
                             #adv = (gameR[(len(gameR)-1)-i][0] - meanR )*gameR[(len(gameR)-1)-i][0]/np.std(memoryR)
                             #adv = adv + 1.0
                             #print("maxR", maxR,"baseline", baseline,"adv",adv)
+
+
 
 
 
@@ -425,9 +429,11 @@ if observe_and_train:
 
                     #training Reward predictor model
                     model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,nb_epoch=training_epochs,verbose=2)
-                    tX = np.asarray(memoryS)
-                    tY = np.asarray(memoryA)
-                    sw = np.asarray(memoryAdv)
+                    train_idx = np.random.randint(tY.shape[0],size=experience_replay_size)
+                    #print("train_idx", train_idx)
+                    tX = tX[train_idx,:]
+                    tY = tY[train_idx,:]
+                    sw = sw[train_idx,:]
                     action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],nb_epoch=training_epochs,verbose=0)
 
                     #training action predictor model
