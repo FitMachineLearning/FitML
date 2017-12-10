@@ -28,16 +28,16 @@ from keras import optimizers
 img_dim = 160
 num_env_variables = 8 # each sate is 2 frames of the pong game
 num_env_actions = 4
-num_initial_observation = 1
-learning_rate =  0.008
-apLearning_rate = 0.003
+num_initial_observation = 30
+learning_rate =  0.005
+apLearning_rate = 0.005
 weigths_filename = "Lunar-PG-v2-weights.h5"
 apWeights_filename = "Lunar-PG-v2-weights-ap.h5"
 
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.97
+b_discount = 0.98
 max_memory_len = 1000000
 experience_replay_size = 10000
 starting_explore_prob = 0.2
@@ -77,7 +77,7 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-model.add(Dense(1024, activation='relu', input_dim=dataX.shape[1]))
+model.add(Dense(1500, activation='relu', input_dim=dataX.shape[1]))
 model.add(Dropout(0.1))
 #model.add(Dense(128, activation='relu'))
 #model.add(Dropout(0.25))
@@ -266,7 +266,7 @@ if observe_and_train:
             #record only the first x number of states
 
 
-            r= math.tanh(r)
+            r= r/100
 
             '''
             if step ==0:
@@ -297,7 +297,10 @@ if observe_and_train:
                     #Policy Gradient Update
                     _memR = np.asarray(memoryR)
                     meanR = _memR.mean()
-
+                    maxR = np.amax(np.asarray(memoryR))
+                    mrstd = np.std(np.asarray(memoryR))
+                    #episodeQuality = (np.mean(np.asarray(gameR))+150) / 200
+                    episodeQuality = np.mean(np.asarray(gameR))+0.1
 
                 tX = np.zeros(shape=(1,num_env_variables))
                 tY = np.zeros(shape=(1,num_env_actions))
@@ -313,52 +316,47 @@ if observe_and_train:
                         #print("reward at step",i,"away from the end is",gameR[(gameR.shape[0]-1)-i][0])
                     if len(memoryR) >0:
                         expectedReward = predictTotalRewards(gameS[i],gameA[i])
+                        baseline = (meanR + maxR)/2
 
-                        adv = gameR[(len(gameR)-1)-i][0] - expectedReward
-                        maxR = np.amax(np.asarray(memoryR))
-                        baseline = (expectedReward + maxR)/2
-
+                        #adv = gameR[(len(gameR)-1)-i][0] - baseline
+                        adv = (gameR[(len(gameR)-1)-i][0] - baseline) * episodeQuality / mrstd
                         #TRY : SCORE * Q (How good is this action compare to other * Q)
 
                         #TRY : POLICY FORMAL GRADIENT EQUATION
 
                         if(adv <0):
-                            adv = -0.001 / adv
-                            if i%75==0:
-                                print("negative",adv)
+                            #adv = adv * math.fabs(gameR[(len(gameR)-1)-i][0])/ mrstd
+                            adv = -0.0002*adv
+                            #if i%75==0:
+                                #print("negative",adv)
                         else:
-                            adv = adv * math.fabs(gameR[(len(gameR)-1)-i][0])/ np.std(np.asarray(memoryR))
+                            adv = adv
                             #adv = 1+adv
                         #adv = adv/40
-                        if i%75==0:
-                            print("adv",adv, "baseline",baseline,"maxR",maxR,"expectedReward","actualReward", gameR[(len(gameR)-1)-i][0])
+                        #if i%75==0:
+                            #print("adv",adv, "baseline",baseline,"maxR",maxR,"expectedReward","actualReward", gameR[(len(gameR)-1)-i][0])
                             #adv = (gameR[(len(gameR)-1)-i][0] - meanR )*gameR[(len(gameR)-1)-i][0]/np.std(memoryR)
                             #adv = adv + 1.0
                             #print("maxR", maxR,"baseline", baseline,"adv",adv)
-
-
-
-
-
 
                         #if i%50==1:
                             #print("adv",adv)
                         gameAdv[(len(gameR)-1)-i][0] = adv
 
                         training_repeats = int(math.tanh(adv)*4)
-                        #if i%10 ==0 or adv > 0.1:
+                        if i%10 ==0 or adv > 0.1:
                             #print("advantage",adv,"training_repeats", )
-                            #print("expectedReward", expectedReward, "advantage",adv,"training_repeats", training_repeats)
-                        tX[0] = np.asarray(gameS[(len(gameR)-1)-i])
-                        tY[0] = np.asarray(gameA[(len(gameR)-1)-i])
-                        tA[0] = np.asarray(gameAdv[(len(gameR)-1)-i])
-
+                            print("episodeQuality",episodeQuality,"expectedReward", expectedReward, "advantage",adv,"training_repeats", training_repeats,"mrstd",mrstd)
 
                         #action_predictor_model.train_on_batch(tX.reshape(1,tX.shape[1]),tY.reshape(1,tY.shape[1]),sample_weight=np.array([adv]))
 
                     if i==len(gameR)-1 and game%5==1 and len(memoryR) >0:
                         print("Training Game #",game,"average R", np.asarray(memoryR).mean(), " total # scores ", num_games_won,"avg scores per match ",num_games_won/(game+1), "memory ",len(memoryR)," finished with headscore ", gameR[(len(gameR)-1)-i][0])
 
+                #tX = np.asarray(gameS)
+                #tY = np.asarray(gameA)
+                #sw = np.asarray(gameAdv)
+                #action_predictor_model.fit(tX,tY,batch_size=1,sample_weight=sw[:,0],nb_epoch=2,verbose=0)
 
                 if len(memoryR) > 0:
                     #tX = np.zeros(shape=(1,num_env_variables))
@@ -427,13 +425,23 @@ if observe_and_train:
                 if game%train_every_num_games == 0 and game>1:
                     #print("Training  game# ", game,"momory size", len(memorySA))
 
-                    #training Reward predictor model
-                    model.fit(np.asarray(memorySA),np.asarray(memoryR), batch_size=mini_batch,nb_epoch=training_epochs,verbose=2)
+
+
+                    tSA = np.asarray(memorySA)
+                    tR = np.asarray(memoryR)
+                    tX = np.asarray(memoryS)
+                    tY = np.asarray(memoryA)
+                    sw = np.asarray(memoryAdv)
                     train_idx = np.random.randint(tY.shape[0],size=experience_replay_size)
                     #print("train_idx", train_idx)
                     tX = tX[train_idx,:]
                     tY = tY[train_idx,:]
                     sw = sw[train_idx,:]
+                    tR = tR[train_idx,:]
+                    tSA = tSA[train_idx,:]
+                    #training Reward predictor model
+                    model.fit(tSA,tR, batch_size=mini_batch,nb_epoch=training_epochs,verbose=0)
+
                     action_predictor_model.fit(tX,tY,batch_size=mini_batch,sample_weight=sw[:,0],nb_epoch=training_epochs,verbose=0)
 
                     #training action predictor model
