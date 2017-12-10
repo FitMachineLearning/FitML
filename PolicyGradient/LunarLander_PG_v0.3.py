@@ -319,7 +319,7 @@ if observe_and_train:
                         baseline = (meanR + maxR)/2
 
                         #adv = gameR[(len(gameR)-1)-i][0] - baseline
-                        adv = (gameR[(len(gameR)-1)-i][0] - baseline) * episodeQuality / mrstd
+                        adv = (gameR[(len(gameR)-1)-i][0] - meanR) * episodeQuality / mrstd
                         #TRY : SCORE * Q (How good is this action compare to other * Q)
 
                         #TRY : POLICY FORMAL GRADIENT EQUATION
