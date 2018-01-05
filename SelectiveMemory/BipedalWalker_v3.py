@@ -4,15 +4,15 @@ https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
 Note that I prefe the terms Action Predictor Network and Q/Reward Predictor network better
-
 Before update, the agent stands and slides at 500 itterations
 Also navigates relief
-
 Update
+
 Cleaned up variables and more readable memory
 Improved hyper parameters for better performance
-
 Added memory array loading and saving
+Reduced initial training 150 ->10
+Reduced training epochs epochs 6->2
 
 Initial Observiations 60 -> 150
 Larger memory 1M -> 2M
@@ -37,7 +37,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 150
+num_initial_observation = 10
 learning_rate =  0.005
 apLearning_rate = 0.001
 version_name = "Waker-SM-v6"
@@ -53,9 +53,9 @@ max_memory_len = 2000000
 experience_replay_size = 10000
 random_every_n = 40
 starting_explore_prob = 0.15
-training_epochs = 6
+training_epochs = 2
 mini_batch = 256
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_and_load_memory_arrays = True
@@ -144,10 +144,10 @@ if save_and_load_memory_arrays:
     if os.path.isfile(version_name+'memorySA.npy'):
         print("Memory Files exist. Loading...")
         memorySA = np.load(version_name+'memorySA.npy')
-        memoryRR = np.save(version_name+'memoryRR.npy')
-        memoryS = np.save(version_name+'memoryS.npy')
-        memoryA = np.save(version_name+'memoryA.npy')
-        memoryR = np.save(version_name+'memoryR.npy')
+        memoryRR = np.load(version_name+'memoryRR.npy')
+        memoryS = np.load(version_name+'memoryS.npy')
+        memoryA = np.load(version_name+'memoryA.npy')
+        memoryR = np.load(version_name+'memoryR.npy')
     else:
         print("No memory Files. Recreating")
 
@@ -228,9 +228,9 @@ if observe_and_train:
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
 
-                    stock = np.zeros(9)
-                    stockAction = np.zeros(shape=(9,num_env_actions))
-                    for i in range(9):
+                    stock = np.zeros(4)
+                    stockAction = np.zeros(shape=(4,num_env_actions))
+                    for i in range(4):
                         stockAction[i] = env.action_space.sample()
                         stock[i] = predictTotalRewards(qs,stockAction[i])
                     best_index = np.argmax(stock)
@@ -318,7 +318,7 @@ if observe_and_train:
 
                 #print("memoryR average", memoryR.mean(axis=0)[0])
                 for i in range(0,gameR.shape[0]):
-                    if game > 25 and addToMemory(gameR[i][0],memoryRR.mean(axis=0)[0],memoryRR.max()):
+                    if game > 6 and addToMemory(gameR[i][0],memoryRR.mean(axis=0)[0],memoryRR.max()):
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameS = np.vstack((tempGameS,gameS[i]))
                         tempGameRR = np.vstack((tempGameRR,gameR[i]))
@@ -357,7 +357,7 @@ if observe_and_train:
 
 
             #Retrain every X failures after num_initial_observation
-            if done and game >= num_initial_observation and game >= 50:
+            if done and game >= num_initial_observation and game >= 10:
                 if game%2 == 0:
                     if game%25 == 0:
                         print("Training  game# ", game,"momory size", memorySA.shape[0])
@@ -379,10 +379,10 @@ if observe_and_train:
                     tR = tR[train_Q,:]
                     tSA = tSA[train_Q,:]
                     #training Reward predictor model
-                    Qmodel.fit(tSA,tR, batch_size=mini_batch,epochs=training_epochs,verbose=0)
+                    Qmodel.fit(tSA,tR, batch_size=mini_batch,nb_epoch=training_epochs,verbose=0)
 
                     #training action predictor model
-                    action_predictor_model.fit(tX,tY, batch_size=mini_batch, epochs=training_epochs,verbose=0)
+                    action_predictor_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0 and game >35:
