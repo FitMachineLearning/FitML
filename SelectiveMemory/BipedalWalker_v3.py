@@ -12,7 +12,8 @@ Update
 Cleaned up variables and more readable memory
 Improved hyper parameters for better performance
 
-Actor Network from tanh -> multi layer relu 
+Added memory array loading and saving
+
 Initial Observiations 60 -> 150
 Larger memory 1M -> 2M
 Larger Selective memoryA x/10 -> x/3
@@ -39,8 +40,10 @@ num_env_actions = 4
 num_initial_observation = 150
 learning_rate =  0.005
 apLearning_rate = 0.001
-weigths_filename = "Waker-SM-v6-weights.h5"
-apWeights_filename = "Walker-SM-v6-weights-ap.h5"
+version_name = "Waker-SM-v6"
+weigths_filename = version_name+"-weights.h5"
+apWeights_filename = version_name+"Walker-SM-v6-weights-ap.h5"
+
 
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
@@ -48,14 +51,14 @@ sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 70
+random_every_n = 40
 starting_explore_prob = 0.15
 training_epochs = 6
 mini_batch = 256
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
-save_and_load_memory_arrays = False
+save_and_load_memory_arrays = True
 num_games_to_play = 6000
 
 
@@ -138,11 +141,15 @@ memoryR = np.zeros(shape=(1,1))
 memoryRR = np.zeros(shape=(1,1))
 
 if save_and_load_memory_arrays:
-    memorySA = np.load('memorySA.npy')
-    memoryRR = np.save('memoryRR.npy')
-    memoryS = np.save('memoryS.npy')
-    memoryA = np.save('memoryA.npy')
-    memoryR = np.save('memoryR.npy')
+    if os.path.isfile(version_name+'memorySA.npy'):
+        print("Memory Files exist. Loading...")
+        memorySA = np.load(version_name+'memorySA.npy')
+        memoryRR = np.save(version_name+'memoryRR.npy')
+        memoryS = np.save(version_name+'memoryS.npy')
+        memoryA = np.save(version_name+'memoryA.npy')
+        memoryR = np.save(version_name+'memoryR.npy')
+    else:
+        print("No memory Files. Recreating")
 
 
 mstats = []
@@ -258,7 +265,7 @@ if observe_and_train:
                 gameR = np.vstack((gameR, np.array([r])))
                 gameA = np.vstack((gameA, np.array([a])))
 
-            if step > 2000:
+            if step > 600:
                 done = True
 
             if done :
@@ -311,7 +318,7 @@ if observe_and_train:
 
                 #print("memoryR average", memoryR.mean(axis=0)[0])
                 for i in range(0,gameR.shape[0]):
-                    if game > 15 and addToMemory(gameR[i][0],memoryRR.mean(axis=0)[0],memoryRR.max()):
+                    if game > 25 and addToMemory(gameR[i][0],memoryRR.mean(axis=0)[0],memoryRR.max()):
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameS = np.vstack((tempGameS,gameS[i]))
                         tempGameRR = np.vstack((tempGameRR,gameR[i]))
@@ -350,7 +357,7 @@ if observe_and_train:
 
 
             #Retrain every X failures after num_initial_observation
-            if done and game >= num_initial_observation:
+            if done and game >= num_initial_observation and game >= 50:
                 if game%2 == 0:
                     if game%25 == 0:
                         print("Training  game# ", game,"momory size", memorySA.shape[0])
@@ -384,12 +391,12 @@ if observe_and_train:
                     Qmodel.save_weights(weigths_filename)
                     action_predictor_model.save_weights(apWeights_filename)
 
-                    #np.save('memorySA.npy',memorySA)
-                    #np.save('memoryRR.npy',memoryRR)
-                    #np.save('memoryS.npy',memoryS)
-                    #np.save('memoryA.npy',memoryA)
-                    #np.save('memoryR.npy',memoryR)
-
+                if save_and_load_memory_arrays:
+                    np.save(version_name+'memorySA.npy',memorySA)
+                    np.save(version_name+'memoryRR.npy',memoryRR)
+                    np.save(version_name+'memoryS.npy',memoryS)
+                    np.save(version_name+'memoryA.npy',memoryA)
+                    np.save(version_name+'memoryR.npy',memoryR)
 
 
 
