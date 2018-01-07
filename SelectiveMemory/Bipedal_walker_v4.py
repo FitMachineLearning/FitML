@@ -3,7 +3,7 @@ BipedalWalker solution by Michel Aka
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
-Note that I prefe the terms Action Predictor Network and Q/Reward Predictor network better
+Note that I prefer the terms Action Predictor Network and Q/Reward Predictor network better
 
 Before update, the agent stands and slides at 500 itterations
 Also navigates relief
@@ -39,7 +39,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 0
+num_initial_observation = 40
 learning_rate =  0.005
 apLearning_rate = 0.001
 version_name = "Waker-SM-v6"
@@ -57,11 +57,11 @@ random_every_n = 10
 starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 256
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = True
+load_memory_arrays = False
 num_games_to_play = 6000
 
 
@@ -271,7 +271,7 @@ if observe_and_train:
                 gameR = np.vstack((gameR, np.array([r])))
                 gameA = np.vstack((gameA, np.array([a])))
 
-            if step > 600:
+            if step > 800:
                 done = True
 
             if done :
@@ -352,7 +352,7 @@ if observe_and_train:
                 if np.alen(memoryR) >= max_memory_len:
                     memorySA = memorySA[gameR.shape[0]:]
                     memoryR = memoryR[gameR.shape[0]:]
-                if np.alen(memoryA) >= max_memory_len/1000*5:
+                if np.alen(memoryA) >= max_memory_len/100:
                     memoryA = memoryA[gameR.shape[0]:]
                     memoryS = memoryS[gameR.shape[0]:]
                     memoryRR = memoryRR[gameR.shape[0]:]
@@ -363,7 +363,7 @@ if observe_and_train:
 
 
             #Retrain every X failures after num_initial_observation
-            if done and game >= num_initial_observation and game >= 50:
+            if done and game >= num_initial_observation and game >= 15:
                 if game%2 == 0:
                     if game%25 == 0:
                         print("Training  game# ", game,"momory size", memorySA.shape[0])
