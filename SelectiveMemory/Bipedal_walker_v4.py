@@ -10,6 +10,7 @@ Also navigates relief
 
 Update
 Significantly improve Selective Memory equation / selection criteria
+Reduced Selective Memory Size
 Cleaned up variables and more readable memory
 Improved hyper parameters for better performance
 
@@ -19,7 +20,7 @@ Initial Observiations 60 -> 150
 Larger memory 1M -> 2M
 Larger Selective memoryA x/10 -> x/3
 More weights 2048 -> 4096
-training eporchs 4 ->
+training eporchs 4 -> 2
 '''
 import numpy as np
 import keras
@@ -52,9 +53,9 @@ sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 40
-starting_explore_prob = 0.05
-training_epochs = 2
+random_every_n = 10
+starting_explore_prob = 0.15
+training_epochs = 3
 mini_batch = 256
 load_previous_weights = True
 observe_and_train = True
@@ -90,10 +91,12 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(4096, activation='tanh', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(4096, activation='relu', input_dim=dataX.shape[1]))
 Qmodel.add(Dropout(0.2))
-#Qmodel.add(Dense(64, activation='tanh'))
+#Qmodel.add(Dense(64, activation='relu'))
 #Qmodel.add(Dropout(0.2))
+#Qmodel.add(Dense(8, activation='relu'))
+#Qmodel.add(Dropout(0.1))
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.adam(lr=learning_rate)
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
@@ -179,14 +182,14 @@ def GetRememberedOptimalPolicy(qstate):
 def addToMemory(reward,averegeReward,memMax):
     #diff = reward - ((averegeReward+memMax)/2)
     diff = reward - averegeReward
-    prob = 0.005
+    prob = 0.05
 
     if reward > averegeReward:
-        prob = prob + 0.995 * (diff / 20)
+        prob = prob + 0.95 * (diff / 50)
         #print("add reward",reward,"diff",diff,"prob",prob,"average", averegeReward,"max",memMax)
 
     else:
-        prob = prob + 0.005/100 * (diff / (40+math.fabs(diff)))
+        prob = prob + 0.05/100 * (diff / (40+math.fabs(diff)))
 
     if np.random.rand(1)<=prob :
         #print("Adding reward",reward," based on prob ", prob)
@@ -349,7 +352,7 @@ if observe_and_train:
                 if np.alen(memoryR) >= max_memory_len:
                     memorySA = memorySA[gameR.shape[0]:]
                     memoryR = memoryR[gameR.shape[0]:]
-                if np.alen(memoryA) >= max_memory_len/100:
+                if np.alen(memoryA) >= max_memory_len/1000*5:
                     memoryA = memoryA[gameR.shape[0]:]
                     memoryS = memoryS[gameR.shape[0]:]
                     memoryRR = memoryRR[gameR.shape[0]:]
