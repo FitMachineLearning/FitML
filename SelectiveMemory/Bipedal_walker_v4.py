@@ -5,7 +5,7 @@ https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Using Actor Critic
 Note that I prefer the terms Action Predictor Network and Q/Reward Predictor network better
 
-Before update, the agent stands and slides at 500 itterations
+Starts to hope/run at 1000 episodes
 Also navigates relief
 
 Update
@@ -105,10 +105,10 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(4096, activation='relu', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dropout(0.2))
-action_predictor_model.add(Dense(62, activation='relu'))
-action_predictor_model.add(Dropout(0.2))
+#action_predictor_model.add(Dense(62, activation='relu'))
+#action_predictor_model.add(Dropout(0.2))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
 opt2 = optimizers.adam(lr=apLearning_rate)
