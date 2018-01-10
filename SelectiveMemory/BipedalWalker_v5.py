@@ -237,9 +237,9 @@ if observe_and_train:
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
 
-                    stock = np.zeros(9)
-                    stockAction = np.zeros(shape=(9,num_env_actions))
-                    for i in range(9):
+                    stock = np.zeros(15)
+                    stockAction = np.zeros(shape=(15,num_env_actions))
+                    for i in range(15):
                         stockAction[i] = env.action_space.sample()
                         stock[i] = predictTotalRewards(qs,stockAction[i])
                     best_index = np.argmax(stock)
