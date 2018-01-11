@@ -88,4 +88,4 @@ When we get a new state we then act based on optimal policy which has been train
 
 ### What type of results do we get?
 Our agent is able to crawl, stand up, walk, run, jump after 500 episodes in the famous openAI BipedalWalker test. After 3000 iterations, our agent is able to advance fast and be very stable on its feet.
-You can watch it in action here: https://youtu.be/3CTzr8ENOKI.
+You can watch it in action here: https://youtu.be/hKrFFeZqq3E.
