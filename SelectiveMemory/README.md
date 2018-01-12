@@ -3,16 +3,15 @@
 model.fit(Machine_Learning, epochs=Inf)
 ```
 
-### What is Fit ML
-Fit Machine Learning (FitML) is blog that houses a collection of python Machine Learning articles and examples, often focusing on Reinforcement Learning. Here, you will find code related to Q Learning, Actor-Critic, MDP, Bellman, OpenAI solutions and custom implemented approaches to solving some of the toughest and most interesting problems to date (Yes, I am "baised").
+<table style="width:100% border: none" >
+  <tr>
+    <th><img src="/img/cWalker.jpg" width="250"/></th>       
+  </tr>
+</Table>
 
-### Who is Michel Aka
-*Michel is an AI researcher and a graduate from University of Montreal who currently works in the Healthcare industry.*
+https://youtu.be/hKrFFeZqq3E
 
-
-#### Selective Memory
-
-As far as I know, I haven't seen anyone in the litterature implement this technique before.
+#### How does Selective Memory work?
 
 The intuition behind Policy Gradient is that it optimizes the parameters of the network in the direction of higher expected sum of rewards. What if we could do the same in a computationally more effective way that also turns out to be more intuitive: enter what I am calling Selective Memory.
 
@@ -89,3 +88,10 @@ When we get a new state we then act based on optimal policy which has been train
 ### What type of results do we get?
 Our agent is able to crawl, stand up, walk, run, jump after 500 episodes in the famous openAI BipedalWalker test. After 3000 iterations, our agent is able to advance fast and be very stable on its feet.
 You can watch it in action here: https://youtu.be/hKrFFeZqq3E.
+
+
+### What is Fit ML
+Fit Machine Learning (FitML) is blog that houses a collection of python Machine Learning articles and examples, often focusing on Reinforcement Learning. Here, you will find code related to Q Learning, Actor-Critic, MDP, Bellman, OpenAI solutions and custom implemented approaches to solving some of the toughest and most interesting problems to date (Yes, I am "baised").
+
+### Who is Michel Aka
+*Michel is an AI researcher and a graduate from University of Montreal who currently works in the Healthcare industry.*
