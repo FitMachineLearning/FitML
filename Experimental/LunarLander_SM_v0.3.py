@@ -22,7 +22,7 @@ from keras import optimizers
 
 num_env_variables = 8
 num_env_actions = 1
-num_initial_observation = 2
+num_initial_observation = 50
 learning_rate =  0.005
 apLearning_rate = 0.004
 version_name = "Lander-SM-v6"
@@ -33,7 +33,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.99
+b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
 random_every_n = 10
@@ -174,7 +174,7 @@ def addToMemory(reward,averegeReward,memMax):
     prob = 0.05
 
     if reward > averegeReward:
-        prob = prob + 0.95 * (diff / 100)
+        prob = prob + 0.95 * (diff / 300)
         print("add reward",reward,"diff",diff,"prob",prob,"average", averegeReward,"max",memMax)
 
     else:
