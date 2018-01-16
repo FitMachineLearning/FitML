@@ -1,29 +1,20 @@
 '''
-BipedalWalker solution by Michel Aka
+BipedalWalker using Selective Memory with Q as feature 
+solution by Michel Aka
+
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
-Using Actor Critic
-Note that I prefer the terms Action Predictor Network and Q/Reward Predictor network better
+
 
 Results
-At itteration 3200, the agent is able to run and navigate relief
+At itteration 600, the agent is able to run and navigate relief
+Much faster learning than mean feature based Selective memory
 
 Update/changes
-Used relu instead of training_epoch
-Flatten the NN depth to 1 hidden layers
-Increased Actor Predictor hidden weights to 4092
-Significantly improve Selective Memory equation / selection criteria
-Reduced Selective Memory Size
-Cleaned up variables and more readable memory
-Improved hyper parameters for better performance
+Using Network computed Q value as feature instead of average
 
-Added memory array loading and saving
 
-Initial Observiations 60 -> 150
-Larger memory 1M -> 2M
-Larger Selective memoryA x/10 -> x/3
-More weights 2048 -> 4096
-training eporchs 4 -> 2
+
 '''
 import numpy as np
 import keras
@@ -32,6 +23,7 @@ import os
 import h5py
 import matplotlib.pyplot as plt
 import math
+import Box2D
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -189,7 +181,7 @@ def addToMemory(reward,averegeReward,memMax):
 
     if reward > averegeReward:
         prob = prob + 0.95 * (diff / 20)
-        print("add reward",reward,"diff",diff,"prob",prob,"average", averegeReward,"max",memMax)
+        #print("add reward",reward,"diff",diff,"prob",prob,"average", averegeReward,"max",memMax)
 
     else:
         prob = prob + 0.05/100 * (diff / (40+math.fabs(diff)))
@@ -390,10 +382,10 @@ if observe_and_train:
                     tR = tR[train_Q,:]
                     tSA = tSA[train_Q,:]
                     #training Reward predictor model
-                    Qmodel.fit(tSA,tR, batch_size=mini_batch,nb_epoch=training_epochs,verbose=0)
+                    Qmodel.fit(tSA,tR, batch_size=mini_batch,epochs=training_epochs,verbose=0)
 
                     #training action predictor model
-                    action_predictor_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+                    action_predictor_model.fit(tX,tY, batch_size=mini_batch, epochs=training_epochs,verbose=0)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0 and game >35:
