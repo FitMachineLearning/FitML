@@ -1,18 +1,17 @@
 '''
-BipedalWalker using Selective Memory with Q as feature 
-solution by Michel Aka
-
+BipedalWalker with Selective memory and Q as feature
+solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 
-
-Results
-At itteration 600, the agent is able to run and navigate relief
-Much faster learning than mean feature based Selective memory
-
-Update/changes
-Using Network computed Q value as feature instead of average
-
+Update
+Significant improvements in training after the following changes
+Deep Network tanh (2048) relu (64)
+removed dropout
+Increased training eporchs to 10
+Seletive Memory with Q as feature - base probability 0.05 -> 0.005
+Model training starts at episode 5 regardless of the num_initial_observation
+Displays forward motion around episode 150
 
 
 '''
@@ -23,7 +22,6 @@ import os
 import h5py
 import matplotlib.pyplot as plt
 import math
-import Box2D
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -34,10 +32,10 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 10
+num_initial_observation = 30
 learning_rate =  0.005
 apLearning_rate = 0.001
-version_name = "Waker-SM-v6"
+version_name = "Waker-SMQ-v3"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -50,7 +48,7 @@ max_memory_len = 2000000
 experience_replay_size = 10000
 random_every_n = 10
 starting_explore_prob = 0.05
-training_epochs = 3
+training_epochs = 10
 mini_batch = 256
 load_previous_weights = False
 observe_and_train = True
@@ -58,6 +56,7 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 num_games_to_play = 6000
+max_steps = 800
 
 
 #One hot encoding array
@@ -86,12 +85,12 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(4096, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Dropout(0.2))
-#Qmodel.add(Dense(64, activation='relu'))
+Qmodel.add(Dense(2048, activation='tanh', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-#Qmodel.add(Dense(8, activation='relu'))
-#Qmodel.add(Dropout(0.1))
+Qmodel.add(Dense(64, activation='relu'))
+#Qmodel.add(Dropout(0.2))
+#Qmodel.add(Dense(256, activation='relu'))
+#Qmodel.add(Dropout(0.2))
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.adam(lr=learning_rate)
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
@@ -100,9 +99,11 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(4096, activation='relu', input_dim=apdataX.shape[1]))
-action_predictor_model.add(Dropout(0.2))
-#action_predictor_model.add(Dense(62, activation='relu'))
+action_predictor_model.add(Dense(2048, activation='tanh', input_dim=apdataX.shape[1]))
+#action_predictor_model.add(Dropout(0.2))
+action_predictor_model.add(Dense(64, activation='relu'))
+#action_predictor_model.add(Dropout(0.2))
+#action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
@@ -177,7 +178,7 @@ def GetRememberedOptimalPolicy(qstate):
 def addToMemory(reward,averegeReward,memMax):
     #diff = reward - ((averegeReward+memMax)/2)
     diff = reward - averegeReward
-    prob = 0.05
+    prob = 0.005
 
     if reward > averegeReward:
         prob = prob + 0.95 * (diff / 20)
@@ -266,7 +267,7 @@ if observe_and_train:
                 gameR = np.vstack((gameR, np.array([r])))
                 gameA = np.vstack((gameA, np.array([a])))
 
-            if step > 800:
+            if step > max_steps:
                 done = True
 
             if done :
@@ -287,7 +288,7 @@ if observe_and_train:
                         #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
                         gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
-                    if i==gameR.shape[0]-1 and game%5==0:
+                    if i==gameR.shape[0]-1 and game%2==0:
                         print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
 
                 if memoryR.shape[0] ==1:
@@ -349,7 +350,7 @@ if observe_and_train:
                 if np.alen(memoryR) >= max_memory_len:
                     memorySA = memorySA[gameR.shape[0]:]
                     memoryR = memoryR[gameR.shape[0]:]
-                if np.alen(memoryA) >= max_memory_len/100:
+                if np.alen(memoryA) >= max_memory_len/250:
                     memoryA = memoryA[gameR.shape[0]:]
                     memoryS = memoryS[gameR.shape[0]:]
                     memoryRR = memoryRR[gameR.shape[0]:]
@@ -360,7 +361,7 @@ if observe_and_train:
 
 
             #Retrain every X failures after num_initial_observation
-            if done and game >= num_initial_observation and game >= 5:
+            if done and game >= 5:
                 if game%2 == 0:
                     if game%25 == 0:
                         print("Training  game# ", game,"momory size", memorySA.shape[0])
