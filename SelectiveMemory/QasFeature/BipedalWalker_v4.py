@@ -57,7 +57,7 @@ max_steps = 800
 
 #Selective memory settings
 sm_normalizer = 20
-sm_memory_proportion = 100
+sm_memory_size = 1100
 
 
 #One hot encoding array
@@ -343,6 +343,7 @@ if observe_and_train:
                     memoryRR = np.concatenate((memoryRR,tempGameRR),axis=0)
                     memoryA = np.concatenate((memoryA,tempGameA),axis=0)
                     memorySA = np.concatenate((memorySA,tempGameSA),axis=0)
+
                     memoryR = np.concatenate((memoryR,tempGameR),axis=0)
 
 
@@ -351,11 +352,10 @@ if observe_and_train:
                 if np.alen(memoryR) >= max_memory_len:
                     memorySA = memorySA[gameR.shape[0]:]
                     memoryR = memoryR[gameR.shape[0]:]
-                if np.alen(memoryA) >= max_memory_len/sm_memory_proportion:
-                    memoryA = memoryA[gameR.shape[0]:]
-                    memoryS = memoryS[gameR.shape[0]:]
-                    memoryRR = memoryRR[gameR.shape[0]:]
-
+                if np.alen(memoryA) >= sm_memory_size:
+                    memoryA = memoryA[(sm_memory_size/10):]
+                    memoryS = memoryS[(sm_memory_size/10):]
+                    memoryRR = memoryRR[(sm_memory_size/10):]
 
             #Update the states
             qs=s
