@@ -1,13 +1,12 @@
 '''
-Ant with Selective memory Selective Memory average as feature discriminator
+BipedalWalker with Selective memory and Q as feature
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 
 Update
 Deep Network
-Using Selective Memory average as feature normalizer
-Using episode quality as advantage multiplier
+Using featureMax*3 as feature normalizer
 
 
 
@@ -44,15 +43,15 @@ sce_range = 0.2
 b_discount = 0.985
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 30
+random_every_n = 20
 starting_explore_prob = 0.05
 training_epochs = 3
 mini_batch = 256
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = False
+load_memory_arrays = True
 do_training = True
 num_games_to_play = 16000
 max_steps = 800
@@ -158,6 +157,7 @@ if load_memory_arrays:
 
 
 mstats = []
+sm_add_counts = 0
 
 def predictTotalRewards(qstate, action):
     qs_a = np.concatenate((qstate,action), axis=0)
@@ -202,7 +202,7 @@ def addToMemory(reward,stepReward,memMax,averegeReward,gameAverage):
 
     if np.random.rand(1)<=prob :
         #print("Adding reward",reward," based on prob ", prob)
-        print("add reward",reward,"diff",diff,"prob",prob,"average","gameFactor",gameFactor, averegeReward,"max",memMax)
+        #print("add reward",reward,"diff",diff,"prob",prob,"average","gameFactor",gameFactor, averegeReward,"max",memMax)
         return True
     else:
         return False
@@ -302,8 +302,8 @@ if observe_and_train:
                         #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
                         gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
-                    if i==gameR.shape[0]-1 and game%2==0:
-                        print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
+                    if i==gameR.shape[0]-1 and game%1==0:
+                        print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0],"previous sm_add_counts",sm_add_counts, " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
 
                 if memoryR.shape[0] ==1:
                     memorySA = gameSA
@@ -332,12 +332,14 @@ if observe_and_train:
                     #memorySA = np.concatenate((memorySA,gameSA),axis=0)
                     #memoryR = np.concatenate((memoryR,gameR),axis=0)
 
+                sm_add_counts = 0
                 #print("memoryR average", memoryR.mean(axis=0)[0])
                 for i in range(0,gameR.shape[0]):
                     pr = predictTotalRewards(gameS[i],gameA[i])
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                     if game > 3 and addToMemory(gameR[i][0], memoryRR.mean(axis=0)[0] ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
+                        sm_add_counts+=1
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameS = np.vstack((tempGameS,gameS[i]))
                         tempGameRR = np.vstack((tempGameRR,gameR[i]))
