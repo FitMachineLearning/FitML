@@ -1,5 +1,5 @@
 '''
-Lunar Lander with Selective memory and Q as feature
+BipedalWalker with Selective memory and Q as feature
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
@@ -46,7 +46,7 @@ b_discount = 0.985
 max_memory_len = 2000000
 experience_replay_size = 10000
 random_every_n = 20
-starting_explore_prob = 0.05
+starting_explore_prob = 0.25
 training_epochs = 3
 mini_batch = 256
 load_previous_weights = False
@@ -60,7 +60,7 @@ max_steps = 800
 
 #Selective memory settings
 sm_normalizer = 60
-sm_memory_size = 300
+sm_memory_size = 600
 
 
 #One hot encoding array
