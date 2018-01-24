@@ -5,9 +5,11 @@ https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 
 Update
-Deeper Network
-Far less neurones
-Using Q as feature normalizer
+Deep Network (3 relu layers)
+Using Q for feature comparison
+
+Results
+Starts to run at 300 episode (Fastest yet)
 
 
 
@@ -32,7 +34,7 @@ num_env_actions = 4
 num_initial_observation = 10
 learning_rate =  0.005
 apLearning_rate = 0.001
-version_name = "Walker-SMA-v10"
+version_name = "Walker-SMQ-v10"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -71,6 +73,9 @@ env = gym.make('BipedalWalker-v2')
 #env.render(mode="human")
 env.reset()
 
+print("-- Observations",env.observation_space)
+print("-- actionspace",env.action_space)
+
 #initialize training matrix with random states and actions
 dataX = np.random.random(( 5,num_env_variables+num_env_actions ))
 #Only one output for the total score / reward
@@ -88,13 +93,11 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(512, activation='tanh', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(2048, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(128, activation='relu'))
+Qmodel.add(Dense(256, activation='relu'))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(128, activation='relu'))
-#Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(128, activation='relu'))
+Qmodel.add(Dense(256, activation='relu'))
 #Qmodel.add(Dropout(0.2))
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.adam(lr=learning_rate)
@@ -104,13 +107,11 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(512, activation='tanh', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.2))
-action_predictor_model.add(Dense(128, activation='relu'))
+action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
-action_predictor_model.add(Dense(128, activation='relu'))
-#action_predictor_model.add(Dropout(0.2))
-action_predictor_model.add(Dense(128, activation='relu'))
+action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
@@ -193,7 +194,7 @@ def addToMemory(reward,stepReward,memMax,averegeReward,gameAverage):
 
     if reward > averegeReward:
         prob = prob + 0.95 * (diff / sm_normalizer)
-        prob = prob * (1+gameFactor*3)
+        #prob = prob * (1+gameFactor*3)
         #prob = prob * (0.1+gameFactor)
 
         #print("add reward",reward,"diff",diff,"prob",prob,"average", averegeReward,"max",memMax)
@@ -248,9 +249,9 @@ if observe_and_train:
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
 
-                    stock = np.zeros(10)
-                    stockAction = np.zeros(shape=(10,num_env_actions))
-                    for i in range(10):
+                    stock = np.zeros(30)
+                    stockAction = np.zeros(shape=(30,num_env_actions))
+                    for i in range(30):
                         stockAction[i] = env.action_space.sample()
                         stock[i] = predictTotalRewards(qs,stockAction[i])
                     best_index = np.argmax(stock)
@@ -306,7 +307,7 @@ if observe_and_train:
                         #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
                         gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
-                    if i==gameR.shape[0]-1 and game%1==0:
+                    if i==gameR.shape[0]-1 and game%25==0:
                         print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0],"previous sm_add_counts",sm_add_counts, " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
 
                 if memoryR.shape[0] ==1:
