@@ -60,7 +60,7 @@ max_steps = 800
 
 #Selective memory settings
 sm_normalizer = 60
-sm_memory_size = 8400
+sm_memory_size = 250
 
 
 #One hot encoding array
