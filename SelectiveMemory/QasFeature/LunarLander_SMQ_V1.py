@@ -59,8 +59,8 @@ num_games_to_play = 16000
 max_steps = 800
 
 #Selective memory settings
-sm_normalizer = 60
-sm_memory_size = 600
+sm_normalizer = 10
+sm_memory_size = 56000
 
 
 #One hot encoding array
@@ -95,7 +95,7 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(2048, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(512, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
 Qmodel.add(Dense(256, activation='relu'))
 #Qmodel.add(Dropout(0.2))
@@ -109,7 +109,7 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.2))
 action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
@@ -201,7 +201,7 @@ def addToMemory(reward,stepReward,memMax,averegeReward,gameAverage):
 
     if reward > averegeReward:
         prob = prob + 0.95 * (diff / sm_normalizer)
-        prob = prob * (1+gameFactor*3)
+        #prob = prob * (1+gameFactor*3)
         #prob = prob * (0.1+gameFactor)
 
         #print("add reward",reward,"diff",diff,"prob",prob,"average", averegeReward,"max",memMax)
@@ -255,7 +255,8 @@ if observe_and_train:
 
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
-
+                    a = np.argmax( remembered_optimal_policy)
+                    '''
                     stock = np.zeros(30)
                     stockAction = np.zeros(shape=(30,num_env_actions))
                     for i in range(30):
@@ -272,6 +273,7 @@ if observe_and_train:
                     else:
                         a = np.argmax( randaction )
                         #print(" - selecting generated optimal policy ",a)
+                    '''
 
             if a>3:
                 a = 3
