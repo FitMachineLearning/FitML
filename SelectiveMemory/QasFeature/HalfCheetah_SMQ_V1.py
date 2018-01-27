@@ -1,12 +1,14 @@
 '''
-HalfCheetah with Selective memory and Q as feature
+Half Cheetah with Selective memory and Q as feature
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 
 Update
-Deep Network
-Using featureMax*3 as feature normalizer
+Flat 4K network
+200 random action generated every step (most significant improvement)
+Using 60 as feature normalizer
+Q as discriminator
 
 
 
@@ -31,8 +33,8 @@ num_env_variables = 26
 num_env_actions = 6
 num_initial_observation = 0
 learning_rate =  0.005
-apLearning_rate = 0.001
-version_name = "CheetahBulletEnv-SMQ-v10"
+apLearning_rate = 0.003
+version_name = "CheetahBulletEnv-SMQ-v15"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -41,7 +43,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.985
-max_memory_len = 2000000
+#max_memory_len = 2000000
+max_memory_len = 50000
 experience_replay_size = 10000
 random_every_n = 20
 starting_explore_prob = 0.05
@@ -53,11 +56,11 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = True
 do_training = True
-num_games_to_play = 16000
-max_steps = 800
+num_games_to_play = 46000
+max_steps = 300
 
 #Selective memory settings
-sm_normalizer = 60
+sm_normalizer = 40
 sm_memory_size = 8400
 
 
@@ -93,9 +96,9 @@ Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 Qmodel.add(Dense(4096, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(256, activation='relu'))
+#Qmodel.add(Dense(256, activation='relu'))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(256, activation='relu'))
+#Qmodel.add(Dense(256, activation='relu'))
 #Qmodel.add(Dropout(0.2))
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.adam(lr=learning_rate)
@@ -107,9 +110,9 @@ action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 action_predictor_model.add(Dense(4096, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.2))
-action_predictor_model.add(Dense(256, activation='relu'))
+#action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
-action_predictor_model.add(Dense(256, activation='relu'))
+#action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
@@ -220,7 +223,9 @@ if observe_and_train:
         gameA = np.zeros(shape=(1,num_env_actions))
         gameR = np.zeros(shape=(1,1))
         #Get the Q state
+        #pb.resetSimulation()
         qs = env.reset()
+
         #print("qs ", qs)
         '''
         if game < num_initial_observation:
@@ -247,9 +252,9 @@ if observe_and_train:
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
 
-                    stock = np.zeros(30)
-                    stockAction = np.zeros(shape=(30,num_env_actions))
-                    for i in range(30):
+                    stock = np.zeros(200)
+                    stockAction = np.zeros(shape=(200,num_env_actions))
+                    for i in range(200):
                         stockAction[i] = env.action_space.sample()
                         stock[i] = predictTotalRewards(qs,stockAction[i])
                     best_index = np.argmax(stock)
@@ -305,7 +310,7 @@ if observe_and_train:
                         #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
                         gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
-                    if i==gameR.shape[0]-1 and game%25==0:
+                    if i==gameR.shape[0]-1 and game%5==0:
                         print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0],"previous sm_add_counts",sm_add_counts, " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
 
                 if memoryR.shape[0] ==1:
