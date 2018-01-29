@@ -7,6 +7,7 @@ https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
 Using Selective Memory Average as feature dicriminator
+Starts to land around episode 200
 '''
 import numpy as np
 import keras
