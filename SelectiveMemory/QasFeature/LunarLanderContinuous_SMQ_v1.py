@@ -1,13 +1,12 @@
 
 '''
-Lunar Lander Continuous Control with Selective  Memory Algorithm
+BipedalWalker with Selective memory and Q as feature
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
 Using Selective Memory Average as feature dicriminator
-Starts to land at 50 episodes
 '''
 import numpy as np
 import keras
@@ -28,7 +27,7 @@ from keras import optimizers
 
 num_env_variables = 8
 num_env_actions = 2
-num_initial_observation = 15
+num_initial_observation = 20
 learning_rate =  0.005
 apLearning_rate = 0.001
 version_name = "LunarLanderC-SMQ-v7"
@@ -42,7 +41,7 @@ sce_range = 0.2
 b_discount = 0.985
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 30
+random_every_n = 1000
 starting_explore_prob = 0.05
 training_epochs = 3
 mini_batch = 256
@@ -57,7 +56,7 @@ max_steps = 3000
 
 #Selective memory settings
 sm_normalizer = 60
-sm_memory_size = 4400
+sm_memory_size = 34400
 
 
 #One hot encoding array
@@ -162,6 +161,8 @@ if load_memory_arrays:
 mstats = []
 mGames = []
 mAverageScores = []
+mAP_Counts = 0
+mAPPicks = []
 
 def predictTotalRewards(qstate, action):
     qs_a = np.concatenate((qstate,action), axis=0)
@@ -220,6 +221,7 @@ if observe_and_train:
         gameR = np.zeros(shape=(1,1))
         #Get the Q state
         qs = env.reset()
+        mAP_Counts = 0
         #print("qs ", qs)
         '''
         if game < num_initial_observation:
@@ -258,10 +260,12 @@ if observe_and_train:
                     #if predictTotalRewards(qs,remembered_optimal_policy) > utility_possible_actions[best_sce_i]:
                     if predictTotalRewards(qs,remembered_optimal_policy) > predictTotalRewards(qs,randaction):
                         a = remembered_optimal_policy
+                        mAP_Counts += 1
                         #print(" | selecting remembered_optimal_policy ",a)
                     else:
                         a = randaction
                         #print(" - selecting generated optimal policy ",a)
+                    #a = remembered_optimal_policy
 
 
 
@@ -312,8 +316,6 @@ if observe_and_train:
                         #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
                         gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
                         #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
-                    if i==gameR.shape[0]-1 and game%2==0:
-                        print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step ,"last reward", r," finished with headscore ", gameR[(gameR.shape[0]-1)-i][0])
 
                 if memoryR.shape[0] ==1:
                     memorySA = gameSA
@@ -430,12 +432,18 @@ if observe_and_train:
 
 
             if done:
+                if game%20==0:
+                    print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"percent AP picks", mAP_Counts/step*100 ,"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
+
                 if game%10 ==0 and np.alen(memoryR)>1000:
                     mGames.append(game)
-                    mAverageScores.append(memoryR[:-1000].mean())
-                    bar_chart = pygal.Bar()
+                    mAPPicks.append(mAP_Counts/step*100)
+                    mAverageScores.append(memoryR[:-1000].mean()/40*100)
+                    bar_chart = pygal.HorizontalLine()
                     bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                     bar_chart.add('Average score', mAverageScores)  # Add some values
+                    bar_chart.add('percent actor picks ', mAPPicks)  # Add some values
+
                     bar_chart.render_to_file(version_name+'Performance2_bar_chart.svg')
                 '''
                 #Game won  conditions
