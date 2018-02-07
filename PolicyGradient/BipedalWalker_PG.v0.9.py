@@ -349,6 +349,7 @@ if observe_and_train:
                     memoryA = gameA
                     memoryS = gameS
                     memoryRR = gameR
+                    memoryW = gameW
 
 
 
@@ -437,6 +438,7 @@ if observe_and_train:
                     tR = (memoryR)
                     tX = (memoryS)
                     tY = (memoryA)
+                    tW = (memoryW)
                     #sw = (memoryAdv)
                     train_Q = np.random.randint(tR.shape[0],size=experience_replay_size)
                     train_A = np.random.randint(tY.shape[0],size=int(experience_replay_size/3))
@@ -444,6 +446,7 @@ if observe_and_train:
 
                     tX = tX[train_A,:]
                     tY = tY[train_A,:]
+                    tW = tW[train_A,:]
                     #sw = sw[train_idx,:]
                     tR = tR[train_Q,:]
                     tSA = tSA[train_Q,:]
@@ -451,7 +454,7 @@ if observe_and_train:
                     Qmodel.fit(tSA,tR, batch_size=mini_batch,nb_epoch=training_epochs,verbose=0)
 
                     #training action predictor model
-                    #action_predictor_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+                    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0 and game >35:
