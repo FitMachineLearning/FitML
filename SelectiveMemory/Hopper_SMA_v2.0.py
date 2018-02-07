@@ -10,7 +10,9 @@ Using Selective Memory Average as feature dicriminator
 
 Adagrad
 0.99 delta
-0.1 dropout
+0.4 dropout
+Negative Reward at Termination
+try steps 15
 
 '''
 import numpy as np
@@ -37,7 +39,7 @@ num_env_actions = 3
 num_initial_observation = 50
 learning_rate =  0.005
 apLearning_rate = 0.003
-version_name = "W2D-DSMQ-v16"
+version_name = "HopperD-DSMQ-v3.0"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -45,10 +47,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.99
+b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
 random_every_n = 30
+try_steps = 15
 starting_explore_prob = 0.05
 training_epochs = 3
 mini_batch = 512
@@ -59,11 +62,11 @@ save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
 num_games_to_play = 160000
-max_steps = 600
+max_steps = 3000
 
 #Selective memory settings
-sm_normalizer = 240
-sm_memory_size = 550
+sm_normalizer = 600
+sm_memory_size = 1550
 
 
 #One hot encoding array
@@ -97,12 +100,12 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(1024*1, activation='relu', input_dim=dataX.shape[1]))
-#Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(512, activation='relu'))
-Qmodel.add(Dropout(0.1))
-Qmodel.add(Dense(256, activation='relu'))
-Qmodel.add(Dropout(0.1))
+Qmodel.add(Dense(1024*2, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dropout(0.4))
+Qmodel.add(Dense(512*2, activation='relu'))
+Qmodel.add(Dropout(0.4))
+Qmodel.add(Dense(256*2, activation='relu'))
+Qmodel.add(Dropout(0.4))
 #Qmodel.add(Dense(1024, activation='relu'))
 #Qmodel.add(Dropout(0.2))
 #Qmodel.add(Dense(512, activation='relu'))
@@ -120,12 +123,12 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
-#action_predictor_model.add(Dropout(0.2))
-action_predictor_model.add(Dense(512, activation='relu'))
-action_predictor_model.add(Dropout(0.1))
-action_predictor_model.add(Dense(256, activation='relu'))
-action_predictor_model.add(Dropout(0.1))
+action_predictor_model.add(Dense(1024*2, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dropout(0.4))
+action_predictor_model.add(Dense(512*2, activation='relu'))
+action_predictor_model.add(Dropout(0.4))
+action_predictor_model.add(Dense(256*2, activation='relu'))
+action_predictor_model.add(Dropout(0.4))
 #action_predictor_model.add(Dense(1024, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
 #action_predictor_model.add(Dense(512, activation='relu'))
@@ -278,9 +281,9 @@ if observe_and_train:
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
 
-                    stock = np.zeros(15)
-                    stockAction = np.zeros(shape=(15,num_env_actions))
-                    for i in range(15):
+                    stock = np.zeros(try_steps)
+                    stockAction = np.zeros(shape=(try_steps,num_env_actions))
+                    for i in range(try_steps):
                         stockAction[i] = env.action_space.sample()
                         stock[i] = predictTotalRewards(qs,stockAction[i])
                     best_index = np.argmax(stock)
@@ -306,6 +309,9 @@ if observe_and_train:
             s,r,done,info = env.step(a)
             #record only the first x number of states
 
+            #reward hacking
+            if done and step < 900:
+                r = -100
 
             if step ==0:
                 gameSA[0] = qs_a
@@ -372,7 +378,7 @@ if observe_and_train:
                     pr = predictTotalRewards(gameS[i],gameA[i])
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
-                    if game > 3 and addToMemory(gameR[i][0], pr,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
+                    if game > 3 and addToMemory(gameR[i][0], memoryR.mean(axis=0)[0],memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameS = np.vstack((tempGameS,gameS[i]))
                         tempGameRR = np.vstack((tempGameRR,gameR[i]))
@@ -381,9 +387,9 @@ if observe_and_train:
 
 
                 if memoryR.shape[0] ==1:
-                    memoryA = tempGameA
-                    memoryS = tempGameS
-                    memoryRR = tempGameRR
+                    memoryA = tempGameA[:2]
+                    memoryS = tempGameS[:2]
+                    memoryRR = tempGameRR[:2]
                     memoryR = tempGameR
                     memorySA = tempGameSA
                 else:
