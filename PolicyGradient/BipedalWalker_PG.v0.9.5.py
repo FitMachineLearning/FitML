@@ -46,7 +46,7 @@ sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 15
+random_every_n = 5
 num_retries = 30
 starting_explore_prob = 0.05
 training_epochs = 3
@@ -61,7 +61,7 @@ num_games_to_play = 160000
 max_steps = 500
 
 #Selective memory settings
-sm_normalizer = 290
+sm_normalizer = 20
 sm_memory_size = 10500
 
 
@@ -211,36 +211,17 @@ def GetRememberedOptimalPolicy(qstate):
     r_remembered_optimal_policy = pred[0]
     return r_remembered_optimal_policy
 
-def addToMemory(reward,stepReward,memMax,averegeReward,gameAverage):
+def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #diff = reward - ((averegeReward+memMax)/2)
-    diff = reward - stepReward
-    gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
+    #diff = reward - stepReward
+    #gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
     prob = 0.00000005
-
-    if gameFactor<0:
-        gameFactor = 0.05
+    if reward > mem_mean + math.fabs((memMax-mem_mean)/2):
+        print("reward", reward,"mean+std", mem_mean + math.fabs((memMax-mem_mean)/2))
+        return True, 0.95
     else:
-        gameFactor = 1+gameFactor/2
+        return False, 0.0000000005
 
-    if reward > averegeReward:
-        prob = prob + 0.95 * (diff / sm_normalizer)
-        #prob = prob * gameFactor
-        #prob = prob * (0.1+gameFactor)
-
-        #print("add reward",reward,"diff",diff,"prob",prob,"average", averegeReward,"max",memMax)
-
-    else:
-        prob = prob + 0.005/1000 * (diff / (40+math.fabs(diff)))
-
-    if diff < 0:
-        return False, prob
-
-    if np.random.rand(1)<=prob :
-        #print("Adding reward",reward," based on prob ", prob)
-        #print("add reward",reward,"diff",diff,"prob",prob,"average", averegeReward,"max",memMax)
-        return True, prob
-    else:
-        return False, prob
 
 
 if observe_and_train:
@@ -378,14 +359,17 @@ if observe_and_train:
                 #print("memoryR average", memoryR.mean(axis=0)[0])
                 for i in range(0,gameR.shape[0]):
                     pr = predictTotalRewards(gameS[i],gameA[i])
-                    if pr <0:
-                        pr=0.000000000005
+                    #if pr <0:
+                        #pr=0.000000000005
                     #print ("pr",pr)
 
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                     if game >3:
-                        atm,add_prob = addToMemory(gameR[i][0], memoryR.mean(axis=0)[0],memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0])
+                        atm,add_prob = addToMemory(gameR[i][0], memoryR.mean(axis=0)[0],memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
+                        if add_prob < 0:
+                            add_prob = 0.000000005
+                        #print("add_prob",add_prob)
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameS = np.vstack((tempGameS,gameS[i]))
                         tempGameRR = np.vstack((tempGameRR,gameR[i]))
@@ -435,7 +419,7 @@ if observe_and_train:
 
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation  and do_training and game >= 5:
-                if game%10 == 0:
+                if game%2 == 0:
                     if game%25 == 0:
                         print("Training  game# ", game,"momory size", memorySA.shape[0])
 
