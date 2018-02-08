@@ -46,7 +46,7 @@ sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 5
+random_every_n = 500
 num_retries = 30
 starting_explore_prob = 0.05
 training_epochs = 3
@@ -215,10 +215,14 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #diff = reward - ((averegeReward+memMax)/2)
     #diff = reward - stepReward
     #gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
+    target = mem_mean + math.fabs((memMax-mem_mean)/2)
+    d_std_max = math.fabs(memMax-mstd)
+    d_std_reward = math.fabs(reward-mstd)
+    advantage = d_std_reward / d_std_max
     prob = 0.00000005
     if reward > mem_mean + math.fabs((memMax-mem_mean)/2):
-        print("reward", reward,"mean+std", mem_mean + math.fabs((memMax-mem_mean)/2))
-        return True, 0.95
+        print("reward", reward,"mean+std", mem_mean + math.fabs((memMax-mem_mean)/2),"memMax",memMax,"advantage",advantage,"prob",(0.1 + 0.85*advantage))
+        return True, 0.1 + 0.85*advantage
     else:
         return False, 0.0000000005
 
