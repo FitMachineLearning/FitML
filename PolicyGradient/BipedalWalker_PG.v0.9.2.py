@@ -35,7 +35,7 @@ num_env_actions = 4
 num_initial_observation = 10
 learning_rate =  0.005
 apLearning_rate = 0.003
-version_name = "Wakler-DSMQ-v20"
+version_name = "Wakler-DSMQ-v91"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -46,7 +46,7 @@ sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 5
+random_every_n = 15
 num_retries = 30
 starting_explore_prob = 0.05
 training_epochs = 3
@@ -61,7 +61,7 @@ num_games_to_play = 160000
 max_steps = 500
 
 #Selective memory settings
-sm_normalizer = 490
+sm_normalizer = 290
 sm_memory_size = 10500
 
 
@@ -97,7 +97,7 @@ def custom_error(y_true, y_pred, Qsa):
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 Qmodel.add(Dense(1024*1, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Dropout(0.1))
+Qmodel.add(Dropout(0.2))
 Qmodel.add(Dense(512, activation='relu'))
 Qmodel.add(Dropout(0.1))
 Qmodel.add(Dense(256, activation='relu'))
@@ -120,7 +120,7 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
-#action_predictor_model.add(Dropout(0.2))
+action_predictor_model.add(Dropout(0.2))
 action_predictor_model.add(Dense(512, activation='relu'))
 action_predictor_model.add(Dropout(0.1))
 action_predictor_model.add(Dense(256, activation='relu'))
@@ -215,7 +215,7 @@ def addToMemory(reward,stepReward,memMax,averegeReward,gameAverage):
     #diff = reward - ((averegeReward+memMax)/2)
     diff = reward - stepReward
     gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
-    prob = 0.00005
+    prob = 0.00000005
 
     if gameFactor<0:
         gameFactor = 0.05
@@ -315,13 +315,13 @@ if observe_and_train:
                 gameS[0] = qs
                 gameR[0] = np.array([r])
                 gameA[0] = np.array([r])
-                gameW[0] =  np.array([0.0005])
+                gameW[0] =  np.array([0.000000005])
             else:
                 gameSA= np.vstack((gameSA, qs_a))
                 gameS= np.vstack((gameS, qs))
                 gameR = np.vstack((gameR, np.array([r])))
                 gameA = np.vstack((gameA, np.array([a])))
-                gameW = np.vstack((gameW, np.array([0.0005])))
+                gameW = np.vstack((gameW, np.array([0.000000005])))
 
             if step > max_steps:
                 done = True
@@ -379,13 +379,13 @@ if observe_and_train:
                 for i in range(0,gameR.shape[0]):
                     pr = predictTotalRewards(gameS[i],gameA[i])
                     if pr <0:
-                        pr=0.000005
+                        pr=0.000000000005
                     #print ("pr",pr)
 
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                     if game >3:
-                        atm,add_prob = addToMemory(gameR[i][0], pr,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0])
+                        atm,add_prob = addToMemory(gameR[i][0], memoryR.mean(axis=0)[0],memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0])
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameS = np.vstack((tempGameS,gameS[i]))
                         tempGameRR = np.vstack((tempGameRR,gameR[i]))
