@@ -46,7 +46,7 @@ sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 50
+random_every_n = 5
 num_retries = 30
 starting_explore_prob = 0.05
 training_epochs = 3
@@ -61,7 +61,7 @@ num_games_to_play = 160000
 max_steps = 500
 
 #Selective memory settings
-sm_normalizer = 990
+sm_normalizer = 490
 sm_memory_size = 10500
 
 
@@ -385,7 +385,7 @@ if observe_and_train:
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                     if game >3:
-                        atm,add_prob = addToMemory(gameR[i][0], memoryR.mean(axis=0)[0],memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0])
+                        atm,add_prob = addToMemory(gameR[i][0], pr,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0])
                         tempGameA = np.vstack((tempGameA,gameA[i]))
                         tempGameS = np.vstack((tempGameS,gameS[i]))
                         tempGameRR = np.vstack((tempGameRR,gameR[i]))
@@ -461,7 +461,7 @@ if observe_and_train:
                     Qmodel.fit(tSA,tR, batch_size=mini_batch,epochs=training_epochs,verbose=0)
 
                     #training action predictor model
-                    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, epochs=training_epochs,verbose=0)
+                    #action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, epochs=training_epochs,verbose=0)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0 and game >35:
