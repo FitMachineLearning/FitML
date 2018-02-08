@@ -46,7 +46,8 @@ sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 2000000
 experience_replay_size = 10000
-random_every_n = 5
+random_every_n = 50
+num_retries = 30
 starting_explore_prob = 0.05
 training_epochs = 3
 mini_batch = 512
@@ -57,11 +58,11 @@ save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
 num_games_to_play = 160000
-max_steps = 300
+max_steps = 500
 
 #Selective memory settings
-sm_normalizer = 490
-sm_memory_size = 150
+sm_normalizer = 990
+sm_memory_size = 10500
 
 
 #One hot encoding array
@@ -177,6 +178,8 @@ if load_memory_arrays:
         memoryS = np.load(version_name+'memoryS.npy')
         memoryA = np.load(version_name+'memoryA.npy')
         memoryR = np.load(version_name+'memoryR.npy')
+        memoryW = np.load(version_name+'memoryW.npy')
+
     else:
         print("No memory Files. Recreating")
 
@@ -278,9 +281,9 @@ if observe_and_train:
                     #Get Remembered optiomal policy
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
 
-                    stock = np.zeros(15)
-                    stockAction = np.zeros(shape=(15,num_env_actions))
-                    for i in range(15):
+                    stock = np.zeros(num_retries)
+                    stockAction = np.zeros(shape=(num_retries,num_env_actions))
+                    for i in range(num_retries):
                         stockAction[i] = env.action_space.sample()
                         stock[i] = predictTotalRewards(qs,stockAction[i])
                     best_index = np.argmax(stock)
@@ -375,6 +378,10 @@ if observe_and_train:
                 #print("memoryR average", memoryR.mean(axis=0)[0])
                 for i in range(0,gameR.shape[0]):
                     pr = predictTotalRewards(gameS[i],gameA[i])
+                    if pr <0:
+                        pr=0.000005
+                    #print ("pr",pr)
+
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                     if game >3:
@@ -389,7 +396,7 @@ if observe_and_train:
                     tX = (tempGameS)
                     tY = (tempGameA)
                     tW = (tempGameW)
-                    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+                    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, epochs=training_epochs,verbose=0)
 
 
 
@@ -451,10 +458,10 @@ if observe_and_train:
                     tR = tR[train_Q,:]
                     tSA = tSA[train_Q,:]
                     #training Reward predictor model
-                    Qmodel.fit(tSA,tR, batch_size=mini_batch,nb_epoch=training_epochs,verbose=0)
+                    Qmodel.fit(tSA,tR, batch_size=mini_batch,epochs=training_epochs,verbose=0)
 
                     #training action predictor model
-                    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+                    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, epochs=training_epochs,verbose=0)
 
             if done and game >= num_initial_observation:
                 if save_weights and game%20 == 0 and game >35:
@@ -469,6 +476,8 @@ if observe_and_train:
                     np.save(version_name+'memoryS.npy',memoryS)
                     np.save(version_name+'memoryA.npy',memoryA)
                     np.save(version_name+'memoryR.npy',memoryR)
+                    np.save(version_name+'memoryW.npy',memoryW)
+
 
 
 
