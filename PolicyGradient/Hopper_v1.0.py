@@ -1,6 +1,6 @@
 
 '''
-Hopper with Selective Memory Algorithm and Policy Gradien
+Hopper with Selective Memory Algorithm
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
@@ -296,7 +296,7 @@ if observe_and_train:
             s,r,done,info = env.step(a)
             #record only the first x number of states
 
-            if done and step<1000:
+            if done and step<max_steps:
                 r = -100
 
             if step ==0:
