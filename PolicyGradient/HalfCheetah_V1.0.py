@@ -37,7 +37,7 @@ num_env_actions = 6
 num_initial_observation = 60
 learning_rate =  0.003
 apLearning_rate = 0.002
-version_name = "HalfCheetah2D-DSMQ-v915_3xRetries_RewardHack_3of4Target_w_PR_apLR_W_gameAdv_2048_rand"
+version_name = "HalfCheetah2D-DSMQ-v915_3xRetries_RewardHack_3of4Target_w_PR_apLR_W_gameAdv_2048"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -45,23 +45,23 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.992
+b_discount = 0.99
 max_memory_len = 200000
-experience_replay_size = 10000
+experience_replay_size = 30000
 random_every_n = 500
-num_retries = 30
-starting_explore_prob = 0.05
+num_retries = 15
+starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = True
+load_memory_arrays = False
 do_training = True
 num_games_to_play = 20600
 random_num_games_to_play = num_games_to_play/4
-max_steps = 999
+max_steps = 300
 
 #Selective memory settings
 sm_normalizer = 20
@@ -384,10 +384,10 @@ if observe_and_train:
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                     if game >3:
-                        if np.alen(memoryR) > 2000:
-                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:2000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
+                        if np.alen(memoryR) > 1000:
+                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:1000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
                         else:
-                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:2000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
+                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:1000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
                         if add_prob < 0:
                             add_prob = 0.000000005
                         #print("add_prob",add_prob)
@@ -492,10 +492,10 @@ if observe_and_train:
 
 
             if done:
-                if game%100==0:
+                if game%25==0:
                     print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"percent AP picks", mAP_Counts/step*100 ,"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
 
-                if game%50 ==0 and np.alen(memoryR)>1000:
+                if game%25 ==0 and np.alen(memoryR)>1000:
                     mGames.append(game)
                     mSteps.append(step/1000*100)
                     mAPPicks.append(mAP_Counts/step*100)
