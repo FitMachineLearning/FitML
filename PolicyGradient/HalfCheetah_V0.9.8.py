@@ -1,6 +1,6 @@
 
 '''
-HalfCheetah with Selective Memory Algorithm
+Hopper with Selective Memory Algorithm
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
@@ -16,7 +16,7 @@ Adagrad
 import numpy as np
 import keras
 import gym
-import pybullet
+import pybullet as pb
 import pybullet_envs
 import pygal
 import os
@@ -34,10 +34,10 @@ from keras import optimizers
 
 num_env_variables = 26
 num_env_actions = 6
-num_initial_observation = 50
-learning_rate =  0.005
-apLearning_rate = 0.003
-version_name = "HalfCheetah-DSMQ-v916"
+num_initial_observation = 60
+learning_rate =  0.003
+apLearning_rate = 0.002
+version_name = "HalfCheetah2D-DSMQ-v915_3xRetries_RewardHack_3of4Target_w_PR_apLR_W_gameAdv_2048_rand"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -45,8 +45,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.98
-max_memory_len = 2000000
+b_discount = 0.992
+max_memory_len = 200000
 experience_replay_size = 10000
 random_every_n = 500
 num_retries = 30
@@ -59,7 +59,8 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = True
 do_training = True
-num_games_to_play = 160000
+num_games_to_play = 20600
+random_num_games_to_play = num_games_to_play/4
 max_steps = 999
 
 #Selective memory settings
@@ -73,6 +74,8 @@ actions_1_hot = np.zeros((num_env_actions,num_env_actions))
 actions_1_hot[np.arange(num_env_actions),possible_actions] = 1
 
 #Create testing enviroment
+#pb.connect(pb.GUI)
+
 env = gym.make('HalfCheetahBulletEnv-v0')
 env.render(mode="human")
 env.reset()
@@ -98,12 +101,12 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(1024*1, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(512, activation='relu'))
-Qmodel.add(Dropout(0.1))
-Qmodel.add(Dense(256, activation='relu'))
-Qmodel.add(Dropout(0.1))
+Qmodel.add(Dense(1024*2, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dropout(0.5))
+#Qmodel.add(Dense(512*2, activation='relu'))
+#Qmodel.add(Dropout(0.1))
+#Qmodel.add(Dense(256*2, activation='relu'))
+#Qmodel.add(Dropout(0.1))
 #Qmodel.add(Dense(1024, activation='relu'))
 #Qmodel.add(Dropout(0.2))
 #Qmodel.add(Dense(512, activation='relu'))
@@ -112,8 +115,8 @@ Qmodel.add(Dropout(0.1))
 #Qmodel.add(Dropout(0.2))
 
 Qmodel.add(Dense(dataY.shape[1]))
-#opt = optimizers.adam(lr=learning_rate)
-opt = optimizers.Adagrad()
+opt = optimizers.adam(lr=learning_rate)
+opt = optimizers.RMSprop()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -121,12 +124,12 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
-action_predictor_model.add(Dropout(0.2))
-action_predictor_model.add(Dense(512, activation='relu'))
-action_predictor_model.add(Dropout(0.1))
-action_predictor_model.add(Dense(256, activation='relu'))
-action_predictor_model.add(Dropout(0.1))
+action_predictor_model.add(Dense(1024*2, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dropout(0.5))
+#action_predictor_model.add(Dense(512*2, activation='relu'))
+#action_predictor_model.add(Dropout(0.1))
+#action_predictor_model.add(Dense(256*2, activation='relu'))
+#action_predictor_model.add(Dropout(0.1))
 #action_predictor_model.add(Dense(1024, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
 #action_predictor_model.add(Dense(512, activation='relu'))
@@ -135,8 +138,8 @@ action_predictor_model.add(Dropout(0.1))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
-#opt2 = optimizers.adam(lr=apLearning_rate)
-opt2 = optimizers.Adagrad()
+opt2 = optimizers.adam(lr=apLearning_rate)
+#opt2 = optimizers.RMSprop()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -218,13 +221,16 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #diff = reward - stepReward
     #gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
     target = mem_mean + math.fabs((memMax-mem_mean)/2)
-    d_std_max = math.fabs(memMax-target)
-    d_std_reward = math.fabs(reward-target)
-    advantage = d_std_reward / d_std_max
+    d_target_max = math.fabs(memMax-target)
+    d_target_reward = math.fabs(reward-target)
+    advantage = d_target_reward / d_target_max
+    gameAdvantage = math.fabs((averegeReward-gameAverage)/(averegeReward-memMax))
     prob = 0.00000005
-    if reward > mem_mean + math.fabs((memMax-mem_mean)/2):
-        #print("reward", reward,"mean+std", mem_mean + math.fabs((memMax-mem_mean)/2),"memMax",memMax,"advantage",advantage,"prob",(0.1 + 0.85*advantage))
-        return True, 0.1 + 0.85*advantage
+    if gameAdvantage < 0.1:
+        gameAdvantage = 0.0000000005
+    if reward > target:
+        #print("reward", reward,"target", mem_mean ,"memMax",memMax,"advantage",advantage,"prob",(0.1 + 0.85*advantage*gameAdvantage),"gameAverage",gameAverage,"gameAdvantage",gameAdvantage)
+        return True, 0.0000000005 + (1-0.0000000005)*advantage*gameAdvantage
     else:
         return False, 0.0000000005
 
@@ -256,8 +262,10 @@ if observe_and_train:
                 a = env.action_space.sample()
             else:
                 prob = np.random.rand(1)
-                explore_prob = starting_explore_prob-(starting_explore_prob/num_games_to_play)*game
+                explore_prob = starting_explore_prob-(starting_explore_prob/random_num_games_to_play)*game
 
+                if game > random_num_games_to_play:
+                    prob = 0.000001
                 #Chose between prediction and chance
                 if prob < explore_prob or game%random_every_n==1:
                     #take a random action
@@ -285,7 +293,9 @@ if observe_and_train:
                     else:
                         a = randaction
                         #print(" - selecting generated optimal policy ",a)
+
                     #a = remembered_optimal_policy
+
 
 
 
@@ -296,10 +306,8 @@ if observe_and_train:
             s,r,done,info = env.step(a)
             #record only the first x number of states
 
-            if done and step<(max_steps-3):
-                r = -100
-            #if done:
-            #    print("Game ended at step ",step, "reward",r)
+            if done and step<max_steps-3:
+                r = -50
 
             if step ==0:
                 gameSA[0] = qs_a
@@ -377,9 +385,9 @@ if observe_and_train:
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                     if game >3:
                         if np.alen(memoryR) > 2000:
-                            atm,add_prob = addToMemory(gameR[i][0], memoryR[:2000].mean(axis=0)[0],memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
+                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:2000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
                         else:
-                            atm,add_prob = addToMemory(gameR[i][0], memoryR.mean(axis=0)[0],memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
+                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:2000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
                         if add_prob < 0:
                             add_prob = 0.000000005
                         #print("add_prob",add_prob)
@@ -432,8 +440,13 @@ if observe_and_train:
 
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation  and do_training and game >= 5:
-                if game%2 == 0:
-                    if game%25 == 0:
+                if game%5 == 0:
+                    '''
+                    NOT TRAINING CRITIC
+                    NOT TRAINING CRITIC
+                    '''
+
+                    if game%25 == -1:
                         print("Training  game# ", game,"momory size", memorySA.shape[0])
 
 
@@ -479,14 +492,14 @@ if observe_and_train:
 
 
             if done:
-                if game%2==0:
+                if game%100==0:
                     print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"percent AP picks", mAP_Counts/step*100 ,"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
 
-                if game%2 ==0 and np.alen(memoryR)>1000:
+                if game%50 ==0 and np.alen(memoryR)>1000:
                     mGames.append(game)
                     mSteps.append(step/1000*100)
                     mAPPicks.append(mAP_Counts/step*100)
-                    mAverageScores.append(max(memoryR[:-1000].mean(), -40)/60*100)
+                    mAverageScores.append(max(memoryR[:-1000].mean(), -60)/60*100)
                     bar_chart = pygal.HorizontalLine()
                     bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                     bar_chart.add('Average score', mAverageScores)  # Add some values
