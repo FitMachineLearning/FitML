@@ -37,7 +37,7 @@ num_env_actions = 6
 num_initial_observation = 60
 learning_rate =  0.003
 apLearning_rate = 0.002
-version_name = "HalfCheetah2D-DSMQ-v915_3xRetries_RewardHack_3of4Target_w_PR_apLR_W_gameAdv_2048"
+version_name = "HalfCheetah2D-DSM-v1_256x4_RMSProp"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -47,7 +47,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 200000
-experience_replay_size = 30000
+experience_replay_size = 10000
 random_every_n = 500
 num_retries = 15
 starting_explore_prob = 0.15
@@ -101,21 +101,21 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(1024*2, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(256, activation='tanh', input_dim=dataX.shape[1]))
 Qmodel.add(Dropout(0.5))
-#Qmodel.add(Dense(512*2, activation='relu'))
-#Qmodel.add(Dropout(0.1))
-#Qmodel.add(Dense(256*2, activation='relu'))
-#Qmodel.add(Dropout(0.1))
-#Qmodel.add(Dense(1024, activation='relu'))
-#Qmodel.add(Dropout(0.2))
+Qmodel.add(Dense(256, activation='relu'))
+Qmodel.add(Dropout(0.5))
+Qmodel.add(Dense(256, activation='tanh'))
+Qmodel.add(Dropout(0.5))
+Qmodel.add(Dense(256, activation='relu'))
+Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dense(512, activation='relu'))
 #Qmodel.add(Dropout(0.2))
 #Qmodel.add(Dense(256, activation='relu'))
 #Qmodel.add(Dropout(0.2))
 
 Qmodel.add(Dense(dataY.shape[1]))
-opt = optimizers.adam(lr=learning_rate)
+#opt = optimizers.adam(lr=learning_rate)
 opt = optimizers.RMSprop()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
@@ -124,22 +124,22 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(1024*2, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(256, activation='tanh', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dropout(0.5))
-#action_predictor_model.add(Dense(512*2, activation='relu'))
-#action_predictor_model.add(Dropout(0.1))
-#action_predictor_model.add(Dense(256*2, activation='relu'))
-#action_predictor_model.add(Dropout(0.1))
-#action_predictor_model.add(Dense(1024, activation='relu'))
-#action_predictor_model.add(Dropout(0.2))
+action_predictor_model.add(Dense(256, activation='relu'))
+action_predictor_model.add(Dropout(0.5))
+action_predictor_model.add(Dense(256, activation='tanh'))
+action_predictor_model.add(Dropout(0.5))
+action_predictor_model.add(Dense(256, activation='relu'))
+action_predictor_model.add(Dropout(0.5))
 #action_predictor_model.add(Dense(512, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
 #action_predictor_model.add(Dense(64*8, activation='relu'))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
-opt2 = optimizers.adam(lr=apLearning_rate)
-#opt2 = optimizers.RMSprop()
+#opt2 = optimizers.adam(lr=apLearning_rate)
+opt2 = optimizers.RMSprop()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
