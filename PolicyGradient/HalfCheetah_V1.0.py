@@ -115,8 +115,8 @@ Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dropout(0.2))
 
 Qmodel.add(Dense(dataY.shape[1]))
-#opt = optimizers.adam(lr=learning_rate)
-opt = optimizers.RMSprop()
+opt = optimizers.adam(lr=learning_rate)
+#opt = optimizers.RMSprop()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -138,8 +138,8 @@ action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
-#opt2 = optimizers.adam(lr=apLearning_rate)
-opt2 = optimizers.RMSprop()
+opt2 = optimizers.adam(lr=apLearning_rate)
+#opt2 = optimizers.RMSprop()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
