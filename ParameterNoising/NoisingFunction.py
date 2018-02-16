@@ -12,7 +12,6 @@ from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.layers import Embedding
-from keras.layers import LSTM
 from keras import optimizers
 
 
@@ -21,7 +20,7 @@ Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 Qmodel.add(Dense(32, activation='relu', input_dim=1))
 Qmodel.add(Dropout(0.5))
-#Qmodel.add(Dense(256, activation='relu'))
+Qmodel.add(Dense(2, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dense(256, activation='tanh'))
 #Qmodel.add(Dropout(0.5))
@@ -46,14 +45,16 @@ def add_noise(mu):
 
 add_noise = np.vectorize(add_noise,otypes=[np.float])
 
-for layer in Qmodel.layers:
-    #g=layer.get_config()
-    h=layer.get_weights()
-    #print (g)
-    if np.alen(h)>0:
+def add_noise_to_model(model_to_scramble):
+    sz = len(model_to_scramble.layers)
+    for k in range(sz):
+        w = model_to_scramble.layers[k].get_weights()
+        print("w ==>",w)
+        if np.alen(w) >0:
+            w[0] = add_noise(w[0])
+            print("w / noise ==>",w)
+        model_to_scramble.layers[k].set_weights(w )
 
-        print ("Layer ==>",h[0])
 
-        print ("Layer ==> with noise",add_noise(h[0]))
 
 print("end")
