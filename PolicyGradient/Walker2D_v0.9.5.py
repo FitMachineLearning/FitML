@@ -1,16 +1,16 @@
 
 '''
-Walker with Selective Memory Algorithm
+Hopper with Selective Memory Algorithm
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
-Smaller network
+Deep Network
 Using Q as feature dicriminator
-Added Game Advantage
-Smaller learning rate
-Smaller replay memory
 
+Adagrad
+0.99 delta
+0.1 dropout
 
 '''
 import numpy as np
@@ -32,12 +32,12 @@ from keras.layers import LSTM
 from keras import optimizers
 
 
-num_env_variables = 26
+num_env_variables = 22
 num_env_actions = 6
-num_initial_observation = 60
+num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.002
-version_name = "HalfCheetah2D-DSMQ-v915_3xRetries_RewardHack_3of4Target_w_PR_apLR_W_gameAdv_2048_rand"
+version_name = "Walker_0.9.2"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -45,12 +45,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.992
+b_discount = 0.99
 max_memory_len = 200000
-experience_replay_size = 10000
+experience_replay_size = 20000
 random_every_n = 500
-num_retries = 30
-starting_explore_prob = 0.05
+num_retries = 15
+starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
 load_previous_weights = True
@@ -59,7 +59,7 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = True
 do_training = True
-num_games_to_play = 20600
+num_games_to_play = 206000
 random_num_games_to_play = num_games_to_play/4
 max_steps = 999
 
@@ -76,7 +76,7 @@ actions_1_hot[np.arange(num_env_actions),possible_actions] = 1
 #Create testing enviroment
 #pb.connect(pb.GUI)
 
-env = gym.make('HalfCheetahBulletEnv-v0')
+env = gym.make('Walker2DBulletEnv-v0')
 env.render(mode="human")
 env.reset()
 
@@ -101,14 +101,14 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(1024*2, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(512, activation='relu', input_dim=dataX.shape[1]))
 Qmodel.add(Dropout(0.5))
-#Qmodel.add(Dense(512*2, activation='relu'))
-#Qmodel.add(Dropout(0.1))
-#Qmodel.add(Dense(256*2, activation='relu'))
-#Qmodel.add(Dropout(0.1))
-#Qmodel.add(Dense(1024, activation='relu'))
-#Qmodel.add(Dropout(0.2))
+#Qmodel.add(Dense(256, activation='relu'))
+#Qmodel.add(Dropout(0.5))
+#Qmodel.add(Dense(256, activation='tanh'))
+#Qmodel.add(Dropout(0.5))
+#Qmodel.add(Dense(256, activation='relu'))
+#Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dense(512, activation='relu'))
 #Qmodel.add(Dropout(0.2))
 #Qmodel.add(Dense(256, activation='relu'))
@@ -116,7 +116,7 @@ Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.adam(lr=learning_rate)
-opt = optimizers.RMSprop()
+#opt = optimizers.RMSprop()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -124,14 +124,14 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(1024*2, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(256, activation='relu', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dropout(0.5))
-#action_predictor_model.add(Dense(512*2, activation='relu'))
-#action_predictor_model.add(Dropout(0.1))
-#action_predictor_model.add(Dense(256*2, activation='relu'))
-#action_predictor_model.add(Dropout(0.1))
-#action_predictor_model.add(Dense(1024, activation='relu'))
-#action_predictor_model.add(Dropout(0.2))
+#action_predictor_model.add(Dense(256, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
+#action_predictor_model.add(Dense(256, activation='tanh'))
+#action_predictor_model.add(Dropout(0.5))
+#action_predictor_model.add(Dense(256, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
 #action_predictor_model.add(Dense(512, activation='relu'))
 #action_predictor_model.add(Dropout(0.2))
 #action_predictor_model.add(Dense(64*8, activation='relu'))
@@ -228,6 +228,8 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     prob = 0.00000005
     if gameAdvantage < 0.1:
         gameAdvantage = 0.0000000005
+    if gameAverage < averegeReward:
+        return False, 0.0000000005
     if reward > target:
         #print("reward", reward,"target", mem_mean ,"memMax",memMax,"advantage",advantage,"prob",(0.1 + 0.85*advantage*gameAdvantage),"gameAverage",gameAverage,"gameAdvantage",gameAdvantage)
         return True, 0.0000000005 + (1-0.0000000005)*advantage*gameAdvantage
@@ -384,10 +386,10 @@ if observe_and_train:
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
                     if game >3:
-                        if np.alen(memoryR) > 2000:
-                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:2000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
+                        if np.alen(memoryR) > 1000:
+                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:1000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
                         else:
-                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:2000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
+                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:1000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
                         if add_prob < 0:
                             add_prob = 0.000000005
                         #print("add_prob",add_prob)
@@ -492,10 +494,10 @@ if observe_and_train:
 
 
             if done:
-                if game%100==0:
+                if game%25==0:
                     print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"percent AP picks", mAP_Counts/step*100 ,"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
 
-                if game%50 ==0 and np.alen(memoryR)>1000:
+                if game%25 ==0 and np.alen(memoryR)>1000:
                     mGames.append(game)
                     mSteps.append(step/1000*100)
                     mAPPicks.append(mAP_Counts/step*100)
