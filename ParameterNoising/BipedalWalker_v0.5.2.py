@@ -45,8 +45,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 2000000
-experience_replay_size = 40000
+max_memory_len = 200000
+experience_replay_size = 20000
 random_every_n = 500
 num_retries = 15
 starting_explore_prob = 0.08
@@ -199,9 +199,10 @@ mAPPicks = []
 # --- Parameter Noising
 def add_noise(mu):
     sig = 1
-    if last_game_average > memoryR.mean():
+    if memoryR[-4000:].mean() > memoryR.mean():
         sig = 0.02
     else:
+        print("Adding Large parameter noise")
         sig = 0.2 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
@@ -260,7 +261,7 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #diff = reward - ((averegeReward+memMax)/2)
     #diff = reward - stepReward
     #gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
-    target = mem_mean #+ math.fabs((memMax-mem_mean)/2)
+    target = mem_mean + math.fabs((memMax-mem_mean)/2)
     d_target_max = math.fabs(memMax-target)
     d_target_reward = math.fabs(reward-target)
     advantage = d_target_reward / d_target_max
@@ -580,13 +581,13 @@ if observe_and_train:
             if done:
                 last_game_average = gameR.mean()
                 if game%1==0:
-                    print("Training Game #",game,"last everage",memoryR.mean(),"percent AP picks", mAP_Counts/step*100 ,"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
+                    print("Training Game #",game,"last everage",memoryR.mean(),"last 4000 mean",memoryR[-4000:].mean(),"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
 
                 if game%5 ==0 and np.alen(memoryR)>1000:
                     mGames.append(game)
                     mSteps.append(step/1000*100)
                     mAPPicks.append(mAP_Counts/step*100)
-                    mAverageScores.append(max(memoryR.mean(), -60)/60*100)
+                    mAverageScores.append(max(memoryR[-10000:].mean(), -60)/60*100)
                     bar_chart = pygal.HorizontalLine()
                     bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                     bar_chart.add('Average score', mAverageScores)  # Add some values
