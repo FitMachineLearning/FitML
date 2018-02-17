@@ -33,7 +33,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 10
+num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.002
 version_name = "BPWalker_PN_0.5.0"
@@ -49,23 +49,24 @@ max_memory_len = 2000000
 experience_replay_size = 40000
 random_every_n = 500
 num_retries = 15
-starting_explore_prob = 0.005
+starting_explore_prob = 0.08
 training_epochs = 3
 mini_batch = 512
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = False
+load_memory_arrays = True
 do_training = True
-num_games_to_play = 600
-random_num_games_to_play = num_games_to_play/8
-max_steps = 400
+num_games_to_play = 5000
+random_num_games_to_play = num_games_to_play/3
+max_steps = 3000
 
 #Selective memory settings
 sm_normalizer = 20
 sm_memory_size = 10500
 
+last_game_average = -1000
 
 #One hot encoding array
 possible_actions = np.arange(0,num_env_actions)
@@ -197,7 +198,11 @@ mAPPicks = []
 
 # --- Parameter Noising
 def add_noise(mu):
-    sig = 4 #Sigma = width of the standard deviaion
+    sig = 1
+    if last_game_average > memoryR.mean():
+        sig = 0.02
+    else:
+        sig = 0.2 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -206,17 +211,28 @@ def add_noise(mu):
     else:
         return mu - np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-add_noise = np.vectorize(add_noise,otypes=[np.float])
+# --- Parameter Noising
+def add_noise_simple(mu):
+    x =   np.random.rand(1) - 0.5 #probability of doing x
+    if last_game_average > memoryR.mean():
+        x = x / 10
+    else:
+        x = x / 3 #Sigma = width of the standard deviaion
+    return mu + x
 
-def add_noise_to_model(model_to_scramble):
-    print("Adding Noise to actor")
-    sz = len(model_to_scramble.layers)
+
+add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
+
+def add_noise_to_model():
+    #print("Adding Noise to actor")
+    sz = len(action_predictor_model.layers)
     for k in range(sz):
-        w = model_to_scramble.layers[k].get_weights()
+        w = action_predictor_model.layers[k].get_weights()
+        #print("w ==>", w)
         if np.alen(w) >0:
-            w[0] = add_noise(w[0])
-            print("w / noise ==>",w)
-        model_to_scramble.layers[k].set_weights(w )
+            w[0] = add_noise_simple(w[0])
+            #print("w / noise ==>",w)
+        action_predictor_model.layers[k].set_weights(w)
 
 # --- Parameter Noising
 
@@ -244,21 +260,49 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #diff = reward - ((averegeReward+memMax)/2)
     #diff = reward - stepReward
     #gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
-    target = mem_mean + math.fabs((memMax-mem_mean)/2)
+    target = mem_mean #+ math.fabs((memMax-mem_mean)/2)
     d_target_max = math.fabs(memMax-target)
     d_target_reward = math.fabs(reward-target)
     advantage = d_target_reward / d_target_max
     gameAdvantage = math.fabs((averegeReward-gameAverage)/(averegeReward-memMax))
-    prob = 0.00000005
-    if gameAdvantage < 0.1:
-        gameAdvantage = 0.0000000005
+    prob = 0.000000000000005
+    if gameAdvantage < 0.05:
+        gameAdvantage = 0.000000000000005
     #if gameAverage < averegeReward:
     #    return False, 0.0000000005
     if reward > target:
         #print("reward", reward,"target", mem_mean ,"memMax",memMax,"advantage",advantage,"prob",(0.1 + 0.85*advantage*gameAdvantage),"gameAverage",gameAverage,"gameAdvantage",gameAdvantage)
         return True, 0.0000000005 + (1-0.0000000005)*advantage #*gameAdvantage
     else:
-        return False, 0.0000000005
+        return False, 0.000000000000005
+
+
+def actor_experience_replay():
+    tSA = (memorySA)
+    tR = (memoryR)
+    tX = (memoryS)
+    tY = (memoryA)
+    tW = (memoryW)
+    #sw = (memoryAdv)
+    #train_Q = np.random.randint(tR.shape[0],size=experience_replay_size)
+    train_A = np.random.randint(tY.shape[0],size=int(experience_replay_size/3))
+
+
+    tX = tX[train_A,:]
+    tY = tY[train_A,:]
+    tW = tW[train_A,:]
+    #sw = sw[train_idx,:]
+    tR = tR[train_A,:]
+    #tSA = tSA[train_Q,:]
+    #print("tR[i][0]",tR[0][0])
+    #reward,mem_mean,memMax,averegeReward,gameAverage,mstd
+    for i in range( np.alen(tW)):
+        v,w = addToMemory(tR[i][0],predictTotalRewards(tX[i],tY[i]),memoryR.max(),memoryR.mean(),memoryR.mean(),0)
+        tW[i][0] = w
+        #print("R[i]", tR[i][0],"w",w,"max",memoryR.max(),"memMean",memoryR.mean())
+
+    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*15,verbose=0)
+    #print("tW",tW)
 
 
 
@@ -279,8 +323,8 @@ if observe_and_train:
 
 
         #Add noise to Actor
-        if game > num_initial_observation:
-            add_noise_to_model(action_predictor_model)
+        if game > num_initial_observation+4:
+            add_noise_to_model()
 
         for step in range (5000):
 
@@ -412,18 +456,19 @@ if observe_and_train:
 
                     # if you did better than expected then add to memory
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
-                    if game >3:
-                        if np.alen(memoryR) > 1000:
-                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:1000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
-                        else:
-                            atm,add_prob = addToMemory(gameR[i][0], pr, memoryRR.max(),memoryR[:1000].mean(axis=0)[0],gameR.mean(axis=0)[0],np.std(memoryR))
-                        if add_prob < 0:
-                            add_prob = 0.000000005
-                        #print("add_prob",add_prob)
-                        tempGameA = np.vstack((tempGameA,gameA[i]))
-                        tempGameS = np.vstack((tempGameS,gameS[i]))
-                        tempGameRR = np.vstack((tempGameRR,gameR[i]))
-                        tempGameW = np.vstack((tempGameW,add_prob))
+
+                    if np.alen(memoryR) > 1000:
+                        atm,add_prob = addToMemory(gameR[i][0], pr, memoryR.max(),memoryR.mean(),gameR.mean(axis=0)[0],np.std(memoryR))
+                    else:
+                        atm,add_prob = addToMemory(gameR[i][0], pr, memoryR.max(),memoryR.mean(),gameR.mean(axis=0)[0],np.std(memoryR))
+                    if add_prob < 0:
+                        add_prob = 0.000000005
+                    #print("add_prob",add_prob)
+                    tempGameA = np.vstack((tempGameA,gameA[i]))
+                    tempGameS = np.vstack((tempGameS,gameS[i]))
+                    tempGameRR = np.vstack((tempGameRR,gameR[i]))
+                    tempGameW = np.vstack((tempGameW,add_prob))
+
 
                 #train actor network based on last rollout
                 if game>3:
@@ -452,16 +497,28 @@ if observe_and_train:
                     memoryW = np.concatenate((memoryW,tempGameW),axis=0)
 
 
+                    #print ("MR len",np.alen(memoryR))
+                    #print ("MA len",np.alen(memoryA))
+                    #print ("MS len",np.alen(memoryS))
+
+
+                    if game > 3:
+                        actor_experience_replay()
 
                 #if memory is full remove first element
                 if np.alen(memoryR) >= max_memory_len:
                     memorySA = memorySA[gameR.shape[0]:]
                     memoryR = memoryR[gameR.shape[0]:]
-                if np.alen(memoryA) >= sm_memory_size:
-                    memoryA = memoryA[int(sm_memory_size/10):]
-                    memoryS = memoryS[int(sm_memory_size/10):]
-                    memoryRR = memoryRR[int(sm_memory_size/10):]
-                    memoryW = memoryW[int(sm_memory_size/10):]
+                    memoryA = memoryA[gameR.shape[0]:]
+                    memoryS = memoryS[gameR.shape[0]:]
+                    memoryRR = memoryRR[gameR.shape[0]:]
+                    memoryW = memoryW[gameR.shape[0]:]
+
+                #if np.alen(memoryA) >= sm_memory_size:
+                    #memoryA = memoryA[int(sm_memory_size/10):]
+                    #memoryS = memoryS[int(sm_memory_size/10):]
+                    #memoryRR = memoryRR[int(sm_memory_size/10):]
+                    #memoryW = memoryW[int(sm_memory_size/10):]
 
             #Update the states
             qs=s
@@ -521,14 +578,15 @@ if observe_and_train:
 
 
             if done:
+                last_game_average = gameR.mean()
                 if game%1==0:
-                    print("Training Game #",game,"last everage",memoryR[:-1000].mean(),"percent AP picks", mAP_Counts/step*100 ,"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
+                    print("Training Game #",game,"last everage",memoryR.mean(),"percent AP picks", mAP_Counts/step*100 ,"game mean",gameR.mean(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
 
-                if game%1 ==0 and np.alen(memoryR)>1000:
+                if game%5 ==0 and np.alen(memoryR)>1000:
                     mGames.append(game)
                     mSteps.append(step/1000*100)
                     mAPPicks.append(mAP_Counts/step*100)
-                    mAverageScores.append(max(memoryR[:-1000].mean(), -60)/60*100)
+                    mAverageScores.append(max(memoryR.mean(), -60)/60*100)
                     bar_chart = pygal.HorizontalLine()
                     bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                     bar_chart.add('Average score', mAverageScores)  # Add some values
