@@ -19,7 +19,7 @@ Bipedal Walker is an <a href="https://openai.com/systems/">OpenAI Gym</a> enviro
 So our agent has to learn to balance,walk,run,jump on its own without any human intervention.
 
 ### Why Q-Learning alone doesn't work
-For those acquinted with QLearning, it becomes clear very quickly that we cannot apply a greedy policy here. Simply relying on a Q-value function approximator and polling on non-discrete action space, let along a vector of of continuous action space is simply impossible. In order to overcome this challenge we will the Actor Critic Method where 1 Nerual Network is in charge of approximating how good an action is, and the other learns what to do in any given situation.
+For those acquinted with QLearning, it becomes clear very quickly that we cannot apply a greedy policy here. Simply relying on a Q-value function approximator and polling on non-discrete action space, let alone a vector of continuous action space is simply impractical. In order to overcome this challenge we use the Actor Critic Method where 1 Nerual Network is in charge of approximating how good an action is, and the other learns what to do in any given situation.
 
 Let's see how this is implemented using keras.
 
