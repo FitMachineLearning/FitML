@@ -33,7 +33,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 20
+num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.002
 version_name = "BPWalker_PN_0.5.0"
@@ -52,15 +52,15 @@ num_retries = 15
 starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = False
+load_memory_arrays = True
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 600
+max_steps = 1200
 
 #Selective memory settings
 sm_normalizer = 20
