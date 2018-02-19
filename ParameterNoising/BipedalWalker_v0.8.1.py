@@ -52,11 +52,11 @@ num_retries = 15
 starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = False
+load_memory_arrays = True
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
@@ -140,7 +140,10 @@ action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shap
 action_predictor_model.add(Dense(apdataY.shape[1]))
 
 #opt2 = optimizers.adam(lr=apLearning_rate)
-opt2 = optimizers.RMSprop()
+#opt2 = optimizers.RMSprop()
+
+opt2 = optimizers.Adadelta()
+
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -219,7 +222,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = x / 40
     else:
-        x = x/10  #Sigma = width of the standard deviaion
+        x = x  #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -322,7 +325,7 @@ def actor_experience_replay():
         #if i%1000==0 :
         #    print("R[i]", tR[i][0],"pr",pr,"w",w,"max_game_average",max_game_average,"memMean",memoryR.mean(), "addtoMem?",v)
 
-    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*30,verbose=0)
+    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*3,verbose=0)
     #print("tW",tW)
 
 
@@ -344,7 +347,7 @@ if observe_and_train:
         noisy_model = Sequential()
 
         #Add noise to Actor
-        if game > num_initial_observation+4 and game%10==3:
+        if game > num_initial_observation+4 and game%10==6:
             print("Adding Noise")
             noisy_model = add_noise_to_model()
 
@@ -367,7 +370,7 @@ if observe_and_train:
                 else:
 
 
-                    if game > num_initial_observation +4 and game %10 ==3:
+                    if game > num_initial_observation +4 and game %10 ==6:
                         #Get Remembered optiomal policy
                         remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(qs)
                         a = remembered_optimal_policy
