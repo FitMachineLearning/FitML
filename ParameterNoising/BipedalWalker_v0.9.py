@@ -541,7 +541,7 @@ if observe_and_train:
 
 
 
-                    if game > 3 and game %10 ==0:
+                    if game > 3 and game %2 ==0:
                         actor_experience_replay()
 
                 #if memory is full remove first element
