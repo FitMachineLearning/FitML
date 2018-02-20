@@ -222,7 +222,7 @@ def add_noise(mu, largeNoise=False):
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
-        x = x / 40
+        x = x / 100
     else:
         x = x /4  #Sigma = width of the standard deviaion
     return mu + x
@@ -232,12 +232,11 @@ def add_noise_simple(mu, largeNoise=False):
 add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 
 
-def add_noise_to_model():
+def add_noise_to_model(largeNoise = False):
     #noisy_model = keras.models.clone_model(action_predictor_model)
     noisy_model.set_weights(action_predictor_model.get_weights())
     #print("Adding Noise to actor")
     #largeNoise =  last_game_average < memoryR.mean()
-    largeNoise = True
     sz = len(noisy_model.layers)
     if largeNoise:
         print("Setting Large Noise!")
@@ -353,10 +352,13 @@ if observe_and_train:
         noisy_model.set_weights(action_predictor_model.get_weights())
 
         #Add noise to Actor
-        if game > num_initial_observation+4 and game%5==1 and game > num_initial_observation:
-            print("Adding Noise")
+        if game > num_initial_observation+4 :
             is_noisy_game = True
-            noisy_model = add_noise_to_model()
+            print("Adding Noise")
+            if game%5==1:
+                noisy_model = add_noise_to_model(True)
+            else:
+                noisy_model = add_noise_to_model(False)
 
         for step in range (5000):
 
@@ -533,9 +535,6 @@ if observe_and_train:
                     memoryW = np.concatenate((memoryW,tempGameW),axis=0)
 
 
-                    #print ("MR len",np.alen(memoryR))
-                    #print ("MA len",np.alen(memoryA))
-                    #print ("MS len",np.alen(memoryS))
                     if gameR.mean() > max_game_average :
                         max_game_average = gameR.mean()
 
@@ -554,13 +553,7 @@ if observe_and_train:
                     memoryRR = memoryRR[gameR.shape[0]:]
                     memoryW = memoryW[gameR.shape[0]:]
 
-                #if np.alen(memoryA) >= sm_memory_size:
-                    #memoryA = memoryA[int(sm_memory_size/10):]
-                    #memoryS = memoryS[int(sm_memory_size/10):]
-                    #memoryRR = memoryRR[int(sm_memory_size/10):]
-                    #memoryW = memoryW[int(sm_memory_size/10):]
 
-            #Update the states
             qs=s
 
             if done:
@@ -568,7 +561,7 @@ if observe_and_train:
                 if is_noisy_game :
                     if last_game_average > memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean()) /2 ):
                         print("setting noisy_model > apm. Reinforce with apm", last_game_average)
-                        action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*2,verbose=0)
+                        action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*20,verbose=0)
 
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation  and do_training and game >= 5:
