@@ -223,7 +223,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = x / 40
     else:
-        x = x * 2  #Sigma = width of the standard deviaion
+        x = x /3  #Sigma = width of the standard deviaion
     return mu + x
 
 
