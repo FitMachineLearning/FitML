@@ -138,16 +138,17 @@ action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shap
 #action_predictor_model.add(Dense(64*8, activation='relu'))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-
 #opt2 = optimizers.adam(lr=apLearning_rate)
 opt2 = optimizers.RMSprop()
 
-#opt2 = optimizers.Adadelta()
-
-
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
-noisy_model = keras.models.clone_model(action_predictor_model)
+
+#initialize the action predictor model
+noisy_model = Sequential()
+#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
+noisy_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(apdataY.shape[1]))
 noisy_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
 #load previous model weights if they exist
@@ -223,7 +224,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = x / 40
     else:
-        x = x /3  #Sigma = width of the standard deviaion
+        x = x /4  #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -232,7 +233,7 @@ add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 
 
 def add_noise_to_model():
-    noisy_model = keras.models.clone_model(action_predictor_model)
+    #noisy_model = keras.models.clone_model(action_predictor_model)
     noisy_model.set_weights(action_predictor_model.get_weights())
     #print("Adding Noise to actor")
     #largeNoise =  last_game_average < memoryR.mean()
@@ -286,7 +287,7 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #diff = reward - ((averegeReward+memMax)/2)
     #diff = reward - stepReward
     #gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
-    target = mem_mean #+ math.fabs((memMax-mem_mean)/2)
+    target = mem_mean + math.fabs((memMax-mem_mean)/2)
     d_target_max = math.fabs(memMax-target)
     d_target_reward = math.fabs(reward-target)
     advantage = d_target_reward / d_target_max
@@ -329,7 +330,7 @@ def actor_experience_replay():
         #if i%1000==0 :
         #    print("R[i]", tR[i][0],"pr",pr,"w",w,"max_game_average",max_game_average,"memMean",memoryR.mean(), "addtoMem?",v)
 
-    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*5,verbose=0)
     #print("tW",tW)
 
 
@@ -349,7 +350,7 @@ if observe_and_train:
         #print("qs ", qs)
         is_noisy_game = False
 
-        noisy_model = keras.models.clone_model(action_predictor_model)
+        noisy_model.set_weights(action_predictor_model.get_weights())
 
         #Add noise to Actor
         if game > num_initial_observation+4 and game%5==1 and game > num_initial_observation:
@@ -631,7 +632,8 @@ if observe_and_train:
                         #action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
                 if game%1==0:
-                    print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,"last 4000 mean",memoryR[-4000:].mean(),"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
+                    #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
+                    print(" #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max()    ) )
 
                 if game%5 ==0 and np.alen(memoryR)>1000:
                     mGames.append(game)
