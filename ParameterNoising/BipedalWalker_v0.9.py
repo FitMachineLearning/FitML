@@ -60,7 +60,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 600
+max_steps = 2000
 
 #Selective memory settings
 sm_normalizer = 20
@@ -222,9 +222,9 @@ def add_noise(mu, largeNoise=False):
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
-        x = x / 100
+        x = x / 75
     else:
-        x = x /4  #Sigma = width of the standard deviaion
+        x = x /3  #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -238,8 +238,8 @@ def add_noise_to_model(largeNoise = False):
     #print("Adding Noise to actor")
     #largeNoise =  last_game_average < memoryR.mean()
     sz = len(noisy_model.layers)
-    if largeNoise:
-        print("Setting Large Noise!")
+    #if largeNoise:
+    #    print("Setting Large Noise!")
     for k in range(sz):
         w = noisy_model.layers[k].get_weights()
         #print("w ==>", w)
@@ -354,7 +354,7 @@ if observe_and_train:
         #Add noise to Actor
         if game > num_initial_observation+4 :
             is_noisy_game = True
-            print("Adding Noise")
+            #print("Adding Noise")
             if game%5==1:
                 noisy_model = add_noise_to_model(True)
             else:
