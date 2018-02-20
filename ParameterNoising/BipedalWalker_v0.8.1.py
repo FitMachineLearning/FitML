@@ -33,7 +33,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 20
+num_initial_observation = 10
 learning_rate =  0.003
 apLearning_rate = 0.002
 version_name = "BPWalker_PGPN_0.5.0"
@@ -44,23 +44,23 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.992
+b_discount = 0.98
 max_memory_len = 200000
-experience_replay_size = 90000
+experience_replay_size = 10000
 random_every_n = 70
 num_retries = 15
 starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = True
+load_memory_arrays = False
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 1200
+max_steps = 600
 
 #Selective memory settings
 sm_normalizer = 20
@@ -147,7 +147,8 @@ opt2 = optimizers.Adadelta()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
-
+noisy_model = keras.models.clone_model(action_predictor_model)
+noisy_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
 #load previous model weights if they exist
 if load_previous_weights:
@@ -201,13 +202,13 @@ mAP_Counts = 0
 mAPPicks = []
 
 # --- Parameter Noising
-def add_noise(mu):
-    sig = 1
-    if memoryR[-4000:].mean() > memoryR.mean():
-        sig = 0.02
+def add_noise(mu, largeNoise=False):
+
+    if not largeNoise:
+        sig = 0.002
     else:
-        print("Adding Large parameter noise")
-        sig = 0.2 #Sigma = width of the standard deviaion
+        #print("Adding Large parameter noise")
+        sig = 1 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -222,14 +223,17 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = x / 40
     else:
-        x = x  #Sigma = width of the standard deviaion
+        x = x * 1  #Sigma = width of the standard deviaion
     return mu + x
 
 
+#add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
+
 
 def add_noise_to_model():
     noisy_model = keras.models.clone_model(action_predictor_model)
+    noisy_model.set_weights(action_predictor_model.get_weights())
     #print("Adding Noise to actor")
     #largeNoise =  last_game_average < memoryR.mean()
     largeNoise = True
@@ -325,7 +329,7 @@ def actor_experience_replay():
         #if i%1000==0 :
         #    print("R[i]", tR[i][0],"pr",pr,"w",w,"max_game_average",max_game_average,"memMean",memoryR.mean(), "addtoMem?",v)
 
-    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*3,verbose=0)
+    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
     #print("tW",tW)
 
 
@@ -343,12 +347,14 @@ if observe_and_train:
         qs = env.reset()
         mAP_Counts = 0
         #print("qs ", qs)
+        is_noisy_game = False
 
-        noisy_model = Sequential()
+        noisy_model = keras.models.clone_model(action_predictor_model)
 
         #Add noise to Actor
-        if game > num_initial_observation+4 and game%10==6:
+        if game > num_initial_observation+4 and game%3==1 and game > num_initial_observation:
             print("Adding Noise")
+            is_noisy_game = True
             noisy_model = add_noise_to_model()
 
         for step in range (5000):
@@ -370,7 +376,7 @@ if observe_and_train:
                 else:
 
 
-                    if game > num_initial_observation +4 and game %10 ==6:
+                    if is_noisy_game:
                         #Get Remembered optiomal policy
                         remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(qs)
                         a = remembered_optimal_policy
@@ -408,8 +414,8 @@ if observe_and_train:
             s,r,done,info = env.step(a)
             #record only the first x number of states
 
-            if done and step<max_steps-3:
-                r = -100
+            #if done and step<max_steps-3:
+            #    r = -100
 
             if step ==0:
                 gameSA[0] = qs_a
@@ -557,7 +563,7 @@ if observe_and_train:
 
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation  and do_training and game >= 5:
-                if game%2 == 0:
+                if game%5 == 0:
                     '''
                     NOT TRAINING CRITIC
                     NOT TRAINING CRITIC
@@ -610,6 +616,14 @@ if observe_and_train:
 
             if done:
                 last_game_average = gameR.mean()
+
+                if is_noisy_game :
+                    if last_game_average > memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean()) /2 ):
+                        print("setting apm = noisy_model", last_game_average)
+                        #action_predictor_model = keras.models.clone_model(noisy_model)
+                        action_predictor_model.set_weights(noisy_model.get_weights())
+                        #action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
+
                 if game%1==0:
                     print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,"last 4000 mean",memoryR[-4000:].mean(),"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
 
