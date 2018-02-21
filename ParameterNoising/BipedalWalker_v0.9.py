@@ -200,6 +200,7 @@ mGames = []
 mAverageScores = []
 mSteps = []
 mAP_Counts = 0
+num_add_mem = 0
 mAPPicks = []
 
 # --- Parameter Noising
@@ -224,7 +225,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = 0
     else:
-        x = x /50  #Sigma = width of the standard deviaion
+        x = x /5  #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -298,6 +299,7 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #    return False, 0.0000000005
     if reward > target:
         #print("reward", reward,"target", mem_mean ,"memMax",memMax,"advantage",advantage,"prob",(0.1 + 0.85*advantage*gameAdvantage),"gameAverage",gameAverage,"gameAdvantage",gameAdvantage)
+        print(" #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max()    ) )
         return True, 0.0000000005 + (1-0.0000000005)*advantage #*gameAdvantage
     else:
         return False, 0.000000000000005
@@ -346,6 +348,7 @@ if observe_and_train:
         #Get the Q state
         qs = env.reset()
         mAP_Counts = 0
+        num_add_mem = 0
         #print("qs ", qs)
         is_noisy_game = False
 
