@@ -225,7 +225,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = 0
     else:
-        x = x*2   #Sigma = width of the standard deviaion
+        x = x   #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -356,7 +356,7 @@ def actor_experience_replay():
     tY = (memoryA)
     tW = (memoryW)
     train_A = np.arange(np.alen(memoryR))
-    target = memoryR.mean() + ( math.fabs(memoryR.max() - memoryR.mean() )   )/2 #+ ( math.fabs(memoryR.max() - memoryR.mean() )   )/4
+    target = memoryR.mean() + ( math.fabs(memoryR.max() - memoryR.mean() )   )/2 + ( math.fabs(memoryR.max() - memoryR.mean() )   )/4
     train_A = train_A[memoryR.flatten()>target]
 
     tX = tX[train_A,:]
