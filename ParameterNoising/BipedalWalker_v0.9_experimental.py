@@ -33,7 +33,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 0
+num_initial_observation = 5
 learning_rate =  0.003
 apLearning_rate = 0.002
 version_name = "BPWalker_PGPN_0.5.0"
@@ -52,15 +52,15 @@ num_retries = 15
 starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = True
+load_memory_arrays = False
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 3000
+max_steps = 600
 
 #Selective memory settings
 sm_normalizer = 20
@@ -102,7 +102,7 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(2024, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(2048, activation='relu', input_dim=dataX.shape[1]))
 Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dense(256, activation='relu'))
 #Qmodel.add(Dropout(0.5))
@@ -283,6 +283,10 @@ def GetRememberedOptimalPolicyFromNoisyModel(qstate):
     r_remembered_optimal_policy = pred[0]
     return r_remembered_optimal_policy
 
+
+
+
+
 def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #diff = reward - ((averegeReward+memMax)/2)
     #diff = reward - stepReward
@@ -304,7 +308,7 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     else:
         return False, 0.000000000000005
 
-
+'''
 def actor_experience_replay_old():
     tSA = (memorySA)
     tR = (memoryR)
@@ -333,6 +337,17 @@ def actor_experience_replay_old():
 
     action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
     #print("tW",tW)
+'''
+
+def scale_weights(memR,memW):
+    rmax = memR.max()
+    rmin = memR.min()
+    reward_range = math.fabs(rmax - rmin )
+    for i in range(np.alen(memR)):
+        memW[i][0] = math.fabs(memR[i][0]-rmin)/reward_range
+        memW[i][0] = max(memW[i][0],0.1)
+    #print("memW",memW)
+    return memW
 
 def actor_experience_replay():
     tSA = (memorySA)
@@ -340,30 +355,22 @@ def actor_experience_replay():
     tX = (memoryS)
     tY = (memoryA)
     tW = (memoryW)
-    #sw = (memoryAdv)
-    #train_Q = np.random.randint(tR.shape[0],size=experience_replay_size)
     train_A = np.arange(np.alen(memoryR))
-
-    target = memoryR.mean() + ( math.fabs(memoryR.max() - memoryR.mean() )   )/2 + ( math.fabs(memoryR.max() - memoryR.mean() )   )/4
-
+    target = memoryR.mean() + ( math.fabs(memoryR.max() - memoryR.mean() )   )/2 #+ ( math.fabs(memoryR.max() - memoryR.mean() )   )/4
     train_A = train_A[memoryR.flatten()>target]
 
     tX = tX[train_A,:]
     tY = tY[train_A,:]
     tW = tW[train_A,:]
-    #sw = sw[train_idx,:]
     tR = tR[train_A,:]
 
-    #print("target = %8.2f sample size %5d" %(target,train_A.size[0]))
-    print("target ",target," sample size ", np.alen(train_A))
+    tW = scale_weights(tR,tW)
 
-    #print("train_A",train_A)
-    #print("memoryR",memoryR)
+    print("target ",target," sample size ", np.alen(train_A))
 
     #action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
     action_predictor_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
-    #print("tW",tW)
 
 if observe_and_train:
 
@@ -684,9 +691,6 @@ if observe_and_train:
                 '''
                 break
 
-
-plt.plot(mstats)
-plt.show()
 
 if save_weights:
     #Save model
