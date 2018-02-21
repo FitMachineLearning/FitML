@@ -49,7 +49,7 @@ max_memory_len = 200000
 experience_replay_size = 50000
 random_every_n = 70
 num_retries = 15
-starting_explore_prob = 0.25
+starting_explore_prob = 0.45
 training_epochs = 3
 mini_batch = 512
 load_previous_weights = False
@@ -225,7 +225,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = 0
     else:
-        x = x /5  #Sigma = width of the standard deviaion
+        x = x   #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -344,7 +344,7 @@ def actor_experience_replay():
     #train_Q = np.random.randint(tR.shape[0],size=experience_replay_size)
     train_A = np.arange(np.alen(memoryR))
 
-    target = memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean() )   )/2
+    target = memoryR.mean() + ( math.fabs(memoryR.max() - memoryR.mean() )   )/2 + ( math.fabs(memoryR.max() - memoryR.mean() )   )/4
 
     train_A = train_A[memoryR.flatten()>target]
 
@@ -354,11 +354,15 @@ def actor_experience_replay():
     #sw = sw[train_idx,:]
     tR = tR[train_A,:]
 
-    #print("target = ",target)
+    #print("target = %8.2f sample size %5d" %(target,train_A.size[0]))
+    print("target ",target," sample size ", np.alen(train_A))
+
     #print("train_A",train_A)
     #print("memoryR",memoryR)
 
-    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+    #action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+    action_predictor_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+
     #print("tW",tW)
 
 if observe_and_train:
@@ -381,9 +385,10 @@ if observe_and_train:
 
         #Add noise to Actor
         if game > num_initial_observation+4 :
-            is_noisy_game = True
+            is_noisy_game = False
             #print("Adding Noise")
             if game%10==1:
+                is_noisy_game = True
                 noisy_model = add_noise_to_model(True)
             else:
                 noisy_model = add_noise_to_model(False)
