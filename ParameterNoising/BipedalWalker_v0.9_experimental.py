@@ -138,8 +138,8 @@ action_predictor_model.add(Dropout(0.2))
 #action_predictor_model.add(Dense(64*8, activation='relu'))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-#opt2 = optimizers.adam(lr=apLearning_rate)
-opt2 = optimizers.RMSprop()
+opt2 = optimizers.adam(lr=apLearning_rate)
+#opt2 = optimizers.RMSprop()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
