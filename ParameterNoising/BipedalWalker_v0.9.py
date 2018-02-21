@@ -138,8 +138,8 @@ action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shap
 #action_predictor_model.add(Dense(64*8, activation='relu'))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-#opt2 = optimizers.adam(lr=apLearning_rate)
-opt2 = optimizers.RMSprop()
+opt2 = optimizers.adam(lr=apLearning_rate)
+#opt2 = optimizers.RMSprop()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -222,9 +222,9 @@ def add_noise(mu, largeNoise=False):
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
-        x = x / 75
+        x = 0
     else:
-        x = x /3  #Sigma = width of the standard deviaion
+        x = x /50  #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -286,7 +286,7 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #diff = reward - ((averegeReward+memMax)/2)
     #diff = reward - stepReward
     #gameFactor = ((gameAverage-averegeReward)/math.fabs(memMax-averegeReward) )
-    target = mem_mean + math.fabs((memMax-mem_mean)/2)
+    target = mem_mean #+ math.fabs((memMax-mem_mean)/2)
     d_target_max = math.fabs(memMax-target)
     d_target_reward = math.fabs(reward-target)
     advantage = d_target_reward / d_target_max
@@ -329,7 +329,7 @@ def actor_experience_replay():
         #if i%1000==0 :
         #    print("R[i]", tR[i][0],"pr",pr,"w",w,"max_game_average",max_game_average,"memMean",memoryR.mean(), "addtoMem?",v)
 
-    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*5,verbose=0)
+    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
     #print("tW",tW)
 
 
@@ -496,9 +496,9 @@ if observe_and_train:
                     #if game > 3 and addToMemory(gameR[i][0], pr ,memoryRR.max(),memoryR.mean(axis=0)[0],gameR.mean(axis=0)[0]):
 
                     if np.alen(memoryR) > 1000:
-                        atm,add_prob = addToMemory(gameR[i][0], pr, memoryR.max(),memoryR.mean(),gameR.mean(axis=0)[0],np.std(memoryR))
+                        atm,add_prob = addToMemory(gameR[i][0], pr, max_game_average,memoryR.mean(),gameR.mean(axis=0)[0],np.std(memoryR))
                     else:
-                        atm,add_prob = addToMemory(gameR[i][0], pr, memoryR.max(),memoryR.mean(),gameR.mean(axis=0)[0],np.std(memoryR))
+                        atm,add_prob = addToMemory(gameR[i][0], pr, max_game_average,memoryR.mean(),gameR.mean(axis=0)[0],np.std(memoryR))
                     if add_prob < 0:
                         add_prob = 0.000000005
                     #print("add_prob",add_prob)
@@ -561,7 +561,7 @@ if observe_and_train:
                 if is_noisy_game :
                     if last_game_average > memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean()) /2 ):
                         print("setting noisy_model > apm. Reinforce with apm", last_game_average)
-                        action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs*20,verbose=0)
+                        #action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
             #Retrain every X failures after num_initial_observation
             if done and game >= num_initial_observation  and do_training and game >= 5:
