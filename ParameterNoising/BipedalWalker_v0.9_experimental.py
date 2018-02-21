@@ -52,11 +52,11 @@ num_retries = 15
 starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = False
+load_memory_arrays = True
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
@@ -138,8 +138,8 @@ action_predictor_model.add(Dropout(0.2))
 #action_predictor_model.add(Dense(64*8, activation='relu'))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-opt2 = optimizers.adam(lr=apLearning_rate)
-#opt2 = optimizers.RMSprop()
+#opt2 = optimizers.adam(lr=apLearning_rate)
+opt2 = optimizers.RMSprop()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -225,7 +225,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = 0
     else:
-        x = x   #Sigma = width of the standard deviaion
+        x = x *1.5   #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -692,6 +692,8 @@ if observe_and_train:
                 break
 
 
+plt.plot(mstats)
+plt.show()
 
 if save_weights:
     #Save model
