@@ -225,7 +225,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = 0
     else:
-        x = x   #Sigma = width of the standard deviaion
+        x = x*2   #Sigma = width of the standard deviaion
     return mu + x
 
 
@@ -394,7 +394,7 @@ if observe_and_train:
         if game > num_initial_observation+4 :
             is_noisy_game = False
             #print("Adding Noise")
-            if game%10==1:
+            if game%5==1:
                 is_noisy_game = True
                 noisy_model = add_noise_to_model(True)
             else:
@@ -691,6 +691,9 @@ if observe_and_train:
                 '''
                 break
 
+
+plt.plot(mstats)
+plt.show()
 
 if save_weights:
     #Save model
