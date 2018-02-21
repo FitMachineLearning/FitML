@@ -49,7 +49,7 @@ max_memory_len = 200000
 experience_replay_size = 50000
 random_every_n = 70
 num_retries = 15
-starting_explore_prob = 0.15
+starting_explore_prob = 0.25
 training_epochs = 3
 mini_batch = 512
 load_previous_weights = False
@@ -60,7 +60,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 2000
+max_steps = 600
 
 #Selective memory settings
 sm_normalizer = 20
@@ -299,13 +299,13 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
     #    return False, 0.0000000005
     if reward > target:
         #print("reward", reward,"target", mem_mean ,"memMax",memMax,"advantage",advantage,"prob",(0.1 + 0.85*advantage*gameAdvantage),"gameAverage",gameAverage,"gameAdvantage",gameAdvantage)
-        print(" #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max()    ) )
+        #print(" #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max()    ) )
         return True, 0.0000000005 + (1-0.0000000005)*advantage #*gameAdvantage
     else:
         return False, 0.000000000000005
 
 
-def actor_experience_replay():
+def actor_experience_replay_old():
     tSA = (memorySA)
     tR = (memoryR)
     tX = (memoryS)
@@ -334,7 +334,32 @@ def actor_experience_replay():
     action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
     #print("tW",tW)
 
+def actor_experience_replay():
+    tSA = (memorySA)
+    tR = (memoryR)
+    tX = (memoryS)
+    tY = (memoryA)
+    tW = (memoryW)
+    #sw = (memoryAdv)
+    #train_Q = np.random.randint(tR.shape[0],size=experience_replay_size)
+    train_A = np.arange(np.alen(memoryR))
 
+    target = memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean() )   )/2
+
+    train_A = train_A[memoryR.flatten()>target]
+
+    tX = tX[train_A,:]
+    tY = tY[train_A,:]
+    tW = tW[train_A,:]
+    #sw = sw[train_idx,:]
+    tR = tR[train_A,:]
+
+    #print("target = ",target)
+    #print("train_A",train_A)
+    #print("memoryR",memoryR)
+
+    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+    #print("tW",tW)
 
 if observe_and_train:
 
@@ -358,7 +383,7 @@ if observe_and_train:
         if game > num_initial_observation+4 :
             is_noisy_game = True
             #print("Adding Noise")
-            if game%5==1:
+            if game%10==1:
                 noisy_model = add_noise_to_model(True)
             else:
                 noisy_model = add_noise_to_model(False)
