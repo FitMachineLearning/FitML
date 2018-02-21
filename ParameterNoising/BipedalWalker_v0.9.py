@@ -33,7 +33,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 10
+num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.002
 version_name = "BPWalker_PGPN_0.5.0"
@@ -49,18 +49,18 @@ max_memory_len = 200000
 experience_replay_size = 50000
 random_every_n = 70
 num_retries = 15
-starting_explore_prob = 0.45
+starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = False
+load_memory_arrays = True
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 600
+max_steps = 3000
 
 #Selective memory settings
 sm_normalizer = 20
@@ -102,7 +102,7 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(1024, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(2024, activation='relu', input_dim=dataX.shape[1]))
 Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dense(256, activation='relu'))
 #Qmodel.add(Dropout(0.5))
@@ -125,8 +125,8 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
-#action_predictor_model.add(Dropout(0.5))
+action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dropout(0.2))
 #action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 #action_predictor_model.add(Dense(256, activation='tanh'))
@@ -147,7 +147,7 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
 noisy_model.add(Dense(apdataY.shape[1]))
 noisy_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
