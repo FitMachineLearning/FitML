@@ -692,8 +692,6 @@ if observe_and_train:
                 break
 
 
-plt.plot(mstats)
-plt.show()
 
 if save_weights:
     #Save model
