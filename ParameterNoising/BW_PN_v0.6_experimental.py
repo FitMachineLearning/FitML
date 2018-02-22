@@ -33,10 +33,10 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 30
+num_initial_observation = 3
 learning_rate =  0.003
 apLearning_rate = 0.002
-version_name = "BPWalker_PGPN_0.6.0"
+version_name = "BPWalker_PG_with_no_scaling_with_PR_no_PN_0.6.0"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -46,10 +46,10 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 200000
-experience_replay_size = 50000
-random_every_n = 5
+experience_replay_size = 1000
+random_every_n = 50
 num_retries = 15
-starting_explore_prob = 0.15
+starting_explore_prob = 0.45
 training_epochs = 3
 mini_batch = 512
 load_previous_weights = False
@@ -58,9 +58,9 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 15000
+num_games_to_play = 1000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 600
+max_steps = 500
 
 #Selective memory settings
 sm_normalizer = 20
@@ -230,7 +230,7 @@ add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 
 def add_noise_to_model(largeNoise = False):
     #noisy_model = keras.models.clone_model(action_predictor_model)
-    noisy_model.set_weights(action_predictor_model.get_weights())
+    #noisy_model.set_weights(action_predictor_model.get_weights())
     #print("Adding Noise to actor")
     #largeNoise =  last_game_average < memoryR.mean()
     sz = len(noisy_model.layers)
@@ -307,16 +307,41 @@ def actor_experience_replay():
     tX = (memoryS)
     tY = (memoryA)
     tW = (memoryW)
+    '''
     train_A = np.arange(np.alen(memoryR))
     target = memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean() )   )/2 + ( max_game_average - memoryR.mean()    )/4
     train_A = train_A[memoryR.flatten()>target]
+    '''
+    train_A = np.random.randint(tY.shape[0],size=int(experience_replay_size))
+
+
 
     tX = tX[train_A,:]
     tY = tY[train_A,:]
     tW = tW[train_A,:]
     tR = tR[train_A,:]
 
+    for i in range (np.alen(train_A)):
+        pr = predictTotalRewards(tX[i],tY[i])
+        if tR[i] < pr:
+            tW[i] = 0.0000000000001
+        else:
+            d = math.fabs( memoryR.max() - pr)
+            tW[i] =  math.fabs(tR[i]-pr) / d
+            #print("tW[i]",tW[i])
+
+        '''
+            train_A = train_A[tW.flatten()>0]
+            tX = tX[train_A,:]
+            tY = tY[train_A,:]
+            tW = tW[train_A,:]
+            tR = tR[train_A,:]
+
+            print("tW",tW)
+        '''
+
     tW = scale_weights(tR,tW)
+    print("# setps short listed ", np.alen(tR))
 
     action_predictor_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
@@ -337,13 +362,13 @@ for game in range(num_games_to_play):
     #print("qs ", qs)
     is_noisy_game = False
 
-    noisy_model.set_weights(action_predictor_model.get_weights())
+    #noisy_model.set_weights(action_predictor_model.get_weights())
 
     #Add noise to Actor
     if game > num_initial_observation+4 :
         is_noisy_game = False
         #print("Adding Noise")
-        if (game%1==0 and game>num_initial_observation and math.fabs(memoryR.mean() - BestGameR.mean()) < 8) or game %10==0 :
+        if (game%1==0 and game>num_initial_observation and math.fabs(memoryR.mean() - BestGameR.mean()) < 8) or game %10==0 or False:
             print("Parameter noising - Large.")
             noisy_model = add_noise_to_model(True)
         else:
@@ -527,7 +552,7 @@ for game in range(num_games_to_play):
                 BestGameR = gameR
                 BestGameW = scale_weights(gameR, gameW)
                     #action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
-            if game > 3 and game %2 ==0:
+            if game > 3 and game %1 ==0:
                 # train on all memory
                 print("Experience Replay")
                 actor_experience_replay()
