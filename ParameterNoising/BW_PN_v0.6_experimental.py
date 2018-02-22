@@ -36,7 +36,7 @@ num_env_actions = 4
 num_initial_observation = 3
 learning_rate =  0.003
 apLearning_rate = 0.002
-version_name = "BPWalker_PG_with_PR_scaling_with_PR_no_PN_0.6.0"
+version_name = "BPWalker_PG_with_PR_no_scaling_no_PN_0.6.0"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -46,7 +46,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 200000
-experience_replay_size = 1000
+experience_replay_size = 2500
 random_every_n = 50
 num_retries = 15
 starting_explore_prob = 0.45
@@ -60,7 +60,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 1000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 500
+max_steps = 600
 
 #Selective memory settings
 sm_normalizer = 20
@@ -307,6 +307,28 @@ def actor_experience_replay():
     tX = (memoryS)
     tY = (memoryA)
     tW = (memoryW)
+    train_B = np.arange(np.alen(memoryR))
+
+    for i in range(np.alen(train_B)):
+        pr = predictTotalRewards(tX[i],tY[i])
+        if tR[i][0] < pr:
+            tW[i][0] = -1
+        else:
+            d = math.fabs( memoryR.max() - pr)
+            #tW[i] =  math.fabs(tR[i]-pr) / d
+            tW[i] =  1
+        #print("tW[i] %3.1f tR %3.2f pr %3.2f "%(tW[i],tR[i],pr))
+
+    train_B = train_B[tW.flatten()>0]
+
+    print("%8d were better results than pr"%np.alen(train_B))
+
+    tX = tX[train_B,:]
+    tY = tY[train_B,:]
+    tW = tW[train_B,:]
+    tR = tR[train_B,:]
+    #print("tW",tW)
+
     '''
     train_A = np.arange(np.alen(memoryR))
     target = memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean() )   )/2 + ( max_game_average - memoryR.mean()    )/4
@@ -314,34 +336,24 @@ def actor_experience_replay():
     '''
     train_A = np.random.randint(tY.shape[0],size=int(experience_replay_size))
 
-
-
     tX = tX[train_A,:]
     tY = tY[train_A,:]
     tW = tW[train_A,:]
     tR = tR[train_A,:]
 
-    for i in range (np.alen(train_A)):
-        pr = predictTotalRewards(tX[i],tY[i])
-        if tR[i] < pr:
-            tW[i] = 0.0000000000001
-        else:
-            d = math.fabs( memoryR.max() - pr)
-            tW[i] =  math.fabs(tR[i]-pr) / d
-            #print("tW[i]",tW[i])
 
-        '''
-            train_A = train_A[tW.flatten()>0]
-            tX = tX[train_A,:]
-            tY = tY[train_A,:]
-            tW = tW[train_A,:]
-            tR = tR[train_A,:]
+    '''
+        train_A = train_A[tW.flatten()>0]
+        tX = tX[train_A,:]
+        tY = tY[train_A,:]
+        tW = tW[train_A,:]
+        tR = tR[train_A,:]
 
-            print("tW",tW)
-        '''
+        print("tW",tW)
+    '''
 
     tW = scale_weights(tR,tW)
-    print("# setps short listed ", np.alen(tR))
+    #print("# setps short listed ", np.alen(tR))
 
     action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
