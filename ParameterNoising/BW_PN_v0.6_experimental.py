@@ -33,7 +33,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 0
+num_initial_observation = 12
 learning_rate =  0.003
 apLearning_rate = 0.002
 version_name = "BPWalker_PGPN_0.5.0"
@@ -518,14 +518,14 @@ for game in range(num_games_to_play):
 
         if done and game > num_initial_observation:
             last_game_average = gameR.mean()
-            if is_noisy_game and last_game_average > memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean()) /2 ):
+            if is_noisy_game and last_game_average > memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean()) /2 )+:
                 print("New noisy_model record. Setting best game", last_game_average)
                 BestGameSA = gameSA
                 BestGameR = gameR
                 BestGameA = gameA
                 BestGameS = gameS
                 BestGameR = gameR
-                BestGameW = scale_weights( gameW, gameR)
+                BestGameW = scale_weights(gameR, gameW)
                     #action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
             if game > 3 and game %2 ==0:
                 # train on all memory
