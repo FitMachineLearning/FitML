@@ -33,10 +33,10 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 12
+num_initial_observation = 3
 learning_rate =  0.003
 apLearning_rate = 0.002
-version_name = "BPWalker_PGPN_0.5.0"
+version_name = "BPWalker_PGPN_0.6.0"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -44,12 +44,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.98
+b_discount = 0.99
 max_memory_len = 200000
 experience_replay_size = 50000
 random_every_n = 70
 num_retries = 15
-starting_explore_prob = 0.15
+starting_explore_prob = 0.05
 training_epochs = 3
 mini_batch = 512
 load_previous_weights = False
@@ -60,7 +60,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 600
+max_steps = 3000
 
 #Selective memory settings
 sm_normalizer = 20
@@ -296,7 +296,8 @@ def scale_weights(memR,memW):
     reward_range = math.fabs(rmax - rmin )
     for i in range(np.alen(memR)):
         memW[i][0] = math.fabs(memR[i][0]-rmin)/reward_range
-        memW[i][0] = max(memW[i][0],0.1)
+        memW[i][0] = max(memW[i][0],0.001)
+        #print("memW %5.2f reward %5.2f rmax %5.2f rmin %5.2f "%(memW[i][0],memR[i][0],rmax,rmin))
     #print("memW",memW)
     return memW
 
@@ -340,7 +341,7 @@ for game in range(num_games_to_play):
 
     #Add noise to Actor
     if game > num_initial_observation+4 :
-        is_noisy_game = False
+        is_noisy_game = True
         #print("Adding Noise")
         if (game%1==0 and game>num_initial_observation and math.fabs(memoryR.mean() - BestGameR.mean()) < 3) or game %10==0 :
             print("Parameter noising - Large.")
@@ -534,7 +535,7 @@ for game in range(num_games_to_play):
                 #Reinforce training with best game
                 if np.alen(BestGameR) >2:
                     print("Training with best game avg=",BestGameR.mean())
-                    action_predictor_model.fit(BestGameS,BestGameA, batch_size=mini_batch, nb_epoch=training_epochs*3,verbose=0)
+                    action_predictor_model.fit(BestGameS,BestGameA, sample_weight=BestGameW.flatten() , batch_size=mini_batch, nb_epoch=training_epochs*3,verbose=0)
 
 
         if done and game >= num_initial_observation:
