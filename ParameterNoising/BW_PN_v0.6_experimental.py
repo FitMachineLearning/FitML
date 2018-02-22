@@ -33,7 +33,7 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 3
+num_initial_observation = 30
 learning_rate =  0.003
 apLearning_rate = 0.002
 version_name = "BPWalker_PGPN_0.6.0"
@@ -47,9 +47,9 @@ sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 200000
 experience_replay_size = 50000
-random_every_n = 70
+random_every_n = 5
 num_retries = 15
-starting_explore_prob = 0.05
+starting_explore_prob = 0.15
 training_epochs = 3
 mini_batch = 512
 load_previous_weights = False
@@ -60,7 +60,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 15000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 3000
+max_steps = 600
 
 #Selective memory settings
 sm_normalizer = 20
@@ -117,10 +117,10 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(64, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(64, activation='relu'))
-action_predictor_model.add(Dropout(0.5))
+#action_predictor_model.add(Dense(64, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
 
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -133,9 +133,9 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(64, activation='relu', input_dim=apdataX.shape[1]))
-noisy_model.add(Dense(64, activation='relu'))
-noisy_model.add(Dropout(0.5))
+noisy_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
+#noisy_model.add(Dense(64, activation='relu'))
+#noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 noisy_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -201,7 +201,7 @@ mAPPicks = []
 def add_noise(mu, largeNoise=False):
 
     if not largeNoise:
-        sig = 0.002
+        sig = 0.006
     else:
         #print("Adding Large parameter noise")
         sig = 0.5 #Sigma = width of the standard deviaion
@@ -341,11 +341,10 @@ for game in range(num_games_to_play):
 
     #Add noise to Actor
     if game > num_initial_observation+4 :
-        is_noisy_game = True
+        is_noisy_game = False
         #print("Adding Noise")
-        if (game%1==0 and game>num_initial_observation and math.fabs(memoryR.mean() - BestGameR.mean()) < 3) or game %10==0 :
+        if (game%1==0 and game>num_initial_observation and math.fabs(memoryR.mean() - BestGameR.mean()) < 8) or game %10==0 :
             print("Parameter noising - Large.")
-            is_noisy_game = True
             noisy_model = add_noise_to_model(True)
         else:
             noisy_model = add_noise_to_model(False)
@@ -355,7 +354,7 @@ for game in range(num_games_to_play):
         if game < num_initial_observation:
             #take a radmon action
             a = env.action_space.sample()
-        elif  is_noisy_game==True:
+        elif  is_noisy_game:
             remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(qs)
             a = remembered_optimal_policy
         else:
@@ -535,7 +534,7 @@ for game in range(num_games_to_play):
                 #Reinforce training with best game
                 if np.alen(BestGameR) >2:
                     print("Training with best game avg=",BestGameR.mean())
-                    action_predictor_model.fit(BestGameS,BestGameA, sample_weight=BestGameW.flatten() , batch_size=mini_batch, nb_epoch=training_epochs*3,verbose=0)
+                    #action_predictor_model.fit(BestGameS,BestGameA, sample_weight=BestGameW.flatten() , batch_size=mini_batch, nb_epoch=training_epochs*3,verbose=0)
 
 
         if done and game >= num_initial_observation:
@@ -566,7 +565,7 @@ for game in range(num_games_to_play):
                 mGames.append(game)
                 mSteps.append(step/1000*100)
                 mAPPicks.append(mAP_Counts/step*100)
-                mAverageScores.append(max(memoryR.mean(), -12)/12*100)
+                mAverageScores.append(max(memoryR.mean(), -30)/30*100)
                 bar_chart = pygal.HorizontalLine()
                 bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                 bar_chart.add('Average score', mAverageScores)  # Add some values
