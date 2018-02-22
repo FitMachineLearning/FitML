@@ -518,7 +518,7 @@ for game in range(num_games_to_play):
 
         if done and game > num_initial_observation:
             last_game_average = gameR.mean()
-            if is_noisy_game and last_game_average > memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean()) /2 )+:
+            if is_noisy_game and last_game_average > memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean()) /2 )+( math.fabs(max_game_average - memoryR.mean()) /4 ):
                 print("New noisy_model record. Setting best game", last_game_average)
                 BestGameSA = gameSA
                 BestGameR = gameR
