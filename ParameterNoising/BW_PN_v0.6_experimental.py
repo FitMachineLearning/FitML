@@ -36,7 +36,7 @@ num_env_actions = 4
 num_initial_observation = 3
 learning_rate =  0.003
 apLearning_rate = 0.002
-version_name = "BPWalker_PG_with_no_scaling_with_PR_no_PN_0.6.0"
+version_name = "BPWalker_PG_with_PR_scaling_with_PR_no_PN_0.6.0"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -343,7 +343,7 @@ def actor_experience_replay():
     tW = scale_weights(tR,tW)
     print("# setps short listed ", np.alen(tR))
 
-    action_predictor_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+    action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
 
 
