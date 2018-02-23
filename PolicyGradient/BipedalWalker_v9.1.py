@@ -33,10 +33,10 @@ from keras import optimizers
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 3
+num_initial_observation = 30
 learning_rate =  0.003
 apLearning_rate = 0.002
-version_name = "BPWalker_PG_with_PR_no_scaling_no_PN_0.6.0"
+version_name = "BPWalker_PG_with_PR_scaling_Fixed_replay_mem_size_0.6.0"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -46,7 +46,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 200000
-experience_replay_size = 2500
+experience_replay_size = 40000
 random_every_n = 50
 num_retries = 15
 starting_explore_prob = 0.45
@@ -307,7 +307,15 @@ def actor_experience_replay():
     tX = (memoryS)
     tY = (memoryA)
     tW = (memoryW)
-    train_B = np.arange(np.alen(memoryR))
+
+    train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+
+    tX = tX[train_A,:]
+    tY = tY[train_A,:]
+    tW = tW[train_A,:]
+    tR = tR[train_A,:]
+
+    train_B = np.arange(np.alen(tR))
 
     for i in range(np.alen(train_B)):
         pr = predictTotalRewards(tX[i],tY[i])
@@ -315,8 +323,8 @@ def actor_experience_replay():
             tW[i][0] = -1
         else:
             d = math.fabs( memoryR.max() - pr)
-            #tW[i] =  math.fabs(tR[i]-pr) / d
-            tW[i] =  1
+            tW[i] =  math.fabs(tR[i]-(pr+0.000000000005)) / d
+            #tW[i] =  1
         #print("tW[i] %3.1f tR %3.2f pr %3.2f "%(tW[i],tR[i],pr))
 
     train_B = train_B[tW.flatten()>0]
@@ -334,12 +342,6 @@ def actor_experience_replay():
     target = memoryR.mean() + ( math.fabs(max_game_average - memoryR.mean() )   )/2 + ( max_game_average - memoryR.mean()    )/4
     train_A = train_A[memoryR.flatten()>target]
     '''
-    train_A = np.random.randint(tY.shape[0],size=int(experience_replay_size))
-
-    tX = tX[train_A,:]
-    tY = tY[train_A,:]
-    tW = tW[train_A,:]
-    tR = tR[train_A,:]
 
 
     '''
@@ -596,7 +598,7 @@ for game in range(num_games_to_play):
 
             if game%1==0:
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
-                print(" #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max()    ) )
+                print(" #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step    ) )
 
             if game%5 ==0 and np.alen(memoryR)>1000:
                 mGames.append(game)
