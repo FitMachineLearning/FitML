@@ -17,6 +17,25 @@ Fit Machine Learning (FitML) is blog that houses a collection of python Machine 
 ### Who is Michel Aka
 *Michel is an AI researcher and a graduate from University of Montreal who currently works in the Healthcare industry.*
 
+### How to use for Reinforcement Learning Algorithm
+- (Optional) Clone the repo 
+- Select the algorithm that you need (Folders are named by the RL algorithm ). Policy Gradient/ Parameter Noising/ Actor Critic / Selective memory
+- Get an instance of the algorithm with the environment you need. If the one you are looking for isn't there, get any environment.py file from the algorithm folder of choice and follow the steps below.
+- Install the dependencies
+- - Usually "pip install <library name>". Example "pip install pygal"
+- Replace the name of the environment in line 81 of the code.
+ ```Python
+  env = gym.make('BipedalWalker-v2')
+  # replace with
+  env = gym.make('<your-environement-name-here>')
+ ```
+- set the environment's observation and action space and viriables. If you don't know them, run the script once and they will be printed in the first lines of your output.
+ ```Python
+  num_env_variables = <number of observation variables here>
+  num_env_actions = <number of action variables here>
+ ```
+- (Optional) you can check the results of your agent as it progresses with the .svg file in the same directory as your script. Any modern browser can view them. 
+
 ### RL Approaches
 
 #### Optimal Policy Tree Search
