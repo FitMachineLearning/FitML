@@ -31,11 +31,11 @@ from keras.layers import LSTM
 from keras import optimizers
 
 
-PLAY_GAME = True #Set to True if you want to agent to play without training
+PLAY_GAME = False #Set to True if you want to agent to play without training
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 30
+num_initial_observation = 3
 learning_rate =  0.003
 apLearning_rate = 0.002
 version_name = "BPWalker_PG_with_PR_scaling_Fixed_replay_mem_size_0.6.0"
@@ -47,12 +47,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 100000
+max_memory_len = 70000
 experience_replay_size = 40000
 random_every_n = 50
 num_retries = 15
 starting_explore_prob = 0.45
-training_epochs = 3
+training_epochs = 30
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -60,7 +60,7 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 1000
+num_games_to_play = 500
 random_num_games_to_play = num_games_to_play/3
 max_steps = 600
 
@@ -136,6 +136,7 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 noisy_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dropout(0.5))
 #noisy_model.add(Dense(64, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
@@ -326,6 +327,8 @@ def actor_experience_replay():
         else:
             d = math.fabs( memoryR.max() - pr)
             tW[i] =  math.fabs(tR[i]-(pr+0.000000000005)) / d
+            #print ("tW",tW[i],"exp", math.exp(1-(1/tW[i]**2)))
+            tW[i] = math.exp(1-(1/tW[i]**2))
             #tW[i] =  1
         #print("tW[i] %3.1f tR %3.2f pr %3.2f "%(tW[i],tR[i],pr))
 
