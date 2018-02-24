@@ -48,11 +48,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 200000
-experience_replay_size = 4000
+experience_replay_size = 40000
 random_every_n = 50
 num_retries = 15
 starting_explore_prob = 0.25
-training_epochs = 3
+training_epochs = 30
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -126,8 +126,8 @@ action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shap
 
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-#opt2 = optimizers.adam(lr=apLearning_rate)
-opt2 = optimizers.Adadelta()
+opt2 = optimizers.adam(lr=apLearning_rate)
+#opt2 = optimizers.Adadelta()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -315,7 +315,7 @@ def actor_experience_replay():
     tY = (memoryA)
     tW = (memoryW)
 
-    target = tR.mean() #+ math.fabs( tR.mean() - tR.max()  )/2  + math.fabs( tR.mean() - tR.max()  )/4
+    target = tR.mean() + math.fabs( tR.mean() - tR.max()  )/2  #+ math.fabs( tR.mean() - tR.max()  )/4
     train_C = np.arange(np.alen(tR))
     train_C = train_C[tR.flatten()>target]
     tX = tX[train_C,:]
@@ -340,7 +340,7 @@ def actor_experience_replay():
             d = math.fabs( memoryR.max() - pr)
             tW[i] =  math.fabs(tR[i]-(pr+0.000000000005)) / d
             #print ("tW",tW[i],"exp", math.exp(1-(1/tW[i]**2)))
-            tW[i] = math.exp(1-(1/tW[i]**2))
+            #tW[i] = math.exp(1-(1/tW[i]**2))
             #tW[i] =  1
         #print("tW[i] %3.1f tR %3.2f pr %3.2f "%(tW[i],tR[i],pr))
 
