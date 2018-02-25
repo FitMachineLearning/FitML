@@ -37,7 +37,7 @@ uses_parameter_noising = False
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 2
+num_initial_observation = 20
 learning_rate =  0.004
 apLearning_rate = 0.002
 version_name = "BW_PG_EXP_Scale_v1.0"
