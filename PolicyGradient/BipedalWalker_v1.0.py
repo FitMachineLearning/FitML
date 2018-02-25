@@ -35,10 +35,10 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 15
+num_initial_observation = 30
 learning_rate =  0.004
 apLearning_rate = 0.002
-version_name = "BW_AC_v1.0"
+version_name = "BW_PG_EXP_Scale_v1.0"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -60,9 +60,9 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 1000
+num_games_to_play = 2000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 1500
+max_steps = 600
 
 #Selective memory settings
 sm_normalizer = 20
@@ -119,7 +119,7 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
 #action_predictor_model.add(Dense(64, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
@@ -135,7 +135,7 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
 noisy_model.add(Dropout(0.5))
 #noisy_model.add(Dense(64, activation='relu'))
 #noisy_model.add(Dropout(0.5))
@@ -315,7 +315,7 @@ def actor_experience_replay():
     tY = (memoryA)
     tW = (memoryW)
 
-    target = tR.mean() #+ math.fabs( tR.mean() - tR.max()  )/2 + math.fabs( tR.mean() - tR.max()  )/4
+    target = tR.mean() + math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
     train_C = np.arange(np.alen(tR))
     train_C = train_C[tR.flatten()>target]
     tX = tX[train_C,:]
@@ -335,16 +335,22 @@ def actor_experience_replay():
     tX_train = np.zeros(shape=(1,num_env_variables))
     tY_train = np.zeros(shape=(1,num_env_actions))
     for i in range(np.alen(train_B)):
-        pr = predictTotalRewards(tX[i],tY[i])
+        #pr = predictTotalRewards(tX[i],tY[i])
+        ''' YOU CAN"T USE predictTotalRewards
+        IF YOU DON"T TRAIN THE QMODEL
+
         if tR[i][0] < pr:
             tW[i][0] = -1
         else:
-            d = math.fabs( memoryR.max() - pr)
-            tW[i] =  math.fabs(tR[i]-(pr+0.000000000005)) / d
+        '''
+        d = math.fabs( memoryR.max() - target)
+        tW[i] =  math.fabs(tR[i]-(target+0.000000000005)) / d
+        tW[i] = math.exp(1-(1/tW[i]**2))
 
-            if tW[i]> np.random.rand(1):
-                tX_train = np.vstack((tX_train,tX[i]))
-                tY_train = np.vstack((tY_train,tY[i]))
+
+        if tW[i]> np.random.rand(1):
+            tX_train = np.vstack((tX_train,tX[i]))
+            tY_train = np.vstack((tY_train,tY[i]))
 
 
             #print ("tW",tW[i],"exp", math.exp(1-(1/tW[i]**2)))
@@ -362,6 +368,11 @@ def actor_experience_replay():
     tR = tR[train_B,:]
     #print("tW",tW)
     '''
+    print("%8d were better results than pr"%np.alen(tX_train))
+    ''' REMOVE FIRST ELEMENT BEFORE TRAINING '''
+    tX_train = tX_train[1:]
+    tY_train = tY_train[1:]
+    print("%8d were better After removing first element"%np.alen(tX_train))
     if np.alen(tX_train)>0:
         #tW = scale_weights(tR,tW)
         #print("# setps short listed ", np.alen(tR))
@@ -623,6 +634,7 @@ for game in range(num_games_to_play):
             if game > 3 and game %2 ==0:
                 # train on all memory
                 print("Experience Replay")
+                #for i in range(3):
                 actor_experience_replay()
             if game > 3 and game %4 ==-1:
                 print("Training Critic")
