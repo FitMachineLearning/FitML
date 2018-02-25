@@ -126,8 +126,8 @@ action_predictor_model.add(Dense(512, activation='relu', input_dim=apdataX.shape
 
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-opt2 = optimizers.adam(lr=apLearning_rate)
-#opt2 = optimizers.Adadelta()
+#opt2 = optimizers.adam(lr=apLearning_rate)
+opt2 = optimizers.Adadelta()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
