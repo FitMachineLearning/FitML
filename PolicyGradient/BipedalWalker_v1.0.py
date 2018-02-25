@@ -48,7 +48,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 200000
-experience_replay_size = 40000
+experience_replay_size = 20000
 random_every_n = 50
 num_retries = 15
 starting_explore_prob = 0.45
@@ -486,6 +486,7 @@ for game in range(num_games_to_play):
                 remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
                 a = remembered_optimal_policy
 
+                '''
                 stock = np.zeros(num_retries)
                 stockAction = np.zeros(shape=(num_retries,num_env_actions))
                 for i in range(num_retries):
@@ -503,7 +504,7 @@ for game in range(num_games_to_play):
                 else:
                     a = randaction
                     #print(" - selecting generated optimal policy ",a)
-
+                '''
 
 
 
@@ -636,7 +637,7 @@ for game in range(num_games_to_play):
                 print("Experience Replay")
                 #for i in range(3):
                 actor_experience_replay()
-            if game > 3 and game %4 ==-1:
+            if game > 3 and game %5 ==-1:
                 print("Training Critic")
                 train_critic()
             if game > 3 and game %5 ==-1:
