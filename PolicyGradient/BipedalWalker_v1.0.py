@@ -6,7 +6,7 @@ https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
-Using Q as feature dicriminator
+Starts to crawl at 78
 
 Adagrad
 0.99 delta
@@ -315,7 +315,7 @@ def actor_experience_replay():
     tY = (memoryA)
     tW = (memoryW)
 
-    target = tR.mean() + math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
+    target = tR.mean() #+ math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
     train_C = np.arange(np.alen(tR))
     train_C = train_C[tR.flatten()>target]
     tX = tX[train_C,:]
