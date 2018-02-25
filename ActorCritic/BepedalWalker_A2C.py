@@ -37,7 +37,7 @@ uses_parameter_noising = False
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 10
+num_initial_observation = 2
 learning_rate =  0.004
 apLearning_rate = 0.002
 version_name = "BW_PG_EXP_Scale_v1.0"
@@ -49,22 +49,22 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 200000
-experience_replay_size = 20000
+max_memory_len = 400000
+experience_replay_size = 50000
 random_every_n = 50
 num_retries = 15
 starting_explore_prob = 0.15
-training_epochs = 3
+training_epochs = 4
 mini_batch = 512
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = False
+load_memory_arrays = True
 do_training = True
 num_games_to_play = 2000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 600
+max_steps = 3000
 
 #Selective memory settings
 sm_normalizer = 20
