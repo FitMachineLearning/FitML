@@ -40,7 +40,7 @@ num_env_actions = 4
 num_initial_observation = 20
 learning_rate =  0.004
 apLearning_rate = 0.002
-version_name = "BW_PG_EXP_Scale_v1.0"
+version_name = "BW_AC_Scale_v1.0"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -54,13 +54,13 @@ experience_replay_size = 50000
 random_every_n = 50
 num_retries = 15
 starting_explore_prob = 0.15
-training_epochs = 4
+training_epochs = 30
 mini_batch = 512
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = True
+load_memory_arrays = False
 do_training = True
 num_games_to_play = 2000
 random_num_games_to_play = num_games_to_play/3
@@ -105,9 +105,9 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(2046, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-#Qmodel.add(Dense(256, activation='relu'))
+Qmodel.add(Dense(32, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 
@@ -121,9 +121,9 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-#action_predictor_model.add(Dense(64, activation='relu'))
+action_predictor_model.add(Dense(32, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 
@@ -633,7 +633,7 @@ for game in range(num_games_to_play):
                 print("Experience Replay")
                 #for i in range(3):
                 actor_experience_replay()
-            if game > 3 and game %5 ==0 and uses_critic:
+            if game > 3 and game %2 ==0 and uses_critic:
                 tSA = (memorySA)
                 tR = (memoryR)
                 train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
