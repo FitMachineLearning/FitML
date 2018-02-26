@@ -1,6 +1,6 @@
 
 '''
-Bipedal Walker with with Selective Memory + Parameter Noising Algorithm
+Bipedal Walker with with Selective Memory Actor Critic
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
