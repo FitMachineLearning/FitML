@@ -54,17 +54,17 @@ experience_replay_size = 50000
 random_every_n = 50
 num_retries = 15
 starting_explore_prob = 0.15
-training_epochs = 30
+training_epochs = 6
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
-save_memory_arrays = False
-load_memory_arrays = True
+save_memory_arrays = True
+load_memory_arrays = False
 do_training = True
-num_games_to_play = 2000
+num_games_to_play = 10000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 3000
+max_steps = 400
 
 #Selective memory settings
 sm_normalizer = 20
@@ -211,7 +211,7 @@ def add_noise(mu, largeNoise=False):
         sig = 0.006
     else:
         #print("Adding Large parameter noise")
-        sig = 0.1 #Sigma = width of the standard deviaion
+        sig = 0.02 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -239,7 +239,7 @@ def add_noise_to_model(largeNoise = False):
     #noisy_model = keras.models.clone_model(action_predictor_model)
     #noisy_model.set_weights(action_predictor_model.get_weights())
     #print("Adding Noise to actor")
-    reset_noisy_model()
+
     sz = len(noisy_model.layers)
     #if largeNoise:
     #    print("Setting Large Noise!")
@@ -251,6 +251,53 @@ def add_noise_to_model(largeNoise = False):
 
         noisy_model.layers[k].set_weights(w)
     return noisy_model
+
+def reset_noisy_model_weights(mu):
+    x =   (np.random.rand(1) - 0.5)*2 #probability of doing x
+    return x
+
+reset_noisy_model_weights = np.vectorize(reset_noisy_model_weights,otypes=[np.float])
+
+def reset_noisy_model():
+    sz = len(noisy_model.layers)
+    #if largeNoise:
+    #    print("Setting Large Noise!")
+    for k in range(sz):
+        w = noisy_model.layers[k].get_weights()
+        #print("w ==>", w)
+        if np.alen(w) >0:
+            w[0] = reset_noisy_model_weights(w[0])
+        noisy_model.layers[k].set_weights(w)
+
+
+
+def add_controlled_noise(largeNoise = False):
+    tR = (memoryR)
+    tX = (memoryS)
+    tY = (memoryA)
+    tW = (memoryW)
+    train_C = np.random.randint(tY.shape[0],size=100)
+
+    tX = tX[train_C,:]
+    tY_old = tY[train_C,:]
+    tY_new = tY[train_C,:]
+    diffs = np.zeros(np.alen(tX))
+    delta = 1000
+    deltaCount = 0
+
+    while delta > 10 and deltaCount<4:
+        #noisy_model.set_weights(action_predictor_model.get_weights())
+        add_noise_to_model(True)
+        for i in range(np.alen(tX)):
+            a = GetRememberedOptimalPolicy(tX[i])
+            b = GetRememberedOptimalPolicyFromNoisyModel(tX[i])
+            a = a.flatten()
+            b = b.flatten()
+            c = np.abs(a-b)
+            diffs[i] = c.mean()
+        delta = np.average (diffs)
+        deltaCount+=1
+    #print("Tried x time ", deltaCount,"delta =", delta)
 
 
 
@@ -389,50 +436,25 @@ def train_noisy_actor():
     tX = (memoryS)
     tY = (memoryA)
     tW = (memoryW)
+    tR = (memoryR)
 
     train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tY) )))
     tX = tX[train_A,:]
     tY = tY[train_A,:]
     tW = tW[train_A,:]
+    tR = tR[train_A,:]
+
+    target = tR.mean() + math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
+
+    train_C = np.arange(np.alen(tX))
+    train_C = train_C[tR.flatten()>target]
+    tX = tX[train_C,:]
+    tY = tY[train_C,:]
+    tW = tW[train_C,:]
+    tR = tR[train_C,:]
 
     noisy_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
-def reset_noisy_model():
-    noisy_model = Sequential()
-    noisy_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
-    noisy_model.add(Dropout(0.5))
-    noisy_model.add(Dense(apdataY.shape[1]))
-    opt3 = optimizers.Adadelta()
-
-    noisy_model.compile(loss='mse', optimizer=opt3, metrics=['accuracy'])
-
-def add_controlled_noise(largeNoise = False):
-    tR = (memoryR)
-    tX = (memoryS)
-    tY = (memoryA)
-    tW = (memoryW)
-    train_C = np.random.randint(tY.shape[0],size=100)
-
-    tX = tX[train_C,:]
-    tY_old = tY[train_C,:]
-    tY_new = tY[train_C,:]
-    diffs = np.zeros(np.alen(tX))
-    delta = 1000
-    deltaCount = 0
-
-    while delta > 10 and deltaCount<10:
-        #noisy_model.set_weights(action_predictor_model.get_weights())
-        add_noise_to_model(True)
-        for i in range(np.alen(tX)):
-            a = GetRememberedOptimalPolicy(tX[i])
-            b = GetRememberedOptimalPolicyFromNoisyModel(tX[i])
-            a = a.flatten()
-            b = b.flatten()
-            c = np.abs(a-b)
-            diffs[i] = c.mean()
-        delta = np.average (diffs)
-        deltaCount+=1
-    print("Tried x time ", deltaCount,"delta =", delta)
 
 
 
@@ -457,7 +479,9 @@ for game in range(num_games_to_play):
     if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if (game%5==0 ):
+        if game%20==0:
+            reset_noisy_model()
+        if (game%5==1 ):
             is_noisy_game = True
             print("Adding controlled noise")
             add_controlled_noise(True)
@@ -639,12 +663,12 @@ for game in range(num_games_to_play):
 
         if done and game > num_initial_observation and not PLAY_GAME:
             last_game_average = gameR.mean()
-            if game > 3 and game %2 ==0:
+            if game > 3 and game %5 ==0:
                 # train on all memory
                 print("Experience Replay")
                 #for i in range(3):
                 actor_experience_replay()
-            if game > 3 and game %2 ==0 and uses_critic:
+            if game > 3 and game %5 ==0 and uses_critic:
                 tSA = (memorySA)
                 tR = (memoryR)
                 train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
