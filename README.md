@@ -74,47 +74,4 @@ Find out more about Actor-Critique <a href="https://github.com/FitMachineLearnin
 
 ###
 
-### Code Samples
 
-<table style="width:100%">
-  <tr>
-    <th>Approach</th>
-    <th>Examples</th> 
-  </tr>
-  <tr>
-    <td>CNN</td>
-    <td>[coming soon]</td> 
-  </tr>
-  <tr>
-    <td>Optimal Policy Tree Search</td>
-    <td><a href ="https://github.com/FitMachineLearning/FitML/blob/master/OptimalPolicyTreeSearch/Cartpole_OPTS.py">Cartpole_OPTS.py</a> </td> 
-  <tr>
-    <td>Selective Memory</td>
-    <td>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/SelectiveMemory/CartPole_SelectiveMemory.py">CartPole_SelectiveMemory.py</a>
-        <BR>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/SelectiveMemory/LunarLander_Selective_Memory.py">LunarLander_Selective_Memory.py</a>
-         <BR>
-         <a href ="https://github.com/FitMachineLearning/FitML/blob/master/SelectiveMemory/BipedalWalker_Selective_Memory.py">BipedalWalker_Selective_Memory.py</a>
-     </td>       
-  </tr>
-  <tr>
-    <td>Q-Learning / Deep-QN</td>
-    <td>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/DeepQN/CartPole_QLearning.py">CartPole_DeepQN.py</a> <BR>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/DeepQN/LunarLander_QL.py">LunarLander_DQN.py</a>   <BR>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/DeepQN/Atari_Pong_DeepQN.py">Atari_Pong_DeepQN.py</a> 
-    </td>      
-  <tr>
-    
-  <tr>
-    <td>Actor Critic</td>
-    <td>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/CartPole_ActorCritic.py">CartPole_AC.py</a> <BR>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/LunarLander_ActorCritic.py">LunarLander_AC.py</a>   <BR>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/BepedalWalker_A2C.py">BipedalWalker_AC.py</a> <BR>
-        <a href ="https://github.com/FitMachineLearning/FitML/blob/master/ActorCritic/Acrobot_ActorCritic.py">Acrobot_AC.py</a>      
-    </td>      
-  <tr>   
-
-</table>
