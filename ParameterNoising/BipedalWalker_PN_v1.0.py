@@ -32,7 +32,7 @@ uses_parameter_noising = True
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 0
+num_initial_observation = 10
 learning_rate =  0.004
 apLearning_rate = 0.002
 version_name = "BW_AC_Scale_v1.0"
@@ -206,7 +206,7 @@ def add_noise(mu, largeNoise=False):
         sig = 0.006
     else:
         #print("Adding Large parameter noise")
-        sig = 0.02 #Sigma = width of the standard deviaion
+        sig = 0.1 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -278,16 +278,18 @@ def reset_noisy_model():
     sz = len(noisy_model.layers)
     #if largeNoise:
     #    print("Setting Large Noise!")
+    #noisy_model = keras.models.clone_model(action_predictor_model)
+    '''
     for k in range(sz):
         w = noisy_model.layers[k].get_weights()
         apW = action_predictor_model.layers[k].get_weights()
 
         if np.alen(w) >0:
-            w[0] = reset_noisy_model_weights_to_apWeights(apW[0])
+            w[0] = reset_noisy_model_weights_to_apWeights( copy.deepcopy(apW[0]) )
         noisy_model.layers[k].set_weights(w)
         #print("w",w)
         #print("apW",apW)
-
+        '''
 
 def add_controlled_noise(largeNoise = False):
     tR = (memoryR)
@@ -303,7 +305,7 @@ def add_controlled_noise(largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while delta > 10 and deltaCount<4:
+    while delta > 10 and deltaCount<5:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         add_noise_to_model(True)
         for i in range(np.alen(tX)):
@@ -315,7 +317,7 @@ def add_controlled_noise(largeNoise = False):
             diffs[i] = c.mean()
         delta = np.average (diffs)
         deltaCount+=1
-    #print("Tried x time ", deltaCount,"delta =", delta)
+    print("Tried x time ", deltaCount,"delta =", delta)
 
 
 
@@ -497,14 +499,16 @@ for game in range(num_games_to_play):
     if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if game%20==0:
-            reset_noisy_model()
-        if (game%5==1 ):
+        if game%20==1:
+            noisy_model = keras.models.clone_model(action_predictor_model)
+
+            #reset_noisy_model()
+        if (game%4==1 ):
             is_noisy_game = True
             print("Adding controlled noise")
             add_controlled_noise(True)
-        else:
-            add_controlled_noise(False)
+        #else:
+        #    add_controlled_noise(False)
 
     for step in range (5000):
 
@@ -694,9 +698,9 @@ for game in range(num_games_to_play):
                 tSA = tSA    [train_A,:]
                 print("Training Critic n elements =", np.alen(tR))
                 Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
-            if game > 3 and game %5 ==0 and uses_parameter_noising:
-                print("Training noisy_actor")
-                train_noisy_actor()
+            #if game > 3 and game %5 ==0 and uses_parameter_noising:
+            #    print("Training noisy_actor")
+            #    train_noisy_actor()
                 #Reinforce training with best game
 
 
@@ -714,9 +718,6 @@ for game in range(num_games_to_play):
                 np.save(version_name+'memoryA.npy',memoryA)
                 np.save(version_name+'memoryR.npy',memoryR)
                 np.save(version_name+'memoryW.npy',memoryW)
-
-
-
 
         if done:
 
