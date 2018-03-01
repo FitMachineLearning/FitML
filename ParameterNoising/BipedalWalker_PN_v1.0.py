@@ -4,7 +4,7 @@ Bipedal Walker with with Selective Memory + Parameter Noising Algorithm
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
-
+Update
 
 
 '''
@@ -32,7 +32,7 @@ uses_parameter_noising = True
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 3
+num_initial_observation = 0
 learning_rate =  0.004
 apLearning_rate = 0.002
 version_name = "BW_AC_Scale_v1.0"
@@ -132,9 +132,9 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
-noisy_model.add(Dropout(0.5))
-#noisy_model.add(Dense(64, activation='relu'))
+noisy_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+#noisy_model.add(Dropout(0.5))
+noisy_model.add(Dense(32, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
@@ -247,13 +247,23 @@ def add_noise_to_model(largeNoise = False):
         noisy_model.layers[k].set_weights(w)
     return noisy_model
 
+'''
 def reset_noisy_model_weights(mu):
     x =   (np.random.rand(1) - 0.5)*2 #probability of doing x
     return x
+'''
 
-reset_noisy_model_weights = np.vectorize(reset_noisy_model_weights,otypes=[np.float])
+def reset_noisy_model_weights_to_apWeights(mu):
+    x =  mu+(np.random.rand(1) - 0.5) / 1000000 #probability of doing x
+    return x
 
-def reset_noisy_model():
+
+#reset_noisy_model_weights = np.vectorize(reset_noisy_model_weights,otypes=[np.float])
+reset_noisy_model_weights_to_apWeights = np.vectorize(reset_noisy_model_weights_to_apWeights,otypes=[np.float])
+
+
+'''
+def reset_noisy_model_old():
     sz = len(noisy_model.layers)
     #if largeNoise:
     #    print("Setting Large Noise!")
@@ -263,7 +273,20 @@ def reset_noisy_model():
         if np.alen(w) >0:
             w[0] = reset_noisy_model_weights(w[0])
         noisy_model.layers[k].set_weights(w)
+'''
+def reset_noisy_model():
+    sz = len(noisy_model.layers)
+    #if largeNoise:
+    #    print("Setting Large Noise!")
+    for k in range(sz):
+        w = noisy_model.layers[k].get_weights()
+        apW = action_predictor_model.layers[k].get_weights()
 
+        if np.alen(w) >0:
+            w[0] = reset_noisy_model_weights_to_apWeights(apW[0])
+        noisy_model.layers[k].set_weights(w)
+        #print("w",w)
+        #print("apW",apW)
 
 
 def add_controlled_noise(largeNoise = False):
