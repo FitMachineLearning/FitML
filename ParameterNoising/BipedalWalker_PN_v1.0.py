@@ -32,7 +32,7 @@ uses_parameter_noising = True
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 10
+num_initial_observation = 0
 learning_rate =  0.004
 apLearning_rate = 0.002
 version_name = "BW_AC_Scale_v1.0"
@@ -206,7 +206,7 @@ def add_noise(mu, largeNoise=False):
         sig = 0.006
     else:
         #print("Adding Large parameter noise")
-        sig = 0.1 #Sigma = width of the standard deviaion
+        sig = 0.05 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -215,6 +215,7 @@ def add_noise(mu, largeNoise=False):
     else:
         return mu - np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
+'''
 # --- Parameter Noising
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
@@ -223,11 +224,11 @@ def add_noise_simple(mu, largeNoise=False):
     else:
         x = x/5   #Sigma = width of the standard deviaion
     return mu + x
-
+'''
 
 #add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 add_noise = np.vectorize(add_noise,otypes=[np.float])
-add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
+#add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 
 
 def add_noise_to_model(largeNoise = False):
@@ -242,7 +243,7 @@ def add_noise_to_model(largeNoise = False):
         w = noisy_model.layers[k].get_weights()
         #print("w ==>", w)
         if np.alen(w) >0:
-            w[0] = add_noise_simple(w[0],largeNoise)
+            w[0] = add_noise(w[0],largeNoise)
 
         noisy_model.layers[k].set_weights(w)
     return noisy_model
