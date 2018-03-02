@@ -1,6 +1,10 @@
 
 '''
-Bipedal Walker with with Selective Memory + Parameter Noising Algorithm
+Bipedal Walker with with 
+    Selective Memory 
+    Projected Reward as feature discriminator for Selective Memory
+    Parameter Noising 
+    Algorithm
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
@@ -29,10 +33,11 @@ from keras import optimizers
 PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
+uses_project_reward_for_SM_discrimination = True #Determines if SM uses projected reward for sample discrimination
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 0
+num_initial_observation =10
 learning_rate =  0.004
 apLearning_rate = 0.002
 version_name = "BW_AC_Scale_v1.0"
@@ -59,7 +64,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 10000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 400
+max_steps = 800
 
 #Selective memory settings
 sm_normalizer = 20
@@ -206,7 +211,7 @@ def add_noise(mu, largeNoise=False):
         sig = 0.006
     else:
         #print("Adding Large parameter noise")
-        sig = 0.05 #Sigma = width of the standard deviaion
+        sig = 0.1 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -215,16 +220,6 @@ def add_noise(mu, largeNoise=False):
     else:
         return mu - np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-'''
-# --- Parameter Noising
-def add_noise_simple(mu, largeNoise=False):
-    x =   np.random.rand(1) - 0.5 #probability of doing x
-    if not largeNoise:
-        x = 0
-    else:
-        x = x/5   #Sigma = width of the standard deviaion
-    return mu + x
-'''
 
 #add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 add_noise = np.vectorize(add_noise,otypes=[np.float])
@@ -248,49 +243,6 @@ def add_noise_to_model(largeNoise = False):
         noisy_model.layers[k].set_weights(w)
     return noisy_model
 
-'''
-def reset_noisy_model_weights(mu):
-    x =   (np.random.rand(1) - 0.5)*2 #probability of doing x
-    return x
-'''
-
-def reset_noisy_model_weights_to_apWeights(mu):
-    x =  mu+(np.random.rand(1) - 0.5) / 1000000 #probability of doing x
-    return x
-
-
-#reset_noisy_model_weights = np.vectorize(reset_noisy_model_weights,otypes=[np.float])
-reset_noisy_model_weights_to_apWeights = np.vectorize(reset_noisy_model_weights_to_apWeights,otypes=[np.float])
-
-
-'''
-def reset_noisy_model_old():
-    sz = len(noisy_model.layers)
-    #if largeNoise:
-    #    print("Setting Large Noise!")
-    for k in range(sz):
-        w = noisy_model.layers[k].get_weights()
-        #print("w ==>", w)
-        if np.alen(w) >0:
-            w[0] = reset_noisy_model_weights(w[0])
-        noisy_model.layers[k].set_weights(w)
-'''
-def reset_noisy_model():
-    sz = len(noisy_model.layers)
-    #if largeNoise:
-    #    print("Setting Large Noise!")
-    #noisy_model = keras.models.clone_model(action_predictor_model)
-    '''
-    for k in range(sz):
-        w = noisy_model.layers[k].get_weights()
-        apW = action_predictor_model.layers[k].get_weights()
-
-        if np.alen(w) >0:
-            w[0] = reset_noisy_model_weights_to_apWeights( copy.deepcopy(apW[0]) )
-        noisy_model.layers[k].set_weights(w)
-        #print("w",w)
-        #print("apW",apW)
-        '''
 
 def add_controlled_noise(largeNoise = False):
     tR = (memoryR)
@@ -306,7 +258,7 @@ def add_controlled_noise(largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while delta > 10 and deltaCount<5:
+    while delta > 3 and deltaCount<5:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         add_noise_to_model(True)
         for i in range(np.alen(tX)):
@@ -381,6 +333,12 @@ def scale_weights(memR,memW):
     return memW
 
 def actor_experience_replay():
+    if uses_project_reward_for_SM_discrimination:
+        actor_experience_replay_with_PR()
+    else:
+        actor_experience_replay_without_PR
+
+def actor_experience_replay_without_PR():
     tSA = (memorySA)
     tR = (memoryR)
     tX = (memoryS)
@@ -424,22 +382,6 @@ def actor_experience_replay():
             tX_train = np.vstack((tX_train,tX[i]))
             tY_train = np.vstack((tY_train,tY[i]))
 
-
-            #print ("tW",tW[i],"exp", math.exp(1-(1/tW[i]**2)))
-            #tW[i] = math.exp(1-(1/tW[i]**2))
-            #tW[i] =  1
-        #print("tW[i] %3.1f tR %3.2f pr %3.2f "%(tW[i],tR[i],pr))
-    '''
-    train_B = train_B[tW.flatten()>0]
-
-    print("%8d were better results than pr"%np.alen(tX_train))
-
-    tX = tX[train_B,:]
-    tY = tY[train_B,:]
-    tW = tW[train_B,:]
-    tR = tR[train_B,:]
-    #print("tW",tW)
-    '''
     print("%8d were better results than pr"%np.alen(tX_train))
     ''' REMOVE FIRST ELEMENT BEFORE TRAINING '''
     tX_train = tX_train[1:]
@@ -451,6 +393,51 @@ def actor_experience_replay():
 
         action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
+
+def actor_experience_replay_with_PR():
+    tSA = (memorySA)
+    tR = (memoryR)
+    tX = (memoryS)
+    tY = (memoryA)
+    tW = (memoryW)
+
+    train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+
+    tX = tX[train_A,:]
+    tY = tY[train_A,:]
+    tW = tW[train_A,:]
+    tR = tR[train_A,:]
+
+    #train_B = np.arange(np.alen(tR))
+
+    tX_train = np.zeros(shape=(1,num_env_variables))
+    tY_train = np.zeros(shape=(1,num_env_actions))
+
+    for i in range (np.alen(tR)):
+        predictedReward = predictTotalRewards(tX[i], GetRememberedOptimalPolicy(tX[i]) )
+        actualReward = tR[i]
+        #print(" actual reward %3.3f  predictedReward %3.3f"%(actualReward,predictedReward) )
+        if actualReward > predictedReward:
+            d = math.fabs( memoryR.max() - predictedReward)
+            tW[i] =  math.fabs(actualReward-(predictedReward+0.000000000005)) / d
+            tW[i] = math.exp(1-(1/tW[i]**2))
+
+
+            if tW[i]> np.random.rand(1):
+                tX_train = np.vstack((tX_train,tX[i]))
+                tY_train = np.vstack((tY_train,tY[i]))
+
+
+    #print("%8d were better results than pr"%np.alen(tX_train))
+    ''' REMOVE FIRST ELEMENT BEFORE TRAINING '''
+    tX_train = tX_train[1:]
+    tY_train = tY_train[1:]
+    print("%8d were better After removing first element"%np.alen(tX_train))
+    if np.alen(tX_train)>0:
+        #tW = scale_weights(tR,tW)
+        #print("# setps short listed ", np.alen(tR))
+
+        action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
 
 def train_noisy_actor():
@@ -500,7 +487,7 @@ for game in range(num_games_to_play):
     if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if game%20==1:
+        if game%8==1:
             noisy_model = keras.models.clone_model(action_predictor_model)
 
             #reset_noisy_model()
