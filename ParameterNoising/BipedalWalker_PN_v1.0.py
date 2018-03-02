@@ -1,9 +1,9 @@
 
 '''
-Bipedal Walker with with 
-    Selective Memory 
+Bipedal Walker with with
+    Selective Memory
     Projected Reward as feature discriminator for Selective Memory
-    Parameter Noising 
+    Parameter Noising
     Algorithm
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
@@ -418,9 +418,12 @@ def actor_experience_replay_with_PR():
         actualReward = tR[i]
         #print(" actual reward %3.3f  predictedReward %3.3f"%(actualReward,predictedReward) )
         if actualReward > predictedReward:
-            d = math.fabs( memoryR.max() - predictedReward)
-            tW[i] =  math.fabs(actualReward-(predictedReward+0.000000000005)) / d
-            tW[i] = math.exp(1-(1/tW[i]**2))
+            d = math.fabs( max_game_average - predictedReward)
+            if actualReward > max_game_average:
+                tW[i] = 1
+            else:
+                tW[i] =  math.fabs(actualReward-(predictedReward+0.000000000005)) / d
+                tW[i] = math.exp(1-(1/tW[i]**2))
 
 
             if tW[i]> np.random.rand(1):
