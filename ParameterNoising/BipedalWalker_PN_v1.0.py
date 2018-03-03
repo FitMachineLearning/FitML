@@ -37,7 +37,7 @@ uses_project_reward_for_SM_discrimination = True #Determines if SM uses projecte
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation =10
+num_initial_observation =5
 learning_rate =  0.004
 apLearning_rate = 0.002
 ENVIRONMENT_NAME = "BipedalWalker-v2"
@@ -48,7 +48,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
-sce_range = 0.2
+noise_sigma = 0.2 #How much noise should be added to each weights
+max_average_action_difference = 5
 b_discount = 0.99
 max_memory_len = 400000
 experience_replay_size = 50000
@@ -212,7 +213,7 @@ def add_noise(mu, largeNoise=False):
         sig = 0.006
     else:
         #print("Adding Large parameter noise")
-        sig = 0.1 #Sigma = width of the standard deviaion
+        sig = noise_sigma #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -222,9 +223,18 @@ def add_noise(mu, largeNoise=False):
         return mu - np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 
+def add_noise_simple(mu, largeNoise=False):
+    x =   np.random.rand(1) - 0.5 #probability of doing x
+    if not largeNoise:
+        x = x/10
+    else:
+        x = x/8   #Sigma = width of the standard deviaion
+    return mu + x
+
+
 #add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 add_noise = np.vectorize(add_noise,otypes=[np.float])
-#add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
+add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 
 
 def add_noise_to_model(largeNoise = False):
@@ -239,7 +249,7 @@ def add_noise_to_model(largeNoise = False):
         w = noisy_model.layers[k].get_weights()
         #print("w ==>", w)
         if np.alen(w) >0:
-            w[0] = add_noise(w[0],largeNoise)
+            w[0] = add_noise_simple(w[0],largeNoise)
 
         noisy_model.layers[k].set_weights(w)
     return noisy_model
@@ -259,7 +269,7 @@ def add_controlled_noise(largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while delta > 3 and deltaCount<5:
+    while delta > max_average_action_difference and deltaCount<25:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         add_noise_to_model(True)
         for i in range(np.alen(tX)):
@@ -419,12 +429,12 @@ def actor_experience_replay_with_PR():
         actualReward = tR[i]
         #print(" actual reward %3.3f  predictedReward %3.3f"%(actualReward,predictedReward) )
         if actualReward > predictedReward:
-            d = math.fabs( max_game_average - predictedReward)
-            if actualReward > max_game_average:
-                tW[i] = 1
-            else:
-                tW[i] =  math.fabs(actualReward-(predictedReward+0.000000000005)) / d
-                tW[i] = math.exp(1-(1/tW[i]**2))
+            d = math.fabs( memoryR.max() - predictedReward)
+            #if actualReward > max_game_average:
+            #    tW[i] = 1
+            #else:
+            tW[i] =  math.fabs(actualReward-(predictedReward+0.000000000005)) / d
+            tW[i] = math.exp(1-(1/tW[i]**2))
 
 
             if tW[i]> np.random.rand(1):
@@ -679,7 +689,7 @@ for game in range(num_games_to_play):
             last_game_average = gameR.mean()
             if game > 3 and game %2 ==0:
                 # train on all memory
-                print("Experience Replay")
+                #print("Experience Replay")
                 #for i in range(3):
                 actor_experience_replay()
             if game > 3 and game %2 ==0 and uses_critic:
