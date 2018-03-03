@@ -81,7 +81,7 @@ actions_1_hot[np.arange(num_env_actions),possible_actions] = 1
 
 #Create testing enviroment
 
-env = gym.make('BipedalWalker-v2')
+env = gym.make(ENVIRONMENT_NAME)
 env.render(mode="human")
 env.reset()
 
