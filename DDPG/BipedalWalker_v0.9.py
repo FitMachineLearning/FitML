@@ -32,7 +32,7 @@ from keras import optimizers
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
-uses_parameter_noising = False
+uses_parameter_noising = True
 uses_project_reward_for_SM_discrimination = False #Determines if SM uses projected reward for sample discrimination
 
 num_env_variables = 24
@@ -48,7 +48,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
-noise_sigma = 0.03 #How much noise should be added to each weights
+noise_sigma = 0.01 #How much noise should be added to each weights
 max_average_action_difference = 5
 b_discount = 0.99
 max_memory_len = 400000
@@ -111,7 +111,8 @@ Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
 Qmodel.add(Dense(32, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-
+Qmodel.add(Dense(32, activation='relu'))
+#Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
 #opt = optimizers.adadelta(lr=learning_rate)
@@ -127,7 +128,8 @@ action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[
 #action_predictor_model.add(Dropout(0.5))
 action_predictor_model.add(Dense(32, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-
+action_predictor_model.add(Dense(32, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
 #opt2 = optimizers.adadelta(lr=apLearning_rate)
@@ -140,6 +142,8 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 noisy_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+#noisy_model.add(Dropout(0.5))
+noisy_model.add(Dense(32, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(32, activation='relu'))
 #noisy_model.add(Dropout(0.5))
@@ -222,7 +226,7 @@ def add_noise(mu, largeNoise=False):
     else:
         return mu - np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-
+'''
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
@@ -230,11 +234,11 @@ def add_noise_simple(mu, largeNoise=False):
     else:
         x = x/8   #Sigma = width of the standard deviaion
     return mu + x
-
+'''
 
 #add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 add_noise = np.vectorize(add_noise,otypes=[np.float])
-add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
+#add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 
 
 def add_noise_to_model(largeNoise = False):
@@ -342,6 +346,27 @@ def scale_weights(memR,memW):
         #print("memW %5.2f reward %5.2f rmax %5.2f rmin %5.2f "%(memW[i][0],memR[i][0],rmax,rmin))
     #print("memW",memW)
     return memW
+
+
+def reset_noisy_model_weights_to_apWeights(mu):
+    x =  mu+(np.random.rand(1) - 0.5) / 10000000 #probability of doing x
+    return x
+
+reset_noisy_model_weights_to_apWeights = np.vectorize(reset_noisy_model_weights_to_apWeights,otypes=[np.float])
+
+def reset_noisy_model():
+    sz = len(noisy_model.layers)
+    #if largeNoise:
+    #    print("Setting Large Noise!")
+    for k in range(sz):
+        w = noisy_model.layers[k].get_weights()
+        apW = action_predictor_model.layers[k].get_weights()
+
+        if np.alen(w) >0:
+            w[0] = reset_noisy_model_weights_to_apWeights(apW[0])
+        noisy_model.layers[k].set_weights(w)
+        #print("w",w)
+        #print("apW",apW)
 
 def actor_experience_replay():
     if uses_project_reward_for_SM_discrimination:
@@ -501,13 +526,14 @@ for game in range(num_games_to_play):
     if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if game%5==1:
-            noisy_model = keras.models.clone_model(action_predictor_model)
+        #if game%5==1:
+        #    noisy_model = keras.models.clone_model(action_predictor_model)
 
             #reset_noisy_model()
         if (game%5==1 ):
             is_noisy_game = True
             #print("Adding controlled noise")
+            reset_noisy_model()
             add_controlled_noise(True)
         #else:
         #    add_controlled_noise(False)
