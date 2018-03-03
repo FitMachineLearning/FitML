@@ -40,7 +40,8 @@ num_env_actions = 4
 num_initial_observation =10
 learning_rate =  0.004
 apLearning_rate = 0.002
-version_name = "BW_AC_Scale_v1.0"
+ENVIRONMENT_NAME = "BipedalWalker-2"
+version_name = ENVIRONMENT_NAME+"PN_v0.5"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
