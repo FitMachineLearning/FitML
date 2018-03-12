@@ -33,7 +33,7 @@ from keras import optimizers
 
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
-uses_critic = False
+uses_critic = True
 uses_parameter_noising = True
 
 num_env_variables = 17
@@ -213,10 +213,10 @@ mAPPicks = []
 def add_noise(mu, largeNoise=False):
 
     if not largeNoise:
-        sig = 0.0000006
+        sig = 0.00006
     else:
         #print("Adding Large parameter noise")
-        sig = 0.06 #Sigma = width of the standard deviaion
+        sig = 0.006 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -231,7 +231,7 @@ def add_noise_simple(mu, largeNoise=False):
     if not largeNoise:
         x = x/80
     else:
-        x = x/30   #Sigma = width of the standard deviaion
+        x = x/10   #Sigma = width of the standard deviaion
     #print ("x/200",x)
     return mu + x
 
@@ -253,7 +253,7 @@ def add_noise_to_model(targetModel,largeNoise = False):
         w = targetModel.layers[k].get_weights()
         if np.alen(w) >0 :
             #print("k==>",k)
-            w[0] = add_noise_simple(w[0],largeNoise)
+            w[0] = add_noise(w[0],largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
@@ -484,16 +484,18 @@ for game in range(num_games_to_play):
     if game > num_initial_observation+4 and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if (game%2==0 ):
+        if (game%4==0 ):
             is_noisy_game = True
-            if last_best_noisy_game < memoryR.mean() or game%20==0:
-                print("Adding Noise")
+            if last_best_noisy_game < memoryR.mean() or game%12==0:
+                print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model()
                 add_controlled_noise(noisy_model,True)
-                last_best_noisy_game = -1000
+                #last_best_noisy_game = -1000
             else:
-                print("Not Changing weights last_best_noisy_game", last_best_noisy_game," mean ",memoryR.mean())
+                print("Adding Small Noise")
+                #print("Not Changing weights last_best_noisy_game", last_best_noisy_game," mean ",memoryR.mean())
+                reset_noisy_model()
                 add_controlled_noise(noisy_model,False)
 
 
@@ -505,10 +507,6 @@ for game in range(num_games_to_play):
         elif game < num_initial_observation:
             #take a radmon action
             a = env.action_space.sample()
-        elif  is_noisy_game and uses_parameter_noising:
-            #print("uses_parameter_noising")
-            remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(action_predictor_model,qs)
-            a = remembered_optimal_policy
         else:
             prob = np.random.rand(1)
             explore_prob = starting_explore_prob-(starting_explore_prob/random_num_games_to_play)*game
@@ -522,7 +520,10 @@ for game in range(num_games_to_play):
 
             else:
                 #print("Using Actor")
-                remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
+                if is_noisy_game and uses_parameter_noising:
+                    remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(action_predictor_model,qs)
+                else:
+                    remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
                 a = remembered_optimal_policy
 
                 if uses_critic:
