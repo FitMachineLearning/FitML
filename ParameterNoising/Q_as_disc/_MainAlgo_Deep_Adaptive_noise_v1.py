@@ -3,6 +3,7 @@ Mujoco HalfCheetah Walker with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
+ - With Adaptive noise
  - Q as discriminator
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
@@ -19,8 +20,8 @@ Adagrad
 import numpy as np
 import keras
 import gym
-import pybullet
-import pybullet_envs
+#import pybullet
+#import pybullet_envs
 
 import pygal
 import os
@@ -40,14 +41,14 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-num_env_variables = 26
-num_env_actions = 6
-num_initial_observation = 60
+num_env_variables = 24
+num_env_actions = 4
+num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
 littl_sigma = 0.0006
 big_sigma = 0.006
-ENVIRONMENT_NAME = "HalfCheetahBulletEnv-v0"
+ENVIRONMENT_NAME = "BipedalWalker-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v4.1"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -72,7 +73,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 950
+max_steps = 450
 
 #Selective memory settings
 sm_normalizer = 20
@@ -474,7 +475,7 @@ def train_noisy_actor():
     noisy_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
 
-def add_controlled_noise(targetModel,largeNoise = False):
+def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     tR = (memoryR)
     tX = (memoryS)
     tY = (memoryA)
@@ -488,7 +489,7 @@ def add_controlled_noise(targetModel,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while delta > 30 and deltaCount <20:
+    while (delta > 3 or delta < 0.1)  and deltaCount <20:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         targetModel = add_noise_to_model(targetModel,largeNoise)
         for i in range(np.alen(tX)):
@@ -500,8 +501,11 @@ def add_controlled_noise(targetModel,largeNoise = False):
             diffs[i] = c.mean()
         delta = np.average (diffs)
         deltaCount+=1
+        if delta > 3 or delta <0.1:
+            print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",1/delta)
+            big_sigma = 1 / delta
     print("Tried x time ", deltaCount,"delta =", delta)
-    return targetModel
+    return targetModel,big_sigma
 
 
 
@@ -523,23 +527,24 @@ for game in range(num_games_to_play):
     #noisy_model.set_weights(action_predictor_model.get_weights())
 
     #Add noise to Actor
-    if game > num_initial_observation+4 and uses_parameter_noising:
+    if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
-            if last_best_noisy_game < memoryR.mean() or game%6==0:
-                print("Adding BIG Noise")
+            if last_best_noisy_game < memoryR.mean() and game%2==0:
+                print("Last Game, no longer good. Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model()
-                add_controlled_noise(noisy_model,True)
+                noisy_model,big_sigma = add_controlled_noise(noisy_model,big_sigma,True)
                 #last_best_noisy_game = -1000
+            '''
             else:
                 print("Adding Small Noise")
                 #print("Not Changing weights last_best_noisy_game", last_best_noisy_game," mean ",memoryR.mean())
                 reset_noisy_model()
                 add_controlled_noise(noisy_model,False)
-
+            '''
 
     for step in range (5000):
 
@@ -717,16 +722,17 @@ for game in range(num_games_to_play):
             last_game_average = gameR.mean()
             if is_noisy_game and last_game_average > memoryR.mean():
                 last_best_noisy_game = last_game_average
+                print("Good noisy game: ", last_best_noisy_game)
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
-            if game > 3 and game %20 ==0:
+            if game > 3 and game %2 ==0:
                 # train on all memory
                 print("Experience Replay")
                 #for i in range(3):
 
                 pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 3 and game %10 ==0 and uses_critic:
+            if game > 3 and game %2 ==0 and uses_critic:
                 tSA = (memorySA)
                 tR = (memoryR)
                 train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
