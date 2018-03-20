@@ -3,7 +3,6 @@ Mujoco HalfCheetah Walker with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
- - With Adaptive noise
  - Q as discriminator
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
@@ -58,8 +57,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 100000
-experience_replay_size = 100000
+max_memory_len = 20000
+experience_replay_size = 20000
 random_every_n = 20
 num_retries = 30
 starting_explore_prob = 0.05
@@ -81,6 +80,7 @@ sm_memory_size = 10500
 
 last_game_average = -1000
 last_best_noisy_game = -1000
+last_noisy_game = -1000
 max_game_average = -1000
 
 #One hot encoding array
@@ -532,12 +532,13 @@ for game in range(num_games_to_play):
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
-            if last_best_noisy_game < memoryR.mean() and game%2==0:
-                print("Last Game, no longer good. Adding BIG Noise")
-                #noisy_model = keras.models.clone_model(action_predictor_model)
-                reset_noisy_model()
-                noisy_model,big_sigma = add_controlled_noise(noisy_model,big_sigma,True)
-                #last_best_noisy_game = -1000
+            if   game%2==0:
+                if last_best_noisy_game <  memoryR.mean()+math.fabs( (memoryR.max()-memoryR.mean()) /4    ) or last_noisy_game < memoryR.mean():
+                    print("Last Game, no longer good. Adding BIG Noise")
+                    #noisy_model = keras.models.clone_model(action_predictor_model)
+                    reset_noisy_model()
+                    noisy_model,big_sigma = add_controlled_noise(noisy_model,big_sigma,True)
+                    #last_best_noisy_game = -1000
             '''
             else:
                 print("Adding Small Noise")
@@ -720,9 +721,11 @@ for game in range(num_games_to_play):
 
         if done and game > num_initial_observation and not PLAY_GAME:
             last_game_average = gameR.mean()
-            if is_noisy_game and last_game_average > memoryR.mean():
+            if is_noisy_game:
+                last_noisy_game = gameR.mean()
+            if is_noisy_game and last_game_average > memoryR.mean()+math.fabs( (memoryR.max()-memoryR.mean()) /4    ):
                 last_best_noisy_game = last_game_average
-                print("Good noisy game: ", last_best_noisy_game)
+                print("Good noisy game. Setting last_best_noisy_game to ", last_best_noisy_game)
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
