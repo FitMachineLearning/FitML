@@ -534,9 +534,12 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
             diffs[i] = c.mean()
         delta = np.average (diffs)
         deltaCount+=1
-        #if delta > 3 or delta <0.01:
-        #    print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",1/delta)
-        #    big_sigma = 1 / delta
+        if delta > 3:
+            print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",big_sigma*0.9)
+            big_sigma = big_sigma *0.9
+        if delta <0.011:
+            print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",big_sigma*1.1)
+            big_sigma = big_sigma *1.1
     print("Tried x time ", deltaCount,"delta =", delta)
     return targetModel,big_sigma
 
