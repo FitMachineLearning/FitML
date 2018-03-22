@@ -46,7 +46,7 @@ num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
 littl_sigma = 0.0006
-big_sigma = 0.06
+big_sigma = 0.0006
 ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v4.1"
 weigths_filename = version_name+"-weights.h5"
@@ -57,12 +57,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 20000
+max_memory_len = 40000
 experience_replay_size = 20000
-random_every_n = 20
+random_every_n = 200
 num_retries = 30
 starting_explore_prob = 0.05
-training_epochs = 20
+training_epochs = 10
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -366,7 +366,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.0000000000000005
+            tW[i]=0.45
         if (tR[i]>pr+d/2):
             tW[i] = 1
         if tW[i]> np.random.rand(1):
@@ -518,7 +518,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while (delta > 3 or delta < 0.1)  and deltaCount <5:
+    while (delta > 0.1 or delta < 0.01)  and deltaCount <5:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         targetModel = add_noise_to_model(targetModel,largeNoise)
 
@@ -534,10 +534,10 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
             diffs[i] = c.mean()
         delta = np.average (diffs)
         deltaCount+=1
-        if delta > 3:
+        if delta > 0.1:
             print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",big_sigma*0.9)
             big_sigma = big_sigma *0.9
-        if delta <0.011:
+        if delta <0.01:
             print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",big_sigma*1.1)
             big_sigma = big_sigma *1.1
     print("Tried x time ", deltaCount,"delta =", delta)
@@ -566,10 +566,10 @@ for game in range(num_games_to_play):
     if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if (game%1==0 ):
+        if (game%3==0 ):
             is_noisy_game = True
-            if   game%1==0:
-                if last_best_noisy_game <  memoryR.mean()+math.fabs( (memoryR.max()-memoryR.mean()) /2    ) or last_noisy_game < memoryR.mean():
+            if   game%3==0:
+                if last_best_noisy_game <  memoryR.mean()+math.fabs( (memoryR.max()-memoryR.mean()) /4    ) or last_noisy_game < memoryR.mean():
                     print("Last Game, no longer good. Adding BIG Noise")
                     #noisy_model = keras.models.clone_model(action_predictor_model)
                     #reset_noisy_model()
@@ -759,20 +759,25 @@ for game in range(num_games_to_play):
 
         if done and game > num_initial_observation and not PLAY_GAME:
             last_game_average = gameR.mean()
+            retrain_noisy_model = False
             if is_noisy_game:
                 last_noisy_game = gameR.mean()
-            if is_noisy_game and last_game_average > memoryR.mean()+math.fabs( (memoryR.max()-memoryR.mean()) /2    ):
+            if is_noisy_game and last_game_average > memoryR.mean()+math.fabs( (memoryR.max()-memoryR.mean()) /4    ):
                 last_best_noisy_game = last_game_average
-                print("Good noisy game. Setting last_best_noisy_game to ", last_best_noisy_game)
+                print("Good noisy game. Don't retrain ", last_best_noisy_game)
+                retrain_noisy_model = False
+            if is_noisy_game and (last_game_average < memoryR.mean()):
+                retrain_noisy_model = True
+
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
-            if game > 3 and game %2 ==0:
+            if game > 3 and game %1 ==0 and retrain_noisy_model:
                 # train on all memory
                 print("No actor Experience Replay")
                 #for i in range(3):
 
-                #pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
+                pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 3 and game %2 ==0 and uses_critic:
                 tSA = (memorySA)
                 tR = (memoryR)
