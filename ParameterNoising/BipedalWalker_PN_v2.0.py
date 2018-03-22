@@ -1,6 +1,6 @@
 '''
-Bipedal Walker with
- - Selective Memory | DDSM (Deep Deterministic Selective memory)
+Lunar Lander with
+ - Selective Memory
  - Actor Critic
  - Parameter Noising
  - Adaptive Noise
@@ -39,14 +39,14 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-num_env_variables = 8
-num_env_actions = 2
+num_env_variables = 24
+num_env_actions = 4
 num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
 littl_sigma = 0.0006
 big_sigma = 0.0006
-ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
+ENVIRONMENT_NAME = "BipedalWalker-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v4.1"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -55,13 +55,13 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.99
+b_discount = 0.9
 max_memory_len = 40000
 experience_replay_size = 20000
 random_every_n = 200
 num_retries = 30
 starting_explore_prob = 0.05
-training_epochs = 10
+training_epochs = 30
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -71,7 +71,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 1550
+max_steps = 650
 
 #Selective memory settings
 sm_normalizer = 20
@@ -114,11 +114,11 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(128, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(32, activation='relu'))
+Qmodel.add(Dense(128, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
+#Qmodel.add(Dense(32, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
@@ -131,11 +131,11 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(128, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
+action_predictor_model.add(Dense(128, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
+#action_predictor_model.add(Dense(32, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -148,11 +148,11 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(128, activation='relu', input_dim=apdataX.shape[1]))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
+noisy_model.add(Dense(128, activation='relu'))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
+#noisy_model.add(Dense(32, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
@@ -365,7 +365,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.45
+            tW[i]=0.85
         if (tR[i]>pr+d/2):
             tW[i] = 1
         if tW[i]> np.random.rand(1):
@@ -629,9 +629,9 @@ for game in range(num_games_to_play):
                         a = randaction
                         #print(" - selecting generated optimal policy ",a)
 
-        for i in range (np.alen(a)):
-            if a[i] < -1: a[i]=-0.99999999999
-            if a[i] > 1: a[i] = 0.99999999999
+        #for i in range (np.alen(a)):
+        #    if a[i] < -1: a[i]=-0.99999999999
+        #    if a[i] > 1: a[i] = 0.99999999999
 
 
 
@@ -763,7 +763,7 @@ for game in range(num_games_to_play):
                 last_noisy_game = gameR.mean()
             if is_noisy_game and last_game_average > memoryR.mean()+math.fabs( (memoryR.max()-memoryR.mean()) /4    ):
                 last_best_noisy_game = last_game_average
-                print("Good noisy game. Don't retrain ", last_best_noisy_game)
+                #print("Good noisy game. Don't retrain ", last_best_noisy_game)
                 retrain_noisy_model = False
             if is_noisy_game and (last_game_average < memoryR.mean()):
                 retrain_noisy_model = True
@@ -773,7 +773,7 @@ for game in range(num_games_to_play):
 
             if game > 3 and game %1 ==0 and retrain_noisy_model:
                 # train on all memory
-                print("No actor Experience Replay")
+                #print("No actor Experience Replay")
                 #for i in range(3):
 
                 pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
@@ -783,10 +783,11 @@ for game in range(num_games_to_play):
                 train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
                 tR = tR[train_A,:]
                 tSA = tSA    [train_A,:]
-                print("Training Critic n elements =", np.alen(tR))
+                #print("Training Critic n elements =", np.alen(tR))
                 Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
             if game > 3 and game %2 ==0 and uses_parameter_noising:
-                print("Training noisy_actor experience replay")
+                #print("Training noisy_actor experience replay")
+                reset_noisy_model()
                 pr_noisy_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
                 #Reinforce training with best game
 
