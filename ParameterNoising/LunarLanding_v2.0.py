@@ -1,19 +1,18 @@
 '''
-Mujoco HalfCheetah Walker with
+Lunar Lander with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
+ - Adaptive Noise
  - Q as discriminator
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
-Starts to crawl at 78
+Starts to Land at 78
 
-Adagrad
-0.99 delta
-0.1 dropout
+
 
 '''
 import numpy as np
