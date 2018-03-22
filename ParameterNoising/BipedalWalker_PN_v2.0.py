@@ -71,7 +71,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 650
+max_steps = 1550
 
 #Selective memory settings
 sm_normalizer = 20
@@ -365,7 +365,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.85
+            tW[i]=0.55
         if (tR[i]>pr+d/2):
             tW[i] = 1
         if tW[i]> np.random.rand(1):
@@ -395,7 +395,7 @@ def pr_noisy_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.85
+            tW[i]=0.55
         if (tR[i]>pr+d/2):
             tW[i] = 1
         if tW[i]> np.random.rand(1):
@@ -517,7 +517,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while (delta > 0.1 or delta < 0.01)  and deltaCount <5:
+    while (delta > 0.3 or delta < 0.01)  and deltaCount <5:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         targetModel = add_noise_to_model(targetModel,largeNoise)
 
@@ -533,7 +533,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
             diffs[i] = c.mean()
         delta = np.average (diffs)
         deltaCount+=1
-        if delta > 0.1:
+        if delta > 0.3:
             print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",big_sigma*0.9)
             big_sigma = big_sigma *0.9
         if delta <0.01:
@@ -565,9 +565,9 @@ for game in range(num_games_to_play):
     if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if (game%3==0 ):
+        if (game%5==0 ):
             is_noisy_game = True
-            if   game%3==0:
+            if   game%5==0:
                 if last_best_noisy_game <  memoryR.mean()+math.fabs( (memoryR.max()-memoryR.mean()) /4    ) or last_noisy_game < memoryR.mean():
                     print("Last Game, no longer good. Adding BIG Noise")
                     #noisy_model = keras.models.clone_model(action_predictor_model)
@@ -785,10 +785,10 @@ for game in range(num_games_to_play):
                 tSA = tSA    [train_A,:]
                 #print("Training Critic n elements =", np.alen(tR))
                 Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
-            if game > 3 and game %2 ==0 and uses_parameter_noising:
+            if game > 3 and game %1 ==0 and uses_parameter_noising:
                 #print("Training noisy_actor experience replay")
-                reset_noisy_model()
-                pr_noisy_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
+
+                pr_noisy_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs*4)
                 #Reinforce training with best game
 
 
