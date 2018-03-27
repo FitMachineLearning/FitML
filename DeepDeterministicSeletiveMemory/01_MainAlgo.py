@@ -1,16 +1,19 @@
 '''
-Mujoco HalfCheetah Walker with with Selective Memory Actor Critic
+Mujoco HalfCheetah Walker with
+ - Selective Memory
+ - Actor Critic
+ - Parameter Noising
+ - Q as discriminator
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
-Better discrimination for selection
-Deeper Network
-Smaller Learning Rate
+Deep Network
+Starts to crawl at 78
 
-Results
-Gets Positive score ~ episode 75
-
+Adagrad
+0.99 delta
+0.1 dropout
 
 '''
 import numpy as np
@@ -39,11 +42,11 @@ uses_parameter_noising = False
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 5
+num_initial_observation = 2
 learning_rate =  0.003
 apLearning_rate = 0.001
 ENVIRONMENT_NAME = "BipedalWalker-v2"
-version_name = ENVIRONMENT_NAME + "With_PN_v2.6"
+version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -52,8 +55,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 100000
-experience_replay_size = 100000
+max_memory_len = 90000
+experience_replay_size = 45000
 random_every_n = 50
 num_retries = 30
 starting_explore_prob = 0.05
@@ -67,7 +70,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-max_steps =450
+max_steps = 1540
 
 #Selective memory settings
 sm_normalizer = 20
@@ -109,17 +112,15 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(64, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(32, activation='relu'))
+Qmodel.add(Dense(64, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
+Qmodel.add(Dense(64, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
+Qmodel.add(Dense(64, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
-#Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
+
 #Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dense(128, activation='relu'))
 #Qmodel.add(Dropout(0.5))
@@ -134,19 +135,13 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(64, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
+action_predictor_model.add(Dense(64, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
+action_predictor_model.add(Dense(64, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
-#action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
-#action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
-#action_predictor_model.add(Dropout(0.5))
-#action_predictor_model.add(Dense(128, activation='relu'))
+action_predictor_model.add(Dense(64, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -159,19 +154,11 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
+#noisy_model.add(Dense(256, activation='relu'))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
-#noisy_model.add(Dense(apdataY.shape[1]))
+noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
 
 noisy_model.compile(loss='mse', optimizer=opt3, metrics=['accuracy'])
@@ -238,10 +225,10 @@ mAPPicks = []
 def add_noise(mu, largeNoise=False):
 
     if not largeNoise:
-        sig = 0.006
+        sig = 0.00006
     else:
         #print("Adding Large parameter noise")
-        sig = 0.06 #Sigma = width of the standard deviaion
+        sig = 0.006 #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -254,9 +241,9 @@ def add_noise(mu, largeNoise=False):
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
-        x = x/6
+        x = x/80
     else:
-        x = x/3   #Sigma = width of the standard deviaion
+        x = x/10   #Sigma = width of the standard deviaion
     #print ("x/200",x)
     return mu + x
 
@@ -365,6 +352,40 @@ def scale_weights(memR,memW):
     #print("memW",memW)
     return memW
 
+
+def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
+    tSA = (memSA)
+    tR = (memR)
+    tX = (memS)
+    tY = (memA)
+    tW = (memW)
+
+
+    tX_train = np.zeros(shape=(1,num_env_variables))
+    tY_train = np.zeros(shape=(1,num_env_actions))
+    for i in range(np.alen(tR)):
+        pr = predictTotalRewards(tX[i],GetRememberedOptimalPolicy(tX[i]))
+        #print ("tR[i]",tR[i],"pr",pr)
+        d = math.fabs( memoryR.max() - pr)
+        tW[i]= 0.0000000000000005
+        if (tR[i]>pr):
+            tW[i]=0.15
+        if (tR[i]>pr+d/2) or tR[i] > max_game_average:
+            tW[i] = 1
+        if tW[i]> np.random.rand(1):
+            tX_train = np.vstack((tX_train,tX[i]))
+            tY_train = np.vstack((tY_train,tY[i]))
+
+
+    tX_train = tX_train[1:]
+    tY_train = tY_train[1:]
+    print("%8d were better After removing first element"%np.alen(tX_train))
+    if np.alen(tX_train)>0:
+        action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=num_epochs,verbose=0)
+
+
+
+
 def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
     tSA = (memSA)
     tR = (memR)
@@ -372,12 +393,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
     tY = (memA)
     tW = (memW)
 
-    #target = tR.mean() #+ math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
-    target = tR.flatten()[-10000:].mean() #+ math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
-
-    print("Recent mean ", target)
-    print("Overall mean ", tR.mean())
-
+    target = tR.mean() #+ math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
     train_C = np.arange(np.alen(tR))
     train_C = train_C[tR.flatten()>target]
     tX = tX[train_C,:]
@@ -412,7 +428,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
         tW[i]= 0.0000000000000005
         if (tR[i]>target):
-            tW[i]=0.05
+            tW[i]=0.5
         if (tR[i]>max_game_average):
             tW[i] = 1
 
@@ -476,7 +492,7 @@ def add_controlled_noise(targetModel,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while delta > 50 and deltaCount <20:
+    while delta > 6 and deltaCount <20:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         targetModel = add_noise_to_model(targetModel,largeNoise)
         for i in range(np.alen(tX)):
@@ -511,12 +527,12 @@ for game in range(num_games_to_play):
     #noisy_model.set_weights(action_predictor_model.get_weights())
 
     #Add noise to Actor
-    if game > num_initial_observation and uses_parameter_noising:
+    if game > num_initial_observation+4 and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
-            if game%2==0:
+            if last_best_noisy_game < memoryR.mean() or game%6==0:
                 print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model()
@@ -556,7 +572,7 @@ for game in range(num_games_to_play):
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
                 a = remembered_optimal_policy
 
-                if uses_critic :
+                if uses_critic:
                     #print("Using critric")
                     stock = np.zeros(num_retries)
                     stockAction = np.zeros(shape=(num_retries,num_env_actions))
@@ -708,13 +724,13 @@ for game in range(num_games_to_play):
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
-            if game > 3 and game %1 ==0:
+            if game > 3 and game %2 ==0:
                 # train on all memory
                 print("Experience Replay")
                 #for i in range(3):
 
-                actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 3 and game %2 ==0 and uses_critic:
+                pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
+            if game > 3 and game %1 ==0 and uses_critic:
                 tSA = (memorySA)
                 tR = (memoryR)
                 train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
