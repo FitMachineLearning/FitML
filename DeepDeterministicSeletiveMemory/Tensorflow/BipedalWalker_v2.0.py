@@ -37,7 +37,7 @@ uses_parameter_noising = False
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 0
+num_initial_observation = 6
 learning_rate =  0.003
 apLearning_rate = 0.001
 ENVIRONMENT_NAME = "BipedalWalker-v2"
@@ -55,17 +55,17 @@ experience_replay_size = 45000
 random_every_n = 50
 num_retries = 30
 starting_explore_prob = 0.05
-training_epochs = 3
+training_epochs = 100
 mini_batch = 512
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = True
+load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-max_steps = 140
+max_steps = 840
 
 #Selective memory settings
 sm_normalizer = 20
@@ -114,22 +114,25 @@ def apModel(X, apw_h, apw_o):
     return tf.matmul(h, apw_o) # note that we dont take the softmax at the end because our cost fn does that for us
 
 ''' QModel '''
-Qw_h = init_weights([num_env_variables+num_env_actions, 625]) # create symbolic variables
-Qw_o = init_weights([625, 1])
+Qw_h = init_weights([num_env_variables+num_env_actions, 1024]) # create symbolic variables
+Qw_o = init_weights([1024, 1])
 
 Qpy_x = Qmodel(dataX, Qw_h, Qw_o)
 
+
 Qcost = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(dataY, Qpy_x))))
-Qtrain_op = tf.train.AdadeltaOptimizer(1).minimize(Qcost)
+Qoptimizer = tf.train.AdadeltaOptimizer(1.,0.9,1e-6)
+Qtrain_op = Qoptimizer.minimize(Qcost)
 
 ''' apModel '''
-apw_h = init_weights([num_env_variables, 625]) # create symbolic variables
-apw_o = init_weights([625, num_env_actions])
+apw_h = init_weights([num_env_variables, 1024]) # create symbolic variables
+apw_o = init_weights([1024, num_env_actions])
 
 appy_x = apModel(apdataX, apw_h, apw_o)
 
 apcost = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(apdataY, appy_x))))
-aptrain_op = tf.train.AdadeltaOptimizer(1).minimize(apcost)
+apOptimizer = tf.train.AdadeltaOptimizer(1.,0.9,1e-6)
+aptrain_op = apOptimizer.minimize(apcost)
 
 
 
