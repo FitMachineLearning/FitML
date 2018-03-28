@@ -54,8 +54,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 50000
-experience_replay_size = 50000
+max_memory_len = 10000
+experience_replay_size = 10000
 random_every_n = 50
 num_retries = 30
 starting_explore_prob = 0.25
