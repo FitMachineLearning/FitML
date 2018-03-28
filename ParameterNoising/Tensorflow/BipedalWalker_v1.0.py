@@ -35,12 +35,14 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-num_env_variables = 24
-num_env_actions = 4
+num_env_variables = 17
+num_env_actions = 6
 num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
-ENVIRONMENT_NAME = "BipedalWalker-v2"
+big_sigma = 0.006
+littl_sigma = 0.0006
+ENVIRONMENT_NAME = "Walker2d-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -74,6 +76,7 @@ sm_memory_size = 10500
 last_game_average = -1000
 last_best_noisy_game = -1000
 max_game_average = -1000
+noisy_game_no_longer_valid = False
 
 
 #Create testing enviroment
@@ -114,8 +117,8 @@ def apModel(X, apw_h, apw_o):
     return tf.matmul(h, apw_o) # note that we dont take the softmax at the end because our cost fn does that for us
 
 ''' QModel '''
-Qw_h = init_weights([num_env_variables+num_env_actions, 1024]) # create symbolic variables
-Qw_o = init_weights([1024, 1])
+Qw_h = init_weights([num_env_variables+num_env_actions, 2048]) # create symbolic variables
+Qw_o = init_weights([2048, 1])
 
 Qpy_x = Qmodel(dataX, Qw_h, Qw_o)
 
@@ -125,8 +128,8 @@ Qoptimizer = tf.train.AdadeltaOptimizer(1.,0.9,1e-6)
 Qtrain_op = Qoptimizer.minimize(Qcost)
 
 ''' apModel '''
-apw_h = init_weights([num_env_variables, 1024]) # create symbolic variables
-apw_o = init_weights([1024, num_env_actions])
+apw_h = init_weights([num_env_variables, 2048]) # create symbolic variables
+apw_o = init_weights([2048, num_env_actions])
 
 appy_x = apModel(apdataX, apw_h, apw_o)
 
@@ -136,8 +139,8 @@ aptrain_op = apOptimizer.minimize(apcost)
 
 
 ''' naModel '''
-naw_h = init_weights([num_env_variables, 1024]) # create symbolic variables
-naw_o = init_weights([1024, num_env_actions])
+naw_h = init_weights([num_env_variables, 2048]) # create symbolic variables
+naw_o = init_weights([2048, num_env_actions])
 
 napy_x = apModel(apdataX, naw_h, naw_o)
 
@@ -214,10 +217,10 @@ mAPPicks = []
 def add_noise(mu, largeNoise=False):
 
     if not largeNoise:
-        sig = 0.00006
+        sig = littl_sigma
     else:
         #print("Adding Large parameter noise")
-        sig = 0.06 #Sigma = width of the standard deviaion
+        sig = big_sigma #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -230,9 +233,9 @@ def add_noise(mu, largeNoise=False):
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
-        x = x/8000
+        x = x*littl_sigma
     else:
-        x = x/200   #Sigma = width of the standard deviaion
+        x = x*big_sigma   #Sigma = width of the standard deviaion
     #print ("x/200",x)
     return mu + x
 
@@ -246,9 +249,9 @@ add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 def add_noise_TF(largeNoise = False):
     variables_names =[v.name for v in tf.trainable_variables()]
     values = sess.run(variables_names)
-    for k,v in zip(variables_names, values):
-        if(k==naw_h.name):
-            print(k, v)
+    #for k,v in zip(variables_names, values):
+    #    if(k==naw_h.name):
+    #        print(k, v)
     for k,v in zip(variables_names, values):
         if(k==naw_h.name):
             v2=add_noise_simple(v,True)
@@ -496,7 +499,7 @@ def train_noisy_actor():
 
 
 
-def add_controlled_noise(targetModel,largeNoise = False):
+def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     tR = (memoryR)
     tX = (memoryS)
     tY = (memoryA)
@@ -510,7 +513,7 @@ def add_controlled_noise(targetModel,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while delta > 6 and deltaCount <20:
+    while delta > 1 and deltaCount <5:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         add_noise_TF(largeNoise)
         for i in range(np.alen(tX)):
@@ -522,8 +525,17 @@ def add_controlled_noise(targetModel,largeNoise = False):
             diffs[i] = c.mean()
         delta = np.average (diffs)
         deltaCount+=1
+        if delta > 2:
+            big_sigma = big_sigma *0.9
+            print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
+
+        if delta <0.1:
+            big_sigma = big_sigma *1.1
+            print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
+
     print("Tried x time ", deltaCount,"delta =", delta)
-    return targetModel
+
+    return big_sigma
 
 
 
@@ -549,17 +561,18 @@ for game in range(num_games_to_play):
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
-            if last_best_noisy_game < memoryR.mean() or game%6==0:
+            if noisy_game_no_longer_valid :
                 print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model_TF()
-                add_controlled_noise(None,True)
+                big_sigma = add_controlled_noise(None,big_sigma,True)
                 #last_best_noisy_game = -1000
-            else:
-                print("Adding Small Noise")
-                #print("Not Changing weights last_best_noisy_game", last_best_noisy_game," mean ",memoryR.mean())
-                reset_noisy_model_TF()
-                add_controlled_noise(None,False)
+            #else:
+            #    print("Adding Small Noise")
+            #    #print("Not Changing weights last_best_noisy_game", last_best_noisy_game," mean ",memoryR.mean())
+            #    reset_noisy_model_TF()
+            #    big_sigma = add_controlled_noise(None,big_sigma,True)
+
 
 
     for step in range (5000):
@@ -621,7 +634,7 @@ for game in range(num_games_to_play):
         #record only the first x number of states
 
         if done and step<max_steps-3:
-            r = -50
+            r = -300
 
         if step ==0:
             gameSA[0] = qs_a
@@ -736,8 +749,11 @@ for game in range(num_games_to_play):
 
         if done and game > num_initial_observation and not PLAY_GAME:
             last_game_average = gameR.mean()
-            if is_noisy_game and last_game_average > memoryR.mean():
-                last_best_noisy_game = last_game_average
+            if is_noisy_game:
+                if last_game_average < memoryR.mean():
+                    noisy_game_no_longer_valid = True
+                else:
+                    noisy_game_no_longer_valid = False
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
