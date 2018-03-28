@@ -32,17 +32,19 @@ from keras import optimizers
 
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
-uses_critic = True
+uses_critic = False
 uses_parameter_noising = True
 
-num_env_variables = 17
-num_env_actions = 6
-num_initial_observation = 0
+num_env_variables = 24
+num_env_actions = 4
+num_initial_observation = 10
 learning_rate =  0.003
 apLearning_rate = 0.001
 big_sigma = 0.006
 littl_sigma = 0.0006
-ENVIRONMENT_NAME = "Walker2d-v2"
+upper_delta = 0.7
+lower_delta = 0.02
+ENVIRONMENT_NAME = "BipedalWalker-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -52,11 +54,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 90000
-experience_replay_size = 45000
+max_memory_len = 20000
+experience_replay_size = 20000
 random_every_n = 50
 num_retries = 30
-starting_explore_prob = 0.05
+starting_explore_prob = 0.25
 training_epochs = 100
 mini_batch = 512
 load_previous_weights = False
@@ -65,9 +67,9 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 20000
-random_num_games_to_play = num_games_to_play/3
-max_steps = 840
+num_games_to_play = 600
+random_num_games_to_play = num_games_to_play
+max_steps =840
 
 #Selective memory settings
 sm_normalizer = 20
@@ -254,7 +256,7 @@ def add_noise_TF(largeNoise = False):
     #        print(k, v)
     for k,v in zip(variables_names, values):
         if(k==naw_h.name):
-            v2=add_noise_simple(v,True)
+            v2=add_noise(v,True)
             #v2 = v+0.001
     #print("Noise added. showing res v2",v2)
     assign_op = tf.assign(naw_h,v2)
@@ -382,8 +384,9 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epoch=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.15
-        if (tR[i]>pr+d/2) or tR[i] > max_game_average:
+            tW[i]=0.35
+        #if (tR[i]>pr+d/2) or tR[i] > max_game_average:
+        if (tR[i]>pr+d/2) :
             tW[i] = 1
         if tW[i]> np.random.rand(1):
             tX_train = np.vstack((tX_train,tX[i]))
@@ -513,7 +516,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while delta > 1 and deltaCount <5:
+    while ( delta > upper_delta or delta < lower_delta) and deltaCount <5:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         add_noise_TF(largeNoise)
         for i in range(np.alen(tX)):
@@ -525,11 +528,11 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
             diffs[i] = c.mean()
         delta = np.average (diffs)
         deltaCount+=1
-        if delta > 2:
+        if delta > upper_delta:
             big_sigma = big_sigma *0.9
             print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
 
-        if delta <0.1:
+        if delta < lower_delta:
             big_sigma = big_sigma *1.1
             print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
 
@@ -561,7 +564,7 @@ for game in range(num_games_to_play):
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
-            if noisy_game_no_longer_valid :
+            if  noisy_game_no_longer_valid :
                 print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model_TF()
@@ -634,7 +637,7 @@ for game in range(num_games_to_play):
         #record only the first x number of states
 
         if done and step<max_steps-3:
-            r = -300
+            r = -50
 
         if step ==0:
             gameSA[0] = qs_a
@@ -750,7 +753,7 @@ for game in range(num_games_to_play):
         if done and game > num_initial_observation and not PLAY_GAME:
             last_game_average = gameR.mean()
             if is_noisy_game:
-                if last_game_average < memoryR.mean():
+                if last_game_average < memoryR.mean() +( math.fabs(memoryR.max()- memoryR.mean() )/10 ):
                     noisy_game_no_longer_valid = True
                 else:
                     noisy_game_no_longer_valid = False
