@@ -54,8 +54,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 20000
-experience_replay_size = 20000
+max_memory_len = 50000
+experience_replay_size = 50000
 random_every_n = 50
 num_retries = 30
 starting_explore_prob = 0.25
@@ -69,7 +69,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 600
 random_num_games_to_play = num_games_to_play
-max_steps =840
+max_steps =1540
 
 #Selective memory settings
 sm_normalizer = 20
