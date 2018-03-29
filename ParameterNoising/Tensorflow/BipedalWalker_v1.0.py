@@ -32,18 +32,18 @@ from keras import optimizers
 
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
-uses_critic = False
+uses_critic = True
 uses_parameter_noising = True
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 10
+num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
 big_sigma = 0.006
 littl_sigma = 0.0006
-upper_delta = 0.7
-lower_delta = 0.02
+upper_delta = 0.3
+lower_delta = 0.015
 ENVIRONMENT_NAME = "BipedalWalker-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
@@ -54,11 +54,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 10000
-experience_replay_size = 10000
+max_memory_len = 80000
+experience_replay_size = 40000
 random_every_n = 50
 num_retries = 30
-starting_explore_prob = 0.25
+starting_explore_prob = 0.20
 training_epochs = 100
 mini_batch = 512
 load_previous_weights = False
@@ -67,7 +67,7 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 600
+num_games_to_play = 6000
 random_num_games_to_play = num_games_to_play
 max_steps =1540
 
@@ -384,9 +384,9 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epoch=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.35
+            tW[i]=0.55
         #if (tR[i]>pr+d/2) or tR[i] > max_game_average:
-        if (tR[i]>pr+d/2) :
+        if (tR[i]>pr) :
             tW[i] = 1
         if tW[i]> np.random.rand(1):
             tX_train = np.vstack((tX_train,tX[i]))
@@ -760,7 +760,7 @@ for game in range(num_games_to_play):
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
-            if game > 3 and game %2 ==0:
+            if game > 3 and game %10 ==0:
                 # train on all memory
                 print("Experience Replay")
                 #for i in range(3):
