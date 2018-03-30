@@ -119,8 +119,8 @@ def apModel(X, apw_h, apw_o):
     return tf.matmul(h, apw_o) # note that we dont take the softmax at the end because our cost fn does that for us
 
 ''' QModel '''
-Qw_h = init_weights([num_env_variables+num_env_actions, 2048]) # create symbolic variables
-Qw_o = init_weights([2048, 1])
+Qw_h = init_weights([num_env_variables+num_env_actions, 4048]) # create symbolic variables
+Qw_o = init_weights([4048, 1])
 
 Qpy_x = Qmodel(dataX, Qw_h, Qw_o)
 
@@ -130,8 +130,8 @@ Qoptimizer = tf.train.AdadeltaOptimizer(1.,0.9,1e-6)
 Qtrain_op = Qoptimizer.minimize(Qcost)
 
 ''' apModel '''
-apw_h = init_weights([num_env_variables, 2048]) # create symbolic variables
-apw_o = init_weights([2048, num_env_actions])
+apw_h = init_weights([num_env_variables, 4048]) # create symbolic variables
+apw_o = init_weights([4048, num_env_actions])
 
 appy_x = apModel(apdataX, apw_h, apw_o)
 
@@ -141,8 +141,8 @@ aptrain_op = apOptimizer.minimize(apcost)
 
 
 ''' naModel '''
-naw_h = init_weights([num_env_variables, 2048]) # create symbolic variables
-naw_o = init_weights([2048, num_env_actions])
+naw_h = init_weights([num_env_variables, 4048]) # create symbolic variables
+naw_o = init_weights([4048, num_env_actions])
 
 napy_x = apModel(apdataX, naw_h, naw_o)
 
