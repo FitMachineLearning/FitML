@@ -11,8 +11,9 @@ Update
 Deep Network
 Starts to crawl at 78
 
-Adadelta
-LeakyRelu
+Adagrad
+0.99 delta
+0.1 dropout
 
 '''
 import tensorflow as tf
@@ -383,9 +384,9 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epoch=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.55
-        #if (tR[i]>pr+d/2) or tR[i] > max_game_average:
-        if (tR[i]>pr) :
+            tW[i]=0.1
+        if (tR[i]>pr+d/2) :
+        #if (tR[i]>pr) :
             tW[i] = 1
         if tW[i]> np.random.rand(1):
             tX_train = np.vstack((tX_train,tX[i]))
