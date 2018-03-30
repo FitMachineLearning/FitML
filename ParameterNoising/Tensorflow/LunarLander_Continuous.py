@@ -37,7 +37,7 @@ uses_parameter_noising = True
 
 num_env_variables = 8
 num_env_actions = 2
-num_initial_observation = 0
+num_initial_observation = 6
 learning_rate =  0.003
 apLearning_rate = 0.001
 big_sigma = 0.006
@@ -58,8 +58,8 @@ max_memory_len = 80000
 experience_replay_size = 40000
 random_every_n = 50
 num_retries = 30
-starting_explore_prob = 0.20
-training_epochs = 100
+starting_explore_prob = 0.05
+training_epochs = 3
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -762,7 +762,7 @@ for game in range(num_games_to_play):
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
-            if game > 3 and game %3 ==0:
+            if game > 3 and game %1 ==0:
                 # train on all memory
                 print("Experience Replay")
                 #for i in range(3):
