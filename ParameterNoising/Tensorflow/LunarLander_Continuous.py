@@ -11,9 +11,8 @@ Update
 Deep Network
 Starts to crawl at 78
 
-Adagrad
-0.99 delta
-0.1 dropout
+Adadelta
+LeakyRelu
 
 '''
 import tensorflow as tf
@@ -59,7 +58,7 @@ experience_replay_size = 40000
 random_every_n = 50
 num_retries = 30
 starting_explore_prob = 0.05
-training_epochs = 3
+training_epochs = 10
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -111,11 +110,11 @@ def init_weights(shape):
     return tf.Variable(tf.random_normal(shape, stddev=0.01))
 
 def Qmodel(X, w_h, w_o):
-    h = tf.nn.relu(tf.matmul(X, w_h)) # this is a basic mlp, think 2 stacked logistic regressions
+    h = tf.nn.leaky_relu(tf.matmul(X, w_h)) # this is a basic mlp, think 2 stacked logistic regressions
     return tf.matmul(h, w_o) # note that we dont take the softmax at the end because our cost fn does that for us
 
 def apModel(X, apw_h, apw_o):
-    h = tf.nn.relu(tf.matmul(X, apw_h)) # this is a basic mlp, think 2 stacked logistic regressions
+    h = tf.nn.leaky_relu(tf.matmul(X, apw_h)) # this is a basic mlp, think 2 stacked logistic regressions
     return tf.matmul(h, apw_o) # note that we dont take the softmax at the end because our cost fn does that for us
 
 ''' QModel '''
