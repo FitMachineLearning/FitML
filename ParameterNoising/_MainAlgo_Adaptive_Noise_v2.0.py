@@ -47,6 +47,8 @@ learning_rate =  0.003
 apLearning_rate = 0.001
 littl_sigma = 0.0006
 big_sigma = 0.006
+upper_delta = 0.0095
+lower_delta = 0.0015
 ENVIRONMENT_NAME = "BipedalWalker-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v4.1"
 weigths_filename = version_name+"-weights.h5"
@@ -518,22 +520,31 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while (delta > 3 or delta < 0.1)  and deltaCount <5:
+    for i in range(np.alen(tX)):
+        a = GetRememberedOptimalPolicyFromNoisyModel(targetModel,tX[i])
+        a = a.flatten()
+    #print("Output Before noise ",a)
+
+    while ( delta > upper_delta or delta < lower_delta) and deltaCount <2:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         targetModel = add_noise_to_model(targetModel,largeNoise)
-
-        for i in range(np.alen(tX)):
-            a = GetRememberedOptimalPolicyFromNoisyModel(targetModel,tX[i])
-            a = a.flatten()
 
 
         for i in range(np.alen(tX)):
             b = GetRememberedOptimalPolicyFromNoisyModel(targetModel,tX[i])
             b = b.flatten()
-            c = np.abs(a-b)
-            diffs[i] = c.mean()
-        delta = np.average (diffs)
+
+        c = np.abs(a-b)
+        delta = c.mean()
+
         deltaCount+=1
+        if delta > upper_delta:
+            big_sigma = big_sigma *0.9
+            print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
+
+        if delta < lower_delta:
+            big_sigma = big_sigma *1.1
+            print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
         #if delta > 3 or delta <0.01:
         #    print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",1/delta)
         #    big_sigma = 1 / delta
