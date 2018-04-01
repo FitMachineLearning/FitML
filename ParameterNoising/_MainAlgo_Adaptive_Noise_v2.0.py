@@ -84,6 +84,10 @@ last_game_average = -1000
 last_best_noisy_game = -1000
 last_noisy_game = -1000
 max_game_average = -1000
+min_episode_score = 100000
+max_episode_score = -1000000
+noisy_game_no_longer_valid = False
+
 
 #One hot encoding array
 possible_actions = np.arange(0,num_env_actions)
@@ -190,6 +194,8 @@ memoryS = np.zeros(shape=(1,num_env_variables))
 memoryA = np.zeros(shape=(1,1))
 memoryR = np.zeros(shape=(1,1))
 memoryRR = np.zeros(shape=(1,1))
+memoryER = np.zeros(shape=(1,1))
+
 memoryW = np.zeros(shape=(1,1))
 
 BestGameSA = np.zeros(shape=(1,num_env_variables+num_env_actions))
@@ -203,6 +209,8 @@ if load_memory_arrays:
         print("Memory Files exist. Loading...")
         memorySA = np.load(version_name+'memorySA.npy')
         memoryRR = np.load(version_name+'memoryRR.npy')
+        memoryER = np.load(version_name+'memoryER.npy')
+
         memoryS = np.load(version_name+'memoryS.npy')
         memoryA = np.load(version_name+'memoryA.npy')
         memoryR = np.load(version_name+'memoryR.npy')
@@ -382,25 +390,35 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
     if np.alen(tX_train)>0:
         action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=num_epochs,verbose=0)
 
-def pr_noisy_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
+def pr_noisy_actor_experience_replay(memSA,memR,memS,memA,memW,memER,num_epochs=1):
     tSA = (memSA)
     tR = (memR)
+    tER = (memER)
     tX = (memS)
     tY = (memA)
     tW = (memW)
+
+    gameAdvantage = 0.05
+    gameDistance = math.fabs(max_episode_score - min_episode_score)
+    gameScoreTreshold = min_episode_score + gameDistance*0.95
 
 
     tX_train = np.zeros(shape=(1,num_env_variables))
     tY_train = np.zeros(shape=(1,num_env_actions))
     for i in range(np.alen(tR)):
+
+        gameAdvantage = 0.1
+        if tER[i] > gameScoreTreshold:
+            gameAdvantage = 1
+
         pr = predictTotalRewards(tX[i],GetRememberedOptimalPolicyFromNoisyModel(noisy_model,tX[i]))
         #print ("tR[i]",tR[i],"pr",pr)
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.25
+            tW[i]=0.1 * gameAdvantage
         if (tR[i]>pr+d/2):
-            tW[i] = 1
+            tW[i] = 1 * gameAdvantage
         if tW[i]> np.random.rand(1):
             tX_train = np.vstack((tX_train,tX[i]))
             tY_train = np.vstack((tY_train,tY[i]))
@@ -560,6 +578,7 @@ for game in range(num_games_to_play):
     gameS = np.zeros(shape=(1,num_env_variables))
     gameA = np.zeros(shape=(1,num_env_actions))
     gameR = np.zeros(shape=(1,1))
+    gameER = np.zeros(shape=(1,1))
     gameW = np.zeros(shape=(1,1))
     #Get the Q state
     qs = env.reset()
@@ -656,12 +675,14 @@ for game in range(num_games_to_play):
             gameSA[0] = qs_a
             gameS[0] = qs
             gameR[0] = np.array([r])
+            gameER[0] = np.array([r])
             gameA[0] = np.array([r])
             gameW[0] =  np.array([0.000000005])
         else:
             gameSA= np.vstack((gameSA, qs_a))
             gameS= np.vstack((gameS, qs))
             gameR = np.vstack((gameR, np.array([r])))
+            gameER = np.vstack((gameER, np.array([r])))
             gameA = np.vstack((gameA, np.array([a])))
             gameW = np.vstack((gameW, np.array([0.000000005])))
 
@@ -673,6 +694,7 @@ for game in range(num_games_to_play):
             tempGameS = np.zeros(shape=(1,num_env_variables))
             tempGameA = np.zeros(shape=(1,num_env_actions))
             tempGameR = np.zeros(shape=(1,1))
+            tempGameER = np.zeros(shape=(1,1))
             tempGameRR = np.zeros(shape=(1,1))
             tempGameW = np.zeros(shape=(1,1))
 
@@ -688,17 +710,23 @@ for game in range(num_games_to_play):
                     gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
                     #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
 
+            gameAverageReward =  gameR.mean()
+            for i in range (0,gameR.shape[0]):
+                gameER[i] = gameAverageReward
+
             if memoryR.shape[0] ==1:
                 memorySA = gameSA
                 memoryR = gameR
                 memoryA = gameA
                 memoryS = gameS
                 memoryRR = gameR
+                memoryER = gameER
                 memoryW = gameW
 
             tempGameA = tempGameA[1:]
             tempGameS = tempGameS[1:]
             tempGameRR = tempGameRR[1:]
+            tempGameER = tempGameER[1:]
             tempGameR = tempGameR[1:]
             tempGameSA = tempGameSA[1:]
             tempGameW =  tempGameW[1:]
@@ -707,6 +735,8 @@ for game in range(num_games_to_play):
             for i in range(gameR.shape[0]):
                 tempGameSA = np.vstack((tempGameSA,gameSA[i]))
                 tempGameR = np.vstack((tempGameR,gameR[i]))
+                tempGameER = np.vstack((tempGameER,gameER[i]))
+
 
 
             for i in range(0,gameR.shape[0]):
@@ -735,6 +765,7 @@ for game in range(num_games_to_play):
                 memoryS = tempGameS
                 memoryRR = tempGameRR
                 memoryR = tempGameR
+                memoryER = tempGameER
                 memorySA = tempGameSA
                 memoryW = tempGameW
             else:
@@ -745,6 +776,8 @@ for game in range(num_games_to_play):
                 memorySA = np.concatenate((memorySA,tempGameSA),axis=0)
 
                 memoryR = np.concatenate((memoryR,tempGameR),axis=0)
+                memoryER = np.concatenate((memoryER,tempGameER),axis=0)
+
                 memoryW = np.concatenate((memoryW,tempGameW),axis=0)
 
 
@@ -758,6 +791,7 @@ for game in range(num_games_to_play):
                 memoryA = memoryA[gameR.shape[0]:]
                 memoryS = memoryS[gameR.shape[0]:]
                 memoryRR = memoryRR[gameR.shape[0]:]
+                memoryER = memoryER[gameR.shape[0]:]
                 memoryW = memoryW[gameR.shape[0]:]
 
 
@@ -772,6 +806,10 @@ for game in range(num_games_to_play):
                 print("Good noisy game. Setting last_best_noisy_game to ", last_best_noisy_game)
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
+
+            max_episode_score = max(last_game_average, memoryER.max())
+            min_episode_score = min(last_game_average, memoryER.min())
+
 
             if game > 3 and game %2 ==0:
                 # train on all memory
@@ -789,7 +827,7 @@ for game in range(num_games_to_play):
                 Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
             if game > 3 and game %2 ==0 and uses_parameter_noising:
                 print("Training noisy_actor experience replay")
-                pr_noisy_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
+                pr_noisy_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,memoryER,training_epochs)
                 #Reinforce training with best game
 
 
