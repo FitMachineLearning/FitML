@@ -1,5 +1,5 @@
 '''
-Mujoco HalfCheetah Walker with
+pyBullet Hopper  with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
@@ -9,18 +9,14 @@ https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
-Starts to crawl at 78
-
-Adagrad
-0.99 delta
-0.1 dropout
+Starts to hop at 200 episode
 
 '''
 import numpy as np
 import keras
 import gym
-#import pybullet
-#import pybullet_envs
+import pybullet
+import pybullet_envs
 
 import pygal
 import os
@@ -40,16 +36,16 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-num_env_variables = 24
-num_env_actions = 4
-num_initial_observation = 0
+num_env_variables = 15
+num_env_actions = 3
+num_initial_observation = 10
 learning_rate =  0.003
 apLearning_rate = 0.001
 littl_sigma = 0.0006
-big_sigma = 0.00006
-upper_delta = 0.075
-lower_delta = 0.03
-ENVIRONMENT_NAME = "BipedalWalker-v2"
+big_sigma = 0.006
+upper_delta = 0.045
+lower_delta = 0.02
+ENVIRONMENT_NAME = "HopperBulletEnv-v0"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -523,6 +519,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     while ( delta > upper_delta or delta < lower_delta) and deltaCount <25:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         reset_noisy_model()
+        targetModel = noisy_model
         targetModel = add_noise_to_model(noisy_model,largeNoise)
 
 
@@ -644,8 +641,8 @@ for game in range(num_games_to_play):
         s,r,done,info = env.step(a)
         #record only the first x number of states
 
-        if done and step<max_steps-3:
-            r = -50
+        #if done and step<max_steps-3:
+        #    r = -50
 
         if step ==0:
             gameSA[0] = qs_a
