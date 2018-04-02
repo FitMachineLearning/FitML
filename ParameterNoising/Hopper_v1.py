@@ -1,5 +1,5 @@
 '''
-Mujoco HalfCheetah Walker with
+PyBullet Hopper Walker with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
