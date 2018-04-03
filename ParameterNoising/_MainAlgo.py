@@ -37,16 +37,16 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-num_env_variables = 44
-num_env_actions = 17
+num_env_variables = 22
+num_env_actions = 6
 num_initial_observation = 10
 learning_rate =  0.003
 apLearning_rate = 0.001
 littl_sigma = 0.00006
 big_sigma = 0.006
-upper_delta = 0.35
-lower_delta = 0.1
-ENVIRONMENT_NAME = "HumanoidBulletEnv-v0"
+upper_delta = 0.035
+lower_delta = 0.01
+ENVIRONMENT_NAME = "Walker2DBulletEnv-v0"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -246,6 +246,9 @@ mAP_Counts = 0
 num_add_mem = 0
 mAPPicks = []
 
+#------
+
+
 # --- Parameter Noising
 def add_noise(mu, largeNoise=False):
 
@@ -318,6 +321,17 @@ def reset_noisy_model():
         #print("w",w)
         #print("apW",apW)
 
+def reset_noisy_model2():
+    action_predictor_model.save_weights(apWeights_filename)
+
+    dir_path = os.path.realpath(".")
+    fn = dir_path + "/"+ apWeights_filename
+    print("filepath ", fn)
+    if  os.path.isfile(fn):
+        print("loading weights")
+        noisy_model.load_weights(apWeights_filename)
+    else:
+        print("File ",apWeights_filename," does not exis. Retraining... ")
 
 # --- Parameter Noising
 
@@ -579,7 +593,7 @@ for game in range(num_games_to_play):
                 print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model()
-                noisy_model,big_sigma = add_controlled_noise(action_predictor_model,big_sigma,True)
+                noisy_model,big_sigma = add_controlled_noise(noisy_model,big_sigma,True)
                 #last_best_noisy_game = -1000
             '''
             else:
