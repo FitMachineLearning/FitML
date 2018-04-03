@@ -37,8 +37,8 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-num_env_variables = 15
-num_env_actions = 3
+num_env_variables = 44
+num_env_actions = 17
 num_initial_observation = 10
 learning_rate =  0.003
 apLearning_rate = 0.001
@@ -46,7 +46,7 @@ littl_sigma = 0.00006
 big_sigma = 0.006
 upper_delta = 0.0075
 lower_delta = 0.002
-ENVIRONMENT_NAME = "HopperBulletEnv-v0"
+ENVIRONMENT_NAME = "HumanoidBulletEnv-v0"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -109,14 +109,26 @@ def custom_error(y_true, y_pred, Qsa):
     cce=0.001*(y_true - y_pred)*Qsa
     return cce
 
+
+
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(64, init='normal', input_dim =dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(32, activation='relu'))
+Qmodel.add(LeakyReLU(alpha=0.2))
+
+Qmodel.add(Dense(64,init='normal'))
+#Qmodel.add(Dropout(0.2))
+Qmodel.add(LeakyReLU(alpha=0.2))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
+
+Qmodel.add(Dense(64,init='normal'))
+#Qmodel.add(Dropout(0.2))
+Qmodel.add(LeakyReLU(alpha=0.2))
+#Qmodel.add(Dropout(0.5))
+
+#Qmodel.add(Dense(32, activation='tanh'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
@@ -129,11 +141,18 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(64, init='normal', input_dim =apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
+action_predictor_model.add(LeakyReLU(alpha=0.2))
+
+action_predictor_model.add(Dense(64))
+#Qmodel.add(Dropout(0.2))
+action_predictor_model.add(LeakyReLU(alpha=0.2))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
+
+action_predictor_model.add(Dense(64))
+#Qmodel.add(Dropout(0.2))
+action_predictor_model.add(LeakyReLU(alpha=0.2))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -146,16 +165,28 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
-#noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
+noisy_model.add(Dense(64, init='normal', input_dim =apdataX.shape[1]))
+#action_predictor_model.add(Dropout(0.5))
+#Qmodel.add(Dropout(0.2))
+noisy_model.add(LeakyReLU(alpha=0.2))
+
+noisy_model.add(Dense(64))
+#Qmodel.add(Dropout(0.2))
+noisy_model.add(LeakyReLU(alpha=0.2))
+#action_predictor_model.add(Dropout(0.5))
+
+noisy_model.add(Dense(64))
+#Qmodel.add(Dropout(0.2))
+noisy_model.add(LeakyReLU(alpha=0.2))
+#action_predictor_model.add(Dropout(0.5))
+
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
 
 noisy_model.compile(loss='mse', optimizer=opt3, metrics=['accuracy'])
+
+
+
 
 #load previous model weights if they exist
 if load_previous_weights:
@@ -487,11 +518,11 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     deltaCount = 0
 
     for i in range(np.alen(tX)):
-        a = GetRememberedOptimalPolicyFromNoisyModel(targetModel,tX[i])
+        a = GetRememberedOptimalPolicyFromNoisyModel(noisy_model,tX[i])
         a = a.flatten()
     #print("Output Before noise ",a)
 
-    while ( delta > upper_delta or delta < lower_delta) and deltaCount <25:
+    while ( delta > upper_delta or delta < lower_delta) and deltaCount <100:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         reset_noisy_model()
         targetModel = noisy_model
@@ -516,7 +547,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
         #if delta > 3 or delta <0.01:
         #    print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",1/delta)
         #    big_sigma = 1 / delta
-    print("Tried x time ", deltaCount,"delta =", delta,"big_sigma")
+    print("Tried x time ", deltaCount,"delta =", delta,"big_sigma ",big_sigma)
     return targetModel,big_sigma
 
 
