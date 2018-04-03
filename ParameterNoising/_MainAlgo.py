@@ -44,8 +44,8 @@ learning_rate =  0.003
 apLearning_rate = 0.001
 littl_sigma = 0.00006
 big_sigma = 0.006
-upper_delta = 0.0075
-lower_delta = 0.002
+upper_delta = 0.35
+lower_delta = 0.1
 ENVIRONMENT_NAME = "HumanoidBulletEnv-v0"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
@@ -269,7 +269,7 @@ def add_noise_simple(mu, largeNoise=False):
         x = x*big_sigma
     else:
         x = x*big_sigma   #Sigma = width of the standard deviaion
-    #print ("x/200",x)
+    #print ("x/200",x,"big_sigma",big_sigma)
     return mu + x
 
 
@@ -394,7 +394,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.15
+            tW[i]=0.95
         if (tR[i]>pr+d/2) or tR[i] > max_game_average:
             tW[i] = 1
         if tW[i]> np.random.rand(1):
@@ -522,7 +522,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
         a = a.flatten()
     #print("Output Before noise ",a)
 
-    while ( delta > upper_delta or delta < lower_delta) and deltaCount <100:
+    while ( delta > upper_delta or delta < lower_delta) and deltaCount <3:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         reset_noisy_model()
         targetModel = noisy_model
