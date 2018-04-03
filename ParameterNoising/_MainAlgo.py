@@ -1,5 +1,5 @@
 '''
-pyBullet Hopper  with
+PyBullet Hopper Walker with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
@@ -9,7 +9,8 @@ https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
-Starts to hop at 200 episode
+Starts Hopping at 200
+
 
 '''
 import numpy as np
@@ -41,10 +42,10 @@ num_env_actions = 3
 num_initial_observation = 10
 learning_rate =  0.003
 apLearning_rate = 0.001
-littl_sigma = 0.0006
+littl_sigma = 0.00006
 big_sigma = 0.006
-upper_delta = 0.045
-lower_delta = 0.02
+upper_delta = 0.0075
+lower_delta = 0.002
 ENVIRONMENT_NAME = "HopperBulletEnv-v0"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
@@ -55,8 +56,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 90000
-experience_replay_size = 45000
+max_memory_len = 20000
+experience_replay_size = 15000
 random_every_n = 50
 num_retries = 30
 starting_explore_prob = 0.05
@@ -111,21 +112,11 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(64, init='normal', input_dim =dataX.shape[1]))
+Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(LeakyReLU(alpha=0.2))
-
-Qmodel.add(Dense(64,init='normal'))
-#Qmodel.add(Dropout(0.2))
-Qmodel.add(LeakyReLU(alpha=0.2))
+Qmodel.add(Dense(32, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-
-Qmodel.add(Dense(64,init='normal'))
-#Qmodel.add(Dropout(0.2))
-Qmodel.add(LeakyReLU(alpha=0.2))
-#Qmodel.add(Dropout(0.5))
-
-#Qmodel.add(Dense(32, activation='tanh'))
+Qmodel.add(Dense(32, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
@@ -138,18 +129,11 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(64, init='normal', input_dim =apdataX.shape[1]))
+action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(LeakyReLU(alpha=0.2))
-
-action_predictor_model.add(Dense(64))
-#Qmodel.add(Dropout(0.2))
-action_predictor_model.add(LeakyReLU(alpha=0.2))
+action_predictor_model.add(Dense(32, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-
-action_predictor_model.add(Dense(64))
-#Qmodel.add(Dropout(0.2))
-action_predictor_model.add(LeakyReLU(alpha=0.2))
+action_predictor_model.add(Dense(32, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -162,21 +146,12 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(64, init='normal', input_dim =apdataX.shape[1]))
-#action_predictor_model.add(Dropout(0.5))
-#Qmodel.add(Dropout(0.2))
-noisy_model.add(LeakyReLU(alpha=0.2))
-
-noisy_model.add(Dense(64))
-#Qmodel.add(Dropout(0.2))
-noisy_model.add(LeakyReLU(alpha=0.2))
-#action_predictor_model.add(Dropout(0.5))
-
-noisy_model.add(Dense(64))
-#Qmodel.add(Dropout(0.2))
-noisy_model.add(LeakyReLU(alpha=0.2))
-#action_predictor_model.add(Dropout(0.5))
-
+noisy_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+#noisy_model.add(Dropout(0.5))
+noisy_model.add(Dense(32, activation='relu'))
+#noisy_model.add(Dropout(0.5))
+noisy_model.add(Dense(32, activation='relu'))
+#noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
 
@@ -260,9 +235,9 @@ def add_noise(mu, largeNoise=False):
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
-        x = x/80
+        x = x*big_sigma
     else:
-        x = x/10   #Sigma = width of the standard deviaion
+        x = x*big_sigma   #Sigma = width of the standard deviaion
     #print ("x/200",x)
     return mu + x
 
@@ -284,7 +259,7 @@ def add_noise_to_model(targetModel,largeNoise = False):
         w = targetModel.layers[k].get_weights()
         if np.alen(w) >0 :
             #print("k==>",k)
-            w[0] = add_noise(w[0],largeNoise)
+            w[0] = add_noise_simple(w[0],largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
@@ -541,7 +516,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
         #if delta > 3 or delta <0.01:
         #    print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",1/delta)
         #    big_sigma = 1 / delta
-    print("Tried x time ", deltaCount,"delta =", delta)
+    print("Tried x time ", deltaCount,"delta =", delta,"big_sigma")
     return targetModel,big_sigma
 
 
@@ -569,11 +544,11 @@ for game in range(num_games_to_play):
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
-            if last_best_noisy_game < memoryR.mean() or game%6==0:
+            if True or last_best_noisy_game < memoryR.mean() or game%6==0:
                 print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model()
-                noisy_model,big_sigma = add_controlled_noise(noisy_model,big_sigma,True)
+                noisy_model,big_sigma = add_controlled_noise(action_predictor_model,big_sigma,True)
                 #last_best_noisy_game = -1000
             '''
             else:
@@ -605,7 +580,7 @@ for game in range(num_games_to_play):
             else:
                 #print("Using Actor")
                 if is_noisy_game and uses_parameter_noising:
-                    remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(action_predictor_model,qs)
+                    remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(noisy_model,qs)
                 else:
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
                 a = remembered_optimal_policy
