@@ -16,8 +16,8 @@ Starts Hopping at 200
 import numpy as np
 import keras
 import gym
-import pybullet
-import pybullet_envs
+#import pybullet
+#import pybullet_envs
 
 import pygal
 import os
@@ -37,8 +37,8 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = False
 
-num_env_variables = 22
-num_env_actions = 6
+num_env_variables = 24
+num_env_actions = 4
 num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
@@ -46,8 +46,8 @@ littl_sigma = 0.00006
 big_sigma = 0.006
 upper_delta = 0.025
 lower_delta = 0.01
-ENVIRONMENT_NAME = "Walker2DBulletEnv-v0"
-version_name = ENVIRONMENT_NAME + "With_PN_v9.3"
+ENVIRONMENT_NAME = "BipedalWalker-v2"
+version_name = ENVIRONMENT_NAME + "DDSM_v10"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -112,26 +112,14 @@ def custom_error(y_true, y_pred, Qsa):
     return cce
 
 
-
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(2048, init='normal', input_dim =dataX.shape[1]))
+Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(LeakyReLU(alpha=0.2))
-
-#Qmodel.add(Dense(128,init='normal'))
-#Qmodel.add(Dropout(0.2))
-#Qmodel.add(LeakyReLU(alpha=0.2))
+Qmodel.add(Dense(32, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
-#Qmodel.add(Dense(128,init='normal'))
-#Qmodel.add(Dropout(0.2))
-#Qmodel.add(LeakyReLU(alpha=0.2))
-#Qmodel.add(Dropout(0.5))
-
-#Qmodel.add(Dense(32, activation='tanh'))
-#Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
 #opt = optimizers.adadelta(lr=learning_rate)
@@ -143,19 +131,11 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(2048, init='normal', input_dim =apdataX.shape[1]))
+action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(LeakyReLU(alpha=0.2))
-
-#action_predictor_model.add(Dense(128))
-#Qmodel.add(Dropout(0.2))
-#action_predictor_model.add(LeakyReLU(alpha=0.2))
+action_predictor_model.add(Dense(32, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
-#action_predictor_model.add(Dense(128))
-#Qmodel.add(Dropout(0.2))
-#action_predictor_model.add(LeakyReLU(alpha=0.2))
-#action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
 #opt2 = optimizers.adam(lr=apLearning_rate)
@@ -167,27 +147,14 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(2048, init='normal', input_dim =apdataX.shape[1]))
-#action_predictor_model.add(Dropout(0.5))
-#Qmodel.add(Dropout(0.2))
-noisy_model.add(LeakyReLU(alpha=0.2))
-
-#noisy_model.add(Dense(128))
-#Qmodel.add(Dropout(0.2))
-#noisy_model.add(LeakyReLU(alpha=0.2))
-#action_predictor_model.add(Dropout(0.5))
-
-#noisy_model.add(Dense(128))
-#Qmodel.add(Dropout(0.2))
-#noisy_model.add(LeakyReLU(alpha=0.2))
-#action_predictor_model.add(Dropout(0.5))
-
+noisy_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dropout(0.5))
+#noisy_model.add(Dense(64, activation='relu'))
+#noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
 
 noisy_model.compile(loss='mse', optimizer=opt3, metrics=['accuracy'])
-
-
 
 
 #load previous model weights if they exist
