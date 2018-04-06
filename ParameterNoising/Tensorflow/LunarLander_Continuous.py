@@ -40,10 +40,10 @@ num_env_actions = 2
 num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
-big_sigma = 0.006
-littl_sigma = 0.0006
-upper_delta = 0.15
-lower_delta = 0.10
+big_sigma = 0.0006
+littl_sigma = 0.006
+upper_delta = 0.0015
+lower_delta = 0.0010
 ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
@@ -54,12 +54,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 20000
-experience_replay_size = 20000
+max_memory_len = 40000
+experience_replay_size = 40000
 random_every_n = 50
 num_retries = 30
-starting_explore_prob = 0.20
-training_epochs = 3
+starting_explore_prob = 0.05
+training_epochs = 50
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -119,8 +119,10 @@ def apModel(X, apw_h, apw_o):
     return tf.matmul(h, apw_o) # note that we dont take the softmax at the end because our cost fn does that for us
 
 ''' QModel '''
-Qw_h = init_weights([num_env_variables+num_env_actions, 2048]) # create symbolic variables
-Qw_o = init_weights([2048, 1])
+Qw_h = init_weights([num_env_variables+num_env_actions, 32]) # create symbolic variables
+Qw_h2 = init_weights([32, 32]) # create symbolic variables
+Qw_h3 = init_weights([32, 32]) # create symbolic variables
+Qw_o = init_weights([32, 1])
 
 Qpy_x = Qmodel(dataX, Qw_h, Qw_o)
 
@@ -130,8 +132,10 @@ Qoptimizer = tf.train.AdadeltaOptimizer(1.,0.9,1e-6)
 Qtrain_op = Qoptimizer.minimize(Qcost)
 
 ''' apModel '''
-apw_h = init_weights([num_env_variables, 2048]) # create symbolic variables
-apw_o = init_weights([2048, num_env_actions])
+apw_h = init_weights([num_env_variables, 32]) # create symbolic variables
+apw_h2 = init_weights([32, 32]) # create symbolic variables
+apw_h3 = init_weights([32, 32]) # create symbolic variable
+apw_o = init_weights([32, num_env_actions])
 
 appy_x = apModel(apdataX, apw_h, apw_o)
 
@@ -141,8 +145,10 @@ aptrain_op = apOptimizer.minimize(apcost)
 
 
 ''' naModel '''
-naw_h = init_weights([num_env_variables, 2048]) # create symbolic variables
-naw_o = init_weights([2048, num_env_actions])
+naw_h = init_weights([num_env_variables, 32]) # create symbolic variables
+naw_h2 = init_weights([32, 32]) # create symbolic variables
+naw_h3 = init_weights([32, 32]) # create symbolic variable
+naw_o = init_weights([32, num_env_actions])
 
 napy_x = apModel(apdataX, naw_h, naw_o)
 
@@ -373,7 +379,9 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epoch=1):
     tR = (memR)
     tX = (memS)
     tY = (memA)
-    tW = (memW)
+    tW = (memW)+0.0
+
+    game_max = tW.max()+0.0
 
 
     tX_train = np.zeros(shape=(1,num_env_variables))
@@ -385,8 +393,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epoch=1):
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
             tW[i]=0.55
-        if (tR[i]>pr+d/2):
-        #if (tR[i]>pr) :
+        if (tR[i]>pr+d*0.005 and tR[i]>game_max) :
             tW[i] = 1
         if tW[i]> np.random.rand(1):
             tX_train = np.vstack((tX_train,tX[i]))
@@ -697,17 +704,11 @@ for game in range(num_games_to_play):
                 tempGameSA = np.vstack((tempGameSA,gameSA[i]))
                 tempGameR = np.vstack((tempGameR,gameR[i]))
 
-
-            for i in range(0,gameR.shape[0]):
-                pr = predictTotalRewards(gameS[i],gameA[i])
-                atm,add_prob = addToMemory(gameR[i][0], pr, max_game_average,memoryR.mean(),gameR.mean(axis=0)[0],np.std(memoryR))
-                if add_prob < 0:
-                    add_prob = 0.000000005
                 #print("add_prob",add_prob)
                 tempGameA = np.vstack((tempGameA,gameA[i]))
                 tempGameS = np.vstack((tempGameS,gameS[i]))
                 tempGameRR = np.vstack((tempGameRR,gameR[i]))
-                tempGameW = np.vstack((tempGameW,add_prob))
+                tempGameW = np.vstack((tempGameW,gameR.mean()))
 
 
             #train actor network based on last rollout
