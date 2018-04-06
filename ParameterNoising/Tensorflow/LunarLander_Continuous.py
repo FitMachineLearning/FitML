@@ -1,5 +1,5 @@
 '''
-Mujoco HalfCheetah Walker with
+Lunar Lander Continuous with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
