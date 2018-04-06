@@ -1,5 +1,5 @@
 '''
-Mujoco HalfCheetah Walker with
+Lunar Lander Continuous Walker with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
@@ -9,7 +9,7 @@ https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
-Starts to crawl at 78
+Starts to Land at episode 400
 
 Adagrad
 0.99 delta
@@ -40,10 +40,10 @@ num_env_actions = 2
 num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
-big_sigma = 0.006
-littl_sigma = 0.0006
-upper_delta = 0.15
-lower_delta = 0.10
+big_sigma = 0.0006
+littl_sigma = 0.006
+upper_delta = 0.0015
+lower_delta = 0.0010
 ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "With_PN_v7"
 weigths_filename = version_name+"-weights.h5"
@@ -56,7 +56,7 @@ sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 40000
 experience_replay_size = 40000
-random_every_n = 50
+random_every_n = 5
 num_retries = 30
 starting_explore_prob = 0.05
 training_epochs = 8
@@ -392,7 +392,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epoch=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.05
+            tW[i]=0.55
         if (tR[i]>pr+d*0.005 and tR[i]>game_max) :
             tW[i] = 1
         if tW[i]> np.random.rand(1):
