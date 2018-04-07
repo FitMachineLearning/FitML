@@ -413,9 +413,14 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epoch=1):
         d = math.fabs( memoryR.max() - pr)
         tW[i]= 0.0000000000000005
         if (tR[i]>pr):
-            tW[i]=0.005
+            tW[i]=0.05
+
         if (tR[i]>pr+d*0.005 and tS[i]> gameAverage) :
+            tW[i] = 0.25
+
+        if (tR[i]>pr+d*0.5 and tS[i]> game_max) :
             tW[i] = 1
+
         if tW[i]> np.random.rand(1):
             tX_train = np.vstack((tX_train,tX[i]))
             tY_train = np.vstack((tY_train,tY[i]))
