@@ -16,6 +16,7 @@ Adagrad
 0.1 dropout
 
 '''
+#from environments.rocketlander import RocketLander
 import tensorflow as tf
 import numpy as np
 import gym
@@ -35,16 +36,16 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = False
 
-num_env_variables = 22
-num_env_actions = 6
-num_initial_observation = 0
+num_env_variables = 15
+num_env_actions = 3
+num_initial_observation = 8
 learning_rate =  0.003
 apLearning_rate = 0.001
 big_sigma = 0.0006
-littl_sigma = 0.006
+littl_sigma = 0.00006
 upper_delta = 0.0015
 lower_delta = 0.0010
-ENVIRONMENT_NAME = "Walker2DBulletEnv-v0"
+ENVIRONMENT_NAME = "HopperBulletEnv-v0"
 version_name = ENVIRONMENT_NAME + "With_PN_v10"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -54,18 +55,18 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 40000
-experience_replay_size = 40000
+max_memory_len = 100000
+experience_replay_size = 25000
 random_every_n = 50
-num_retries = 30
+num_retries = 60
 starting_explore_prob = 0.05
-training_epochs = 50
+training_epochs = 1
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
-load_memory_arrays = True
+load_memory_arrays = False
 do_training = True
 num_games_to_play = 6000
 random_num_games_to_play = num_games_to_play
@@ -83,9 +84,19 @@ noisy_game_no_longer_valid = False
 
 #Create testing enviroment
 
+settings = {'Side Engines': True,
+            'Clouds': True,
+            'Vectorized Nozzle': True,
+            'Starting Y-Pos Constant': 1,
+            'Initial Force': 'random'}  # (6000, -10000)}
+
+#env = RocketLander(settings)
 env = gym.make(ENVIRONMENT_NAME)
+
+#env.refresh(render=True)
 env.render(mode="human")
 env.reset()
+
 
 
 print("-- Observations",env.observation_space)
@@ -110,13 +121,17 @@ apdataY = tf.placeholder("float", [None, num_env_actions])
 def init_weights(shape):
     return tf.Variable(tf.random_normal(shape, stddev=0.01))
 
-def Qmodel(X, w_h, w_o):
+def Qmodel(X, w_h,w_h2,w_h3, w_o):
     h = tf.nn.leaky_relu(tf.matmul(X, w_h)) # this is a basic mlp, think 2 stacked logistic regressions
-    return tf.matmul(h, w_o) # note that we dont take the softmax at the end because our cost fn does that for us
+    h2 = tf.nn.leaky_relu(tf.matmul(h, w_h2)) # this is a basic mlp, think 2 stacked logistic regressions
+    h3 = tf.nn.leaky_relu(tf.matmul(h2, w_h3)) # this is a basic mlp, think 2 stacked logistic regressions
+    return tf.matmul(h3, w_o) # note that we dont take the softmax at the end because our cost fn does that for us
 
-def apModel(X, apw_h, apw_o):
+def apModel(X, apw_h,apw_h2,apw_h3, apw_o):
     h = tf.nn.leaky_relu(tf.matmul(X, apw_h)) # this is a basic mlp, think 2 stacked logistic regressions
-    return tf.matmul(h, apw_o) # note that we dont take the softmax at the end because our cost fn does that for us
+    h2 = tf.nn.leaky_relu(tf.matmul(h, apw_h2)) # this is a basic mlp, think 2 stacked logistic regressions
+    h3 = tf.nn.leaky_relu(tf.matmul(h2, apw_h3)) # this is a basic mlp, think 2 stacked logistic regressions
+    return tf.matmul(h3, apw_o) # note that we dont take the softmax at the end because our cost fn does that for us
 
 ''' QModel '''
 Qw_h = init_weights([num_env_variables+num_env_actions, 32]) # create symbolic variables
@@ -124,7 +139,7 @@ Qw_h2 = init_weights([32, 32]) # create symbolic variables
 Qw_h3 = init_weights([32, 32]) # create symbolic variables
 Qw_o = init_weights([32, 1])
 
-Qpy_x = Qmodel(dataX, Qw_h, Qw_o)
+Qpy_x = Qmodel(dataX, Qw_h,Qw_h2,Qw_h3, Qw_o)
 
 
 Qcost = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(dataY, Qpy_x))))
@@ -137,7 +152,7 @@ apw_h2 = init_weights([32, 32]) # create symbolic variables
 apw_h3 = init_weights([32, 32]) # create symbolic variable
 apw_o = init_weights([32, num_env_actions])
 
-appy_x = apModel(apdataX, apw_h, apw_o)
+appy_x = apModel(apdataX, apw_h,apw_h2,apw_h3, apw_o)
 
 apcost = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(apdataY, appy_x))))
 apOptimizer = tf.train.AdadeltaOptimizer(1.,0.9,1e-6)
@@ -150,7 +165,7 @@ naw_h2 = init_weights([32, 32]) # create symbolic variables
 naw_h3 = init_weights([32, 32]) # create symbolic variable
 naw_o = init_weights([32, num_env_actions])
 
-napy_x = apModel(apdataX, naw_h, naw_o)
+napy_x = apModel(apdataX, naw_h, naw_h2, naw_h3, naw_o)
 
 nacost = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(apdataY, napy_x))))
 naOptimizer = tf.train.AdadeltaOptimizer(1.,0.9,1e-6)
@@ -221,6 +236,12 @@ mAP_Counts = 0
 num_add_mem = 0
 mAPPicks = []
 
+def GenerateSampleAction(dim=3):
+    retVal = np.random.rand(3)
+    retVal = retVal -0.5
+    retVal = retVal * 2
+    return retVal
+
 # --- Parameter Noising
 def add_noise(mu, largeNoise=False):
 
@@ -262,7 +283,7 @@ def add_noise_TF(largeNoise = False):
     #        print(k, v)
     for k,v in zip(variables_names, values):
         if(k==naw_h.name):
-            v2=add_noise(v,True)
+            v2=add_noise_simple(v,True)
             #v2 = v+0.001
     #print("Noise added. showing res v2",v2)
     assign_op = tf.assign(naw_h,v2)
@@ -273,7 +294,7 @@ def add_noise_TF(largeNoise = False):
     #        print(k, v)
     for k,v in zip(variables_names, values):
         if(k==naw_h2.name):
-            v2=add_noise(v,True)
+            v2=add_noise_simple(v,True)
             #v2 = v+0.001
     #print("Noise added. showing res v2",v2)
     assign_op2 = tf.assign(naw_h2,v2)
@@ -283,8 +304,19 @@ def add_noise_TF(largeNoise = False):
     #    if(k==naw_o.name):
     #        print(k, v)
     for k,v in zip(variables_names, values):
+        if(k==naw_h3.name):
+            v2=add_noise_simple(v,True)
+            #v2 = v+0.001
+    #print("Noise added. showing res v2",v2)
+    assign_op2 = tf.assign(naw_h3,v2)
+    sess.run(assign_op2)
+
+    #for k,v in zip(variables_names, values):
+    #    if(k==naw_o.name):
+    #        print(k, v)
+    for k,v in zip(variables_names, values):
         if(k==naw_o.name):
-            v2=add_noise(v,True)
+            v2=add_noise_simple(v,True)
             #v2 = v+0.001
     #print("Noise added. showing res v2",v2)
     assign_op2 = tf.assign(naw_o,v2)
@@ -311,6 +343,14 @@ def reset_noisy_model_TF():
     assign_op = tf.assign(naw_h,v2)
     sess.run(assign_op)
 
+    ## RESET FIRST LAYER
+    for k,v in zip(variables_names, values):
+        if(k==apw_h2.name):
+            v2=v+0.000000000000000001
+            #v2 = v+0.001
+    #print("Noise added. showing res v2",v2)
+    assign_op = tf.assign(naw_h2,v2)
+    sess.run(assign_op)
 
     ## RESET LAST LAYER
     for k,v in zip(variables_names, values):
@@ -386,40 +426,51 @@ def addToMemory(reward,mem_mean,memMax,averegeReward,gameAverage,mstd):
 
 
 def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epoch=1):
-    tSA = (memSA)
-    tR = (memR)
-    tX = (memS)
-    tY = (memA)
-    tW = (memW)+0.0
-    tS = memW +0.0
+    for num_epoch in range(training_epochs):
+        tSA = (memSA)+0.0
+        tR = (memR)+0.0
+        tX = (memS)+0.0
+        tY = (memA)+0.0
+        tW = (memW)+0.0
+        tS = memW +0.0
 
-    game_max = tW.max()+0.0
-    gameAverage = memR.mean()
+        game_max = tW.max()+0.0
+        gameAverage = memR.mean()
+        treshold = memR.flatten()[-15000:].mean()
+
+        train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+        tSA = tSA[train_A,:]
+        tX = tX[train_A,:]
+        tY = tY[train_A,:]
+        tW = tW[train_A,:]
+        tR = tR[train_A,:]
+        tS = tS[train_A,:]
+
+        tX_train = np.zeros(shape=(1,num_env_variables))
+        tY_train = np.zeros(shape=(1,num_env_actions))
+        for i in range(np.alen(tR)):
+            pr = predictTotalRewards(tX[i],GetRememberedOptimalPolicy(tX[i]))
+            #print ("tR[i]",tR[i],"pr",pr)
+            d = math.fabs( memoryR.max() - pr)
+            tW[i]= 0.0000000000000005
+            if (tR[i]>pr ):
+                tW[i]=0.15
+            if (tR[i]>pr and tS[i]>treshold):
+                tW[i]=0.55
+            if (tR[i]>pr+d*0.005 and tR[i]>game_max) :
+                tW[i] = 1
+            if tW[i]> np.random.rand(1):
+                tX_train = np.vstack((tX_train,tX[i]))
+                tY_train = np.vstack((tY_train,tY[i]))
 
 
-    tX_train = np.zeros(shape=(1,num_env_variables))
-    tY_train = np.zeros(shape=(1,num_env_actions))
-    for i in range(np.alen(tR)):
-        pr = predictTotalRewards(tX[i],GetRememberedOptimalPolicy(tX[i]))
-        #print ("tR[i]",tR[i],"pr",pr)
-        d = math.fabs( memoryR.max() - pr)
-        tW[i]= 0.0000000000000005
-        if (tR[i]>pr):
-            tW[i]=0.005
-        if (tR[i]>pr+d*0.005 and tS[i]>gameAverage) :
-            tW[i] = 1
-        if tW[i]> np.random.rand(1):
-            tX_train = np.vstack((tX_train,tX[i]))
-            tY_train = np.vstack((tY_train,tY[i]))
-
-
-    tX_train = tX_train[1:]
-    tY_train = tY_train[1:]
-    print("%8d were better After removing first element"%np.alen(tX_train))
-    if np.alen(tX_train)>0:
-        #action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=num_epochs,verbose=0)
-        for num_epoch in range(training_epochs):
-            sess.run(aptrain_op, feed_dict={apdataX: tX_train, apdataY: tY_train})
+        tX_train = tX_train[1:]
+        tY_train = tY_train[1:]
+        print(num_epoch,"%8d were better After removing first element"%np.alen(tX_train))
+        if np.alen(tX_train)>0:
+            #action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=num_epochs,verbose=0)
+            for t in range(25):
+                sess.run(aptrain_op, feed_dict={apdataX: tX_train, apdataY: tY_train})
 
 
 
@@ -522,13 +573,17 @@ def train_noisy_actor():
 
 
 
-def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
+def add_controlled_noise(targetModel,big_sigma,small_sigma,largeNoise = False):
     tR = (memoryR)
     tX = (memoryS)
     tY = (memoryA)
     tW = (memoryW)
     train_C = np.random.randint(tY.shape[0],size=100)
-
+    sigma = False
+    if largeNoise:
+        sigma = True
+    else:
+        sigma = False
     tX = tX[train_C,:]
     tY_old = tY[train_C,:]
     tY_new = tY[train_C,:]
@@ -536,17 +591,23 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
+    for i in range(np.alen(tX)):
+        a = GetRememberedOptimalPolicyFromNoisyModel(tX[i])
+        a = a.flatten()
+    #print("Output Before noise ",a)
+
+
     while ( delta > upper_delta or delta < lower_delta) and deltaCount <5:
+        reset_noisy_model_TF()
+        targetModel
         #noisy_model.set_weights(action_predictor_model.get_weights())
         add_noise_TF(largeNoise)
         for i in range(np.alen(tX)):
-            a = GetRememberedOptimalPolicy(tX[i])
             b = GetRememberedOptimalPolicyFromNoisyModel(tX[i])
-            a = a.flatten()
             b = b.flatten()
-            c = np.abs(a-b)
-            diffs[i] = c.mean()
-        delta = np.average (diffs)
+
+        c = np.abs(a-b)
+        delta = c.mean()
         deltaCount+=1
         if delta > upper_delta:
             big_sigma = big_sigma *0.9
@@ -571,6 +632,8 @@ for game in range(num_games_to_play):
     gameW = np.zeros(shape=(1,1))
     #Get the Q state
     qs = env.reset()
+    #env.refresh(render=True)
+
     mAP_Counts = 0
     num_add_mem = 0
     #print("qs ", qs)
@@ -584,11 +647,15 @@ for game in range(num_games_to_play):
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
-            if  noisy_game_no_longer_valid :
+            if  noisy_game_no_longer_valid or game %50==0:
                 print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model_TF()
-                big_sigma = add_controlled_noise(None,big_sigma,True)
+                big_sigma = add_controlled_noise(None,big_sigma,littl_sigma,True)
+            #else:
+            #    print("Adding small noise")
+            #    big_sigma = add_controlled_noise(None,big_sigma,littl_sigma,False)
+
                 #last_best_noisy_game = -1000
             #else:
             #    print("Adding Small Noise")
@@ -605,7 +672,7 @@ for game in range(num_games_to_play):
             a = remembered_optimal_policy
         elif game < num_initial_observation:
             #take a radmon action
-            a = env.action_space.sample()
+            a = GenerateSampleAction(3)
         else:
             prob = np.random.rand(1)
             explore_prob = starting_explore_prob-(starting_explore_prob/random_num_games_to_play)*game
@@ -615,7 +682,7 @@ for game in range(num_games_to_play):
             #Chose between prediction and chance
             if prob < explore_prob or game%random_every_n==1:
                 #take a random action
-                a = env.action_space.sample()
+                a = GenerateSampleAction(3)
 
             else:
                 #print("Using Actor")
@@ -630,7 +697,9 @@ for game in range(num_games_to_play):
                     stock = np.zeros(num_retries)
                     stockAction = np.zeros(shape=(num_retries,num_env_actions))
                     for i in range(num_retries):
-                        stockAction[i] = env.action_space.sample()
+                        #stockAction[i] = env.action_space.sample()
+                        stockAction[i] = GenerateSampleAction(3)
+
                         stock[i] = predictTotalRewards(qs,stockAction[i])
                     best_index = np.argmax(stock)
                     randaction = stockAction[best_index]
@@ -649,9 +718,12 @@ for game in range(num_games_to_play):
 #        for i in range (np.alen(a)):
 #            if a[i] < -1: a[i]=-0.99999999999
 #            if a[i] > 1: a[i] = 0.99999999999
-
+        #if step%50==0:
+        #    print("a =>",a)
 
         env.render()
+        #env.refresh(render=True)
+
         qs_a = np.concatenate((qs,a), axis=0)
 
         #get the target state and reward
@@ -769,13 +841,13 @@ for game in range(num_games_to_play):
         if done and game > num_initial_observation and not PLAY_GAME:
             last_game_average = gameR.mean()
             if is_noisy_game:
-                if last_game_average < memoryR.mean() +( math.fabs(memoryR.max()- memoryR.mean() )/4 ):
+                if last_game_average < memoryR.flatten()[-5000:].mean():
                     noisy_game_no_longer_valid = True
                 else:
                     noisy_game_no_longer_valid = False
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
-
+            max_game_average = memoryW.max()
             if game > 3 and game %1 ==0:
                 # train on all memory
                 print("Experience Replay")
@@ -783,14 +855,15 @@ for game in range(num_games_to_play):
 
                 pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 3 and game %1 ==0 and uses_critic:
-                tSA = (memorySA)
-                tR = (memoryR)
-                train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
-                tR = tR[train_A,:]
-                tSA = tSA    [train_A,:]
-                print("Training Critic n elements =", np.alen(tR))
                 for num_epoch in range(training_epochs):
-                    sess.run(Qtrain_op, feed_dict={dataX: tSA, dataY: tR})
+                    tSA = (memorySA)+0.0
+                    tR = (memoryR)+0.0
+                    train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+                    tR = tR[train_A,:]
+                    tSA = tSA    [train_A,:]
+                    print(num_epoch,"Training Critic n elements =", np.alen(tR))
+                    for t in range(25):
+                        sess.run(Qtrain_op, feed_dict={dataX: tSA, dataY: tR})
 
                 #Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
             if game > 3 and game %5 ==-1 and uses_parameter_noising:
@@ -821,7 +894,10 @@ for game in range(num_games_to_play):
 
             if game%1==0:
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
-                print(" #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step    ) )
+                if is_noisy_game:
+                    print("Noisy Game #  %7d  avgScore %8.3f [-1000]avg %8.3f last_game %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d" % (game, memoryR.mean(),memoryR.flatten()[-5000:].mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step    ) )
+                else:
+                    print("Reg Game   #  %7d  avgScore %8.3f [-1000]avg %8.3f last_game %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d" % (game, memoryR.mean(),memoryR.flatten()[-5000:].mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step    ) )
 
             if game%5 ==0 and np.alen(memoryR)>1000:
                 mGames.append(game)
