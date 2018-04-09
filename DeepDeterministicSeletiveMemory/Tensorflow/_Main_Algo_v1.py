@@ -1,5 +1,5 @@
 '''
-Lunar Lander Continuous Walker with
+Hopper with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
