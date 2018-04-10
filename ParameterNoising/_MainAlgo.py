@@ -373,8 +373,9 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         tS = memW +0.0
 
         treshold = tR.mean()
+        gameAverage = tS.mean()
         gameDistance = math.fabs(tS.max() - tS.mean())
-        gameTreshold = tS.mean() + gameDistance*0.1
+        gameTreshold = tS.mean() + gameDistance*0.4
 
         #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
@@ -400,7 +401,9 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
             d = math.fabs( memoryR.max() - pr)
             tW[i]= 0.0000000000000005
             if (tR[i]>pr ):
-                tW[i]=0.5
+                tW[i]=0.15
+            if (tR[i]>pr and tS[i]>gameAverage):
+                tW[i]=0.25
             if (tR[i]>pr and tS[i]>gameTreshold):
                 tW[i]=1
             #if (tR[i]>pr+d*0.005 and tR[i]>game_max) :
