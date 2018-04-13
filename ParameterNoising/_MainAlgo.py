@@ -37,8 +37,8 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-num_env_variables = 24
-num_env_actions = 4
+num_env_variables = 8
+num_env_actions = 2
 num_initial_observation = 0
 learning_rate =  0.003
 apLearning_rate = 0.001
@@ -46,7 +46,7 @@ littl_sigma = 0.00006
 big_sigma = 0.006
 upper_delta = 0.035
 lower_delta = 0.01
-ENVIRONMENT_NAME = "BipedalWalker-v2"
+ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "ker_v3"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -71,7 +71,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-CLIP_ACTION = False
+CLIP_ACTION = True
 max_steps = 690
 
 
@@ -82,6 +82,7 @@ sm_memory_size = 10500
 last_game_average = -1000
 last_best_noisy_game = -1000
 max_game_average = -1000
+num_positive_avg_games = 0
 
 #One hot encoding array
 possible_actions = np.arange(0,num_env_actions)
@@ -437,7 +438,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         tS = memW +0.0
 
         distance = math.fabs(memoryR.max()-memoryR.mean())
-        treshold = memoryR.mean()+ distance*0.4
+        treshold = memoryR.mean()+ distance*0.75
         gameAverage = memoryR.mean()
         gameDistance = math.fabs(memoryW.max() - memoryR.mean())
         gameTreshold = memoryW.mean() + gameDistance*0.4
@@ -466,7 +467,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
         train_D = np.arange(np.alen(tR))
-        train_D = train_D[tS.flatten()>treshold] # Only take steps with rewards above threshold
+        train_D = train_D[tR.flatten()>treshold] # Only take steps with rewards above threshold
         tX = tX[train_D,:]
         tY = tY[train_D,:]
         tW = tW[train_D,:]
@@ -798,13 +799,14 @@ for game in range(num_games_to_play):
 
 
         if done:
-
+            if gameR.mean() >0:
+                num_positive_avg_games += 1
             if game%1==0:
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
                 if is_noisy_game:
-                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step    ) )
+                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step,num_positive_avg_games    ) )
                 else:
-                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step    ) )
+                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step ,num_positive_avg_games   ) )
 
             if game%5 ==0 and np.alen(memoryR)>1000:
                 mGames.append(game)
