@@ -437,8 +437,11 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         tW = (memW)+0.0
         tS = memW +0.0
 
+        stdDev = np.std(tR)
+
         distance = math.fabs(memoryR.max()-memoryR.mean())
-        treshold = memoryR.mean()+ distance*0.75
+        #treshold = memoryR.mean()+ distance*0.75
+        treshold = memoryR.mean()+ stdDev
         gameAverage = memoryR.mean()
         gameDistance = math.fabs(memoryW.max() - memoryR.mean())
         gameTreshold = memoryW.mean() + gameDistance*0.4
@@ -477,7 +480,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
         tX_train = tX
         tY_train = tY
-        print("%8d were better After removing first element"%np.alen(tX_train))
+        print("%8d were better After removing first element"%np.alen(tX_train)," std Dev", stdDev, "Upper_cut",memoryR.mean()+stdDev)
         if np.alen(tX_train)>0:
             action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
