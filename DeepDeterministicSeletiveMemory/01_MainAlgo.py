@@ -16,8 +16,8 @@ Starts Hopping at 200
 import numpy as np
 import keras
 import gym
-#import pybullet
-#import pybullet_envs
+import pybullet
+import pybullet_envs
 
 import pygal
 import os
@@ -55,7 +55,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.95
+b_discount = 0.99
 max_memory_len = 100000
 experience_replay_size = 50000
 random_every_n = 50
@@ -72,7 +72,7 @@ do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
 CLIP_ACTION = True
-max_steps = 690
+max_steps = 1490
 
 
 #Selective memory settings
@@ -124,7 +124,7 @@ Qmodel.add(Dense(25, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
-#opt = optimizers.adadelta(lr=learning_rate)
+#opt = optimizers.adam(lr=learning_rate)
 opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
@@ -445,7 +445,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         treshold = memoryR.mean()+ stdDev*1
         gameAverage = memoryR.mean()
         gameDistance = math.fabs(memoryW.max() - memoryR.mean())
-        gameTreshold = memoryW.mean() + gameStdDev*1
+        gameTreshold = memoryW.mean() + gameStdDev*0
 
         #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
@@ -459,7 +459,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
 
 
-        print("TY.shape",tY.shape[0], "exp replay",experience_replay_size,"np ", np.alen(tR))
+        #ßprint("TY.shape",tY.shape[0], "exp replay",experience_replay_size,"np ", np.alen(tR))
 
         if np.alen(tR) <= 0:
             break
