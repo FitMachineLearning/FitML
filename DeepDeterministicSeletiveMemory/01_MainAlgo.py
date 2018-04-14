@@ -35,7 +35,7 @@ from keras import optimizers
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
-uses_parameter_noising = True
+uses_parameter_noising = False
 
 num_env_variables = 8
 num_env_actions = 2
@@ -55,13 +55,13 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.99
-max_memory_len = 200000
-experience_replay_size = 25000
+b_discount = 0.95
+max_memory_len = 100000
+experience_replay_size = 50000
 random_every_n = 50
-num_retries = 30
+num_retries = 60
 starting_explore_prob = 0.05
-training_epochs = 6
+training_epochs = 20
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -226,11 +226,11 @@ mAPPicks = []
 # --- Parameter Noising
 def add_noise(mu, largeNoise=False):
 
-    if not largeNoise:
-        sig = 0.00006
+    if largeNoise:
+        sig = big_sigma
     else:
         #print("Adding Large parameter noise")
-        sig = 0.006 #Sigma = width of the standard deviaion
+        sig = littl_sigma #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -267,7 +267,7 @@ def add_noise_to_model(targetModel,largeNoise = False):
         w = targetModel.layers[k].get_weights()
         if np.alen(w) >0 :
             #print("k==>",k)
-            w[0] = add_noise_simple(w[0],largeNoise)
+            w[0] = add_noise(w[0],largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
@@ -438,13 +438,14 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         tS = memW +0.0
 
         stdDev = np.std(tR)
+        gameStdDev = np.std(tS)
 
         distance = math.fabs(memoryR.max()-memoryR.mean())
         #treshold = memoryR.mean()+ distance*0.75
-        treshold = memoryR.mean()+ stdDev
+        treshold = memoryR.mean()+ stdDev*1
         gameAverage = memoryR.mean()
         gameDistance = math.fabs(memoryW.max() - memoryR.mean())
-        gameTreshold = memoryW.mean() + gameDistance*0.4
+        gameTreshold = memoryW.mean() + gameStdDev*1
 
         #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
@@ -458,6 +459,10 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
 
 
+        print("TY.shape",tY.shape[0], "exp replay",experience_replay_size,"np ", np.alen(tR))
+
+        if np.alen(tR) <= 0:
+            break
         train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
 
         tX = tX[train_A,:]
@@ -480,7 +485,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
         tX_train = tX
         tY_train = tY
-        print("%8d were better After removing first element"%np.alen(tX_train)," std Dev", stdDev, "Upper_cut",memoryR.mean()+stdDev)
+        print("%8d were better After removing first element"%np.alen(tX_train), "Upper_cut",memoryR.mean()+stdDev,"gameStdDev",memoryW.mean()+gameStdDev)
         if np.alen(tX_train)>0:
             action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
@@ -650,7 +655,7 @@ for game in range(num_games_to_play):
 
         #if done and step<max_steps-3:
         #    r = -50
-
+        #r=r*100
         if step ==0:
             gameSA[0] = qs_a
             gameS[0] = qs
@@ -775,7 +780,7 @@ for game in range(num_games_to_play):
                     train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
                     tR = tR[train_A,:]
                     tSA = tSA    [train_A,:]
-                    print("Training Critic n elements =", np.alen(tR))
+                    #print("Training Critic n elements =", np.alen(tR))
                     Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=1,verbose=0)
             if game > 3 and game %5 ==-1 and uses_parameter_noising:
                 print("Training noisy_actor")
@@ -815,7 +820,7 @@ for game in range(num_games_to_play):
                 mGames.append(game)
                 mSteps.append(step/1000*100)
                 mAPPicks.append(mAP_Counts/step*100)
-                mAverageScores.append(max(memoryR.mean(), -50)*15)
+                mAverageScores.append(max(memoryR.mean(), -150))
                 bar_chart = pygal.HorizontalLine()
                 bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                 bar_chart.add('Average score', mAverageScores)  # Add some values
