@@ -37,17 +37,17 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = False
 
-num_env_variables = 8
-num_env_actions = 2
+num_env_variables = 24
+num_env_actions = 4
 num_initial_observation = 0
-learning_rate =  0.003
+learning_rate =  0.002
 apLearning_rate = 0.001
 littl_sigma = 0.00006
 big_sigma = 0.006
 upper_delta = 0.035
 lower_delta = 0.01
-ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
-version_name = ENVIRONMENT_NAME + "ker_v3"
+ENVIRONMENT_NAME = "BipedalWalker-v2"
+version_name = ENVIRONMENT_NAME + "ker_v5"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -55,15 +55,15 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.99
+b_discount = 0.98
 max_memory_len = 100000
 experience_replay_size = 50000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.05
-training_epochs = 20
+training_epochs = 10
 mini_batch = 512
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
@@ -71,7 +71,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-CLIP_ACTION = True
+CLIP_ACTION = False
 max_steps = 1490
 
 
@@ -485,7 +485,8 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
         tX_train = tX
         tY_train = tY
-        print("%8d were better After removing first element"%np.alen(tX_train), "Upper_cut",memoryR.mean()+stdDev,"gameStdDev",memoryW.mean()+gameStdDev)
+        if t%89==1:
+            print("%8d were better After removing first element"%np.alen(tX_train), "Upper_cut",memoryR.mean()+stdDev,"gameStdDev",memoryW.mean()+gameStdDev)
         if np.alen(tX_train)>0:
             action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
@@ -653,8 +654,8 @@ for game in range(num_games_to_play):
         s,r,done,info = env.step(a)
         #record only the first x number of states
 
-        #if done and step<max_steps-3:
-        #    r = -50
+        if done and step<max_steps-3:
+            r = -100
         #r=r*100
         if step ==0:
             gameSA[0] = qs_a
@@ -812,9 +813,9 @@ for game in range(num_games_to_play):
             if game%1==0:
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
                 if is_noisy_game:
-                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step,num_positive_avg_games    ) )
+                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryW.max() , memoryR.shape[0], memoryR.max(), step,num_positive_avg_games    ) )
                 else:
-                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step ,num_positive_avg_games   ) )
+                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryW.max() , memoryR.shape[0], memoryR.max(), step ,num_positive_avg_games   ) )
 
             if game%5 ==0 and np.alen(memoryR)>1000:
                 mGames.append(game)
