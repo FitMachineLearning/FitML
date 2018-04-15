@@ -1,23 +1,23 @@
 '''
-Mujoco HalfCheetah Walker with with Selective Memory Actor Critic
+PyBullet Hopper Walker with
+ - Selective Memory
+ - Actor Critic
+ - Parameter Noising
+ - Q as discriminator
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
-Better discrimination for selection
-Deeper Network
-Smaller Learning Rate
-
-Results
-Gets Positive score ~ episode 75
+Deep Network
+Starts Hopping at 200
 
 
 '''
 import numpy as np
 import keras
 import gym
-#import pybullet
-#import pybullet_envs
+import pybullet
+import pybullet_envs
 
 import pygal
 import os
@@ -39,11 +39,15 @@ uses_parameter_noising = False
 
 num_env_variables = 24
 num_env_actions = 4
-num_initial_observation = 5
-learning_rate =  0.003
+num_initial_observation = 0
+learning_rate =  0.002
 apLearning_rate = 0.001
+littl_sigma = 0.00006
+big_sigma = 0.006
+upper_delta = 0.035
+lower_delta = 0.01
 ENVIRONMENT_NAME = "BipedalWalker-v2"
-version_name = ENVIRONMENT_NAME + "With_PN_v2.6"
+version_name = ENVIRONMENT_NAME + "ker_v5"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -51,15 +55,15 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.99
+b_discount = 0.98
 max_memory_len = 100000
-experience_replay_size = 100000
+experience_replay_size = 50000
 random_every_n = 50
-num_retries = 30
+num_retries = 60
 starting_explore_prob = 0.05
-training_epochs = 3
+training_epochs = 10
 mini_batch = 512
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
@@ -67,7 +71,9 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-max_steps =450
+CLIP_ACTION = False
+max_steps = 1490
+
 
 #Selective memory settings
 sm_normalizer = 20
@@ -76,6 +82,7 @@ sm_memory_size = 10500
 last_game_average = -1000
 last_best_noisy_game = -1000
 max_game_average = -1000
+num_positive_avg_games = 0
 
 #One hot encoding array
 possible_actions = np.arange(0,num_env_actions)
@@ -109,23 +116,15 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(100, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.2))
-Qmodel.add(Dense(32, activation='relu'))
+Qmodel.add(Dense(50, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
-#Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
-#Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
-#Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
-#Qmodel.add(Dropout(0.5))
-#Qmodel.add(Dense(128, activation='relu'))
+Qmodel.add(Dense(25, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
-#opt = optimizers.adadelta(lr=learning_rate)
+#opt = optimizers.adam(lr=learning_rate)
 opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
@@ -134,19 +133,11 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
+action_predictor_model.add(Dense(50, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
-#action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
-#action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
-#action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
-#action_predictor_model.add(Dropout(0.5))
-#action_predictor_model.add(Dense(128, activation='relu'))
+action_predictor_model.add(Dense(25, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -159,22 +150,17 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
+noisy_model.add(Dense(50, activation='relu'))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
+noisy_model.add(Dense(25, activation='relu'))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(32, activation='relu'))
-#noisy_model.add(Dropout(0.5))
-#noisy_model.add(Dense(apdataY.shape[1]))
+noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
 
 noisy_model.compile(loss='mse', optimizer=opt3, metrics=['accuracy'])
+
 
 #load previous model weights if they exist
 if load_previous_weights:
@@ -234,14 +220,17 @@ mAP_Counts = 0
 num_add_mem = 0
 mAPPicks = []
 
+#------
+
+
 # --- Parameter Noising
 def add_noise(mu, largeNoise=False):
 
-    if not largeNoise:
-        sig = 0.006
+    if largeNoise:
+        sig = big_sigma
     else:
         #print("Adding Large parameter noise")
-        sig = 0.06 #Sigma = width of the standard deviaion
+        sig = littl_sigma #Sigma = width of the standard deviaion
     #mu = means
     x =   np.random.rand(1) #probability of doing x
     #print ("x prob ",x)
@@ -254,10 +243,10 @@ def add_noise(mu, largeNoise=False):
 def add_noise_simple(mu, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
-        x = x/6
+        x = x*big_sigma
     else:
-        x = x/3   #Sigma = width of the standard deviaion
-    #print ("x/200",x)
+        x = x*big_sigma   #Sigma = width of the standard deviaion
+    #print ("x/200",x,"big_sigma",big_sigma)
     return mu + x
 
 
@@ -287,7 +276,7 @@ def add_noise_to_model(targetModel,largeNoise = False):
 
 
 def reset_noisy_model_weights_to_apWeights(mu):
-    x =  mu+(np.random.rand(1) - 0.5) / 10000000 #probability of doing x
+    x =  mu+0.0 #probability of doing x
     return x
 
 reset_noisy_model_weights_to_apWeights = np.vectorize(reset_noisy_model_weights_to_apWeights,otypes=[np.float])
@@ -306,6 +295,17 @@ def reset_noisy_model():
         #print("w",w)
         #print("apW",apW)
 
+def reset_noisy_model2():
+    action_predictor_model.save_weights(apWeights_filename)
+
+    dir_path = os.path.realpath(".")
+    fn = dir_path + "/"+ apWeights_filename
+    print("filepath ", fn)
+    if  os.path.isfile(fn):
+        print("loading weights")
+        noisy_model.load_weights(apWeights_filename)
+    else:
+        print("File ",apWeights_filename," does not exis. Retraining... ")
 
 # --- Parameter Noising
 
@@ -365,87 +365,130 @@ def scale_weights(memR,memW):
     #print("memW",memW)
     return memW
 
+
+def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
+    for t in range(training_epochs):
+        tSA = (memSA)+0.0
+        tR = (memR)+0.0
+        tX = (memS)+0.0
+        tY = (memA)+0.0
+        tW = (memW)+0.0
+        tS = memW +0.0
+
+        treshold = memoryR.mean()
+        gameAverage = memoryR.mean()
+        gameDistance = math.fabs(memoryW.max() - memoryR.mean())
+        gameTreshold = memoryW.mean() + gameDistance*0.4
+
+        #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
+
+        train_C = np.arange(np.alen(tR))
+        train_C = train_C[tR.flatten()>treshold]
+        tX = tX[train_C,:]
+        tY = tY[train_C,:]
+        tW = tW[train_C,:]
+        tR = tR[train_C,:]
+        tS = tS[train_C,:]
+
+
+        train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+
+        tX = tX[train_A,:]
+        tY = tY[train_A,:]
+        tW = tW[train_A,:]
+        tR = tR[train_A,:]
+        tS = tS[train_A,:]
+
+        tX_train = np.zeros(shape=(1,num_env_variables))
+        tY_train = np.zeros(shape=(1,num_env_actions))
+        for i in range(np.alen(tR)):
+            pr = predictTotalRewards(tX[i],GetRememberedOptimalPolicy(tX[i]))
+            #print ("tR[i]",tR[i],"pr",pr)
+            d = math.fabs( memoryR.max() - pr)
+            tW[i]= 0.0000000000000005
+            if (tR[i]>pr ):
+                tW[i]=0.15
+            #if (tR[i]>pr and tS[i]>gameAverage):
+            #    tW[i]=0.25
+            if (tR[i]>pr + d*0.5 and tS[i]>gameAverage):
+                tW[i]=1
+            #if (tR[i]>pr+d*0.005 and tR[i]>game_max) :
+            #    tW[i] = 1
+            if tW[i]> np.random.rand(1):
+                tX_train = np.vstack((tX_train,tX[i]))
+                tY_train = np.vstack((tY_train,tY[i]))
+
+
+        tX_train = tX_train[1:]
+        tY_train = tY_train[1:]
+        print("%8d were better After removing first element"%np.alen(tX_train))
+        if np.alen(tX_train)>0:
+            action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=1,verbose=0)
+
+
+
+
 def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
-    tSA = (memSA)
-    tR = (memR)
-    tX = (memS)
-    tY = (memA)
-    tW = (memW)
+    for t in range(training_epochs):
+        tSA = (memSA)+0.0
+        tR = (memR)+0.0
+        tX = (memS)+0.0
+        tY = (memA)+0.0
+        tW = (memW)+0.0
+        tS = memW +0.0
 
-    #target = tR.mean() #+ math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
-    target = tR.flatten()[-10000:].mean() #+ math.fabs( tR.mean() - tR.max()  )/2 #+ math.fabs( tR.mean() - tR.max()  )/4
+        stdDev = np.std(tR)
+        gameStdDev = np.std(tS)
 
-    print("Recent mean ", target)
-    print("Overall mean ", tR.mean())
+        distance = math.fabs(memoryR.max()-memoryR.mean())
+        #treshold = memoryR.mean()+ distance*0.75
+        treshold = memoryR.mean()+ stdDev*1
+        gameAverage = memoryR.mean()
+        gameDistance = math.fabs(memoryW.max() - memoryR.mean())
+        gameTreshold = memoryW.mean() + gameStdDev*0
 
-    train_C = np.arange(np.alen(tR))
-    train_C = train_C[tR.flatten()>target]
-    tX = tX[train_C,:]
-    tY = tY[train_C,:]
-    tW = tW[train_C,:]
-    tR = tR[train_C,:]
+        #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
-    train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
-
-    tX = tX[train_A,:]
-    tY = tY[train_A,:]
-    tW = tW[train_A,:]
-    tR = tR[train_A,:]
-
-    train_B = np.arange(np.alen(tR))
-
-    tX_train = np.zeros(shape=(1,num_env_variables))
-    tY_train = np.zeros(shape=(1,num_env_actions))
-    for i in range(np.alen(train_B)):
-        #pr = predictTotalRewards(tX[i],tY[i])
-        ''' YOU CAN"T USE predictTotalRewards
-        IF YOU DON"T TRAIN THE QMODEL
-
-        if tR[i][0] < pr:
-            tW[i][0] = -1
-        else:
-        '''
-        d = math.fabs( memoryR.max() - target)
-        tW[i] =  math.fabs(tR[i]-(target+0.000000000005)) / d
-        #tW[i] = math.exp(1-(1/tW[i]**2))
+        train_C = np.arange(np.alen(tR))
+        train_C = train_C[tS.flatten()> gameTreshold] # Only take games that are above gameTreshold
+        tX = tX[train_C,:]
+        tY = tY[train_C,:]
+        tW = tW[train_C,:]
+        tR = tR[train_C,:]
+        tS = tS[train_C,:]
 
 
-        tW[i]= 0.0000000000000005
-        if (tR[i]>target):
-            tW[i]=0.05
-        if (tR[i]>max_game_average):
-            tW[i] = 1
 
-        if tW[i]> np.random.rand(1):
-            tX_train = np.vstack((tX_train,tX[i]))
-            tY_train = np.vstack((tY_train,tY[i]))
+        #ßprint("TY.shape",tY.shape[0], "exp replay",experience_replay_size,"np ", np.alen(tR))
+
+        if np.alen(tR) <= 0:
+            break
+        train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+
+        tX = tX[train_A,:]
+        tY = tY[train_A,:]
+        tW = tW[train_A,:]
+        tR = tR[train_A,:]
+        tS = tS[train_A,:]
 
 
-            #print ("tW",tW[i],"exp", math.exp(1-(1/tW[i]**2)))
-            #tW[i] = math.exp(1-(1/tW[i]**2))
-            #tW[i] =  1
-        #print("tW[i] %3.1f tR %3.2f target %3.2f max_game_average %3.2f "%(tW[i],tR[i],target,max_game_average))
-    '''
-    train_B = train_B[tW.flatten()>0]
+        #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
-    #print("%8d were better results than pr"%np.alen(tX_train))
+        train_D = np.arange(np.alen(tR))
+        train_D = train_D[tR.flatten()>treshold] # Only take steps with rewards above threshold
+        tX = tX[train_D,:]
+        tY = tY[train_D,:]
+        tW = tW[train_D,:]
+        tR = tR[train_D,:]
+        tS = tS[train_D,:]
 
-    tX = tX[train_B,:]
-    tY = tY[train_B,:]
-    tW = tW[train_B,:]
-    tR = tR[train_B,:]
-    #print("tW",tW)
-    '''
-    #print("%8d were better results than pr"%np.alen(tX_train))
-    ''' REMOVE FIRST ELEMENT BEFORE TRAINING '''
-    tX_train = tX_train[1:]
-    tY_train = tY_train[1:]
-    #print("%8d were better After removing first element"%np.alen(tX_train))
-    if np.alen(tX_train)>0:
-        #tW = scale_weights(tR,tW)
-        #print("# setps short listed ", np.alen(tR))
 
-        action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=num_epochs,verbose=0)
+        tX_train = tX
+        tY_train = tY
+        if t%89==1:
+            print("%8d were better After removing first element"%np.alen(tX_train), "Upper_cut",memoryR.mean()+stdDev,"gameStdDev",memoryW.mean()+gameStdDev)
+        if np.alen(tX_train)>0:
+            action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
 
 
@@ -462,7 +505,7 @@ def train_noisy_actor():
     noisy_model.fit(tX,tY, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
 
-def add_controlled_noise(targetModel,largeNoise = False):
+def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
     tR = (memoryR)
     tX = (memoryS)
     tY = (memoryA)
@@ -476,20 +519,38 @@ def add_controlled_noise(targetModel,largeNoise = False):
     delta = 1000
     deltaCount = 0
 
-    while delta > 50 and deltaCount <20:
+    for i in range(np.alen(tX)):
+        a = GetRememberedOptimalPolicyFromNoisyModel(noisy_model,tX[i])
+        a = a.flatten()
+    #print("Output Before noise ",a)
+
+    while ( delta > upper_delta or delta < lower_delta) and deltaCount <3:
         #noisy_model.set_weights(action_predictor_model.get_weights())
-        targetModel = add_noise_to_model(targetModel,largeNoise)
+        reset_noisy_model()
+        targetModel = noisy_model
+        targetModel = add_noise_to_model(noisy_model,largeNoise)
+
+
         for i in range(np.alen(tX)):
-            a = GetRememberedOptimalPolicy(tX[i])
             b = GetRememberedOptimalPolicyFromNoisyModel(targetModel,tX[i])
-            a = a.flatten()
             b = b.flatten()
-            c = np.abs(a-b)
-            diffs[i] = c.mean()
-        delta = np.average (diffs)
+
+        c = np.abs(a-b)
+        delta = c.mean()
+
         deltaCount+=1
-    print("Tried x time ", deltaCount,"delta =", delta)
-    return targetModel
+        if delta > upper_delta:
+            big_sigma = big_sigma *0.9
+            #print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
+
+        if delta < lower_delta:
+            big_sigma = big_sigma *1.1
+            #print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
+        #if delta > 3 or delta <0.01:
+        #    print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",1/delta)
+        #    big_sigma = 1 / delta
+    print("Tried x time ", deltaCount,"delta =", delta,"big_sigma ",big_sigma)
+    return targetModel,big_sigma
 
 
 
@@ -516,18 +577,19 @@ for game in range(num_games_to_play):
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
-            if game%2==0:
+            if True or last_best_noisy_game < memoryR.mean() or game%6==0:
                 print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
                 reset_noisy_model()
-                add_controlled_noise(noisy_model,True)
+                noisy_model,big_sigma = add_controlled_noise(noisy_model,big_sigma,True)
                 #last_best_noisy_game = -1000
+            '''
             else:
                 print("Adding Small Noise")
                 #print("Not Changing weights last_best_noisy_game", last_best_noisy_game," mean ",memoryR.mean())
                 reset_noisy_model()
                 add_controlled_noise(noisy_model,False)
-
+            '''
 
     for step in range (5000):
 
@@ -551,12 +613,12 @@ for game in range(num_games_to_play):
             else:
                 #print("Using Actor")
                 if is_noisy_game and uses_parameter_noising:
-                    remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(action_predictor_model,qs)
+                    remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(noisy_model,qs)
                 else:
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
                 a = remembered_optimal_policy
 
-                if uses_critic :
+                if uses_critic:
                     #print("Using critric")
                     stock = np.zeros(num_retries)
                     stockAction = np.zeros(shape=(num_retries,num_env_actions))
@@ -576,6 +638,11 @@ for game in range(num_games_to_play):
                         a = randaction
                         #print(" - selecting generated optimal policy ",a)
 
+        if CLIP_ACTION:
+            for i in range (np.alen(a)):
+                if a[i] < -1: a[i]=-0.99999999999
+                if a[i] > 1: a[i] = 0.99999999999
+
 
 
 
@@ -588,8 +655,8 @@ for game in range(num_games_to_play):
         #record only the first x number of states
 
         if done and step<max_steps-3:
-            r = -50
-
+            r = -100
+        #r=r*100
         if step ==0:
             gameSA[0] = qs_a
             gameS[0] = qs
@@ -646,17 +713,10 @@ for game in range(num_games_to_play):
                 tempGameSA = np.vstack((tempGameSA,gameSA[i]))
                 tempGameR = np.vstack((tempGameR,gameR[i]))
 
-
-            for i in range(0,gameR.shape[0]):
-                pr = predictTotalRewards(gameS[i],gameA[i])
-                atm,add_prob = addToMemory(gameR[i][0], pr, max_game_average,memoryR.mean(),gameR.mean(axis=0)[0],np.std(memoryR))
-                if add_prob < 0:
-                    add_prob = 0.000000005
-                #print("add_prob",add_prob)
                 tempGameA = np.vstack((tempGameA,gameA[i]))
                 tempGameS = np.vstack((tempGameS,gameS[i]))
                 tempGameRR = np.vstack((tempGameRR,gameR[i]))
-                tempGameW = np.vstack((tempGameW,add_prob))
+                tempGameW = np.vstack((tempGameW,gameR.mean()))
 
 
             #train actor network based on last rollout
@@ -714,14 +774,15 @@ for game in range(num_games_to_play):
                 #for i in range(3):
 
                 actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 3 and game %2 ==0 and uses_critic:
-                tSA = (memorySA)
-                tR = (memoryR)
-                train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
-                tR = tR[train_A,:]
-                tSA = tSA    [train_A,:]
-                print("Training Critic n elements =", np.alen(tR))
-                Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
+            if game > 3 and game %1 ==0 and uses_critic:
+                for t in range(training_epochs):
+                    tSA = (memorySA)
+                    tR = (memoryR)
+                    train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+                    tR = tR[train_A,:]
+                    tSA = tSA    [train_A,:]
+                    #print("Training Critic n elements =", np.alen(tR))
+                    Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=1,verbose=0)
             if game > 3 and game %5 ==-1 and uses_parameter_noising:
                 print("Training noisy_actor")
                 train_noisy_actor()
@@ -747,16 +808,20 @@ for game in range(num_games_to_play):
 
 
         if done:
-
+            if gameR.mean() >0:
+                num_positive_avg_games += 1
             if game%1==0:
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
-                print(" #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d" % (game, memoryR.mean(), last_game_average, max_game_average , memoryR.shape[0], memoryR.max(), step    ) )
+                if is_noisy_game:
+                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryW.max() , memoryR.shape[0], memoryR.max(), step,num_positive_avg_games    ) )
+                else:
+                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryW.max() , memoryR.shape[0], memoryR.max(), step ,num_positive_avg_games   ) )
 
             if game%5 ==0 and np.alen(memoryR)>1000:
                 mGames.append(game)
                 mSteps.append(step/1000*100)
                 mAPPicks.append(mAP_Counts/step*100)
-                mAverageScores.append(max(memoryR.mean(), -50)/100*100)
+                mAverageScores.append(max(memoryR.mean(), -150))
                 bar_chart = pygal.HorizontalLine()
                 bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                 bar_chart.add('Average score', mAverageScores)  # Add some values
