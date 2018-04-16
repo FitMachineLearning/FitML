@@ -18,7 +18,7 @@ import keras
 import gym
 #import pybullet
 #import pybullet_envs
-import roboschool
+#import roboschool
 
 
 import pygal
@@ -39,16 +39,16 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = False
 
-num_env_variables = 15
-num_env_actions = 3
-num_initial_observation = 0
+num_env_variables = 8
+num_env_actions = 2
+num_initial_observation = 10
 learning_rate =  0.002
 apLearning_rate = 0.001
 littl_sigma = 0.00006
 big_sigma = 0.006
 upper_delta = 0.035
 lower_delta = 0.01
-ENVIRONMENT_NAME = "RoboschoolHopper-v1"
+ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "ker_v10"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -58,12 +58,13 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 200000
-experience_replay_size = 100000
+max_memory_len = 20000
+experience_replay_size = 20000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 500
+training_epochs = 1000
+critic_training_epoch = 200
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -73,7 +74,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-CLIP_ACTION = False
+CLIP_ACTION = True
 max_steps = 1490
 
 
@@ -777,7 +778,7 @@ for game in range(num_games_to_play):
 
                 actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 3 and game %1 ==0 and uses_critic:
-                for t in range(training_epochs):
+                for t in range(critic_training_epoch):
                     tSA = (memorySA)
                     tR = (memoryR)
                     train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
