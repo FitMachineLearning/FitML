@@ -29,6 +29,8 @@ Fit Machine Learning (FitML) is blog that houses a collection of python Machine 
   # replace with
   env = gym.make('<your-environement-name-here>')
  ```
+   or set the ```ENVIRONMENT_NAME =``` to your environment name. Example ```ENVIRONMENT_NAME = "BipedalWalker-v2"```.
+  
 - set the environment's observation and action space and viriables. If you don't know them, run the script once and they will be printed in the first lines of your output.
  ```Python
   num_env_variables = <number of observation variables here>
