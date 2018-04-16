@@ -16,8 +16,10 @@ Starts Hopping at 200
 import numpy as np
 import keras
 import gym
-import pybullet
-import pybullet_envs
+#import pybullet
+#import pybullet_envs
+import roboschool
+
 
 import pygal
 import os
@@ -37,8 +39,8 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = False
 
-num_env_variables = 24
-num_env_actions = 4
+num_env_variables = 15
+num_env_actions = 3
 num_initial_observation = 0
 learning_rate =  0.002
 apLearning_rate = 0.001
@@ -46,8 +48,8 @@ littl_sigma = 0.00006
 big_sigma = 0.006
 upper_delta = 0.035
 lower_delta = 0.01
-ENVIRONMENT_NAME = "BipedalWalker-v2"
-version_name = ENVIRONMENT_NAME + "ker_v5"
+ENVIRONMENT_NAME = "RoboschoolWalker2d-v1"
+version_name = ENVIRONMENT_NAME + "ker_v10"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -56,14 +58,14 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 100000
-experience_replay_size = 50000
+max_memory_len = 20000
+experience_replay_size = 20000
 random_every_n = 50
 num_retries = 60
-starting_explore_prob = 0.05
-training_epochs = 10
+starting_explore_prob = 0.005
+training_epochs = 500
 mini_batch = 512
-load_previous_weights = True
+load_previous_weights = False
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
@@ -92,7 +94,7 @@ actions_1_hot[np.arange(num_env_actions),possible_actions] = 1
 #Create testing enviroment
 
 env = gym.make(ENVIRONMENT_NAME)
-env.render(mode="human")
+#env.render(mode="human")
 env.reset()
 
 
@@ -117,15 +119,15 @@ def custom_error(y_true, y_pred, Qsa):
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 Qmodel.add(Dense(100, activation='relu', input_dim=dataX.shape[1]))
-#Qmodel.add(Dropout(0.2))
+Qmodel.add(Dropout(0.5))
 Qmodel.add(Dense(50, activation='relu'))
-#Qmodel.add(Dropout(0.5))
+Qmodel.add(Dropout(0.5))
 Qmodel.add(Dense(25, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
-#opt = optimizers.adam(lr=learning_rate)
-opt = optimizers.Adadelta()
+opt = optimizers.adam(lr=learning_rate)
+#opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -134,14 +136,14 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 action_predictor_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
-#action_predictor_model.add(Dropout(0.5))
+action_predictor_model.add(Dropout(0.5))
 action_predictor_model.add(Dense(50, activation='relu'))
-#action_predictor_model.add(Dropout(0.5))
+action_predictor_model.add(Dropout(0.5))
 action_predictor_model.add(Dense(25, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-#opt2 = optimizers.adam(lr=apLearning_rate)
+opt2 = optimizers.adam(lr=apLearning_rate)
 opt2 = optimizers.Adadelta()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
@@ -450,7 +452,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
         train_C = np.arange(np.alen(tR))
-        train_C = train_C[tS.flatten()> gameTreshold] # Only take games that are above gameTreshold
+        #train_C = train_C[tS.flatten()> gameTreshold] # Only take games that are above gameTreshold
         tX = tX[train_C,:]
         tY = tY[train_C,:]
         tW = tW[train_C,:]
@@ -654,8 +656,8 @@ for game in range(num_games_to_play):
         s,r,done,info = env.step(a)
         #record only the first x number of states
 
-        if done and step<max_steps-3:
-            r = -100
+        #if done and step<max_steps-3:
+        #    r = -100
         #r=r*100
         if step ==0:
             gameSA[0] = qs_a
