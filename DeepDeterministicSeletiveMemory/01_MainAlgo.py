@@ -1,5 +1,5 @@
 '''
-PyBullet Hopper Walker with
+LunarLanderContinuous solution with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
@@ -9,7 +9,7 @@ https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
-Starts Hopping at 200
+Starts to land consistantly at 350
 
 
 '''
@@ -18,7 +18,7 @@ import keras
 import gym
 #import pybullet
 #import pybullet_envs
-import roboschool
+#import roboschool
 
 
 import pygal
@@ -39,8 +39,8 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = False
 
-num_env_variables = 15
-num_env_actions = 3
+num_env_variables = 8
+num_env_actions = 2
 num_initial_observation = 0
 learning_rate =  0.002
 apLearning_rate = 0.001
@@ -48,7 +48,7 @@ littl_sigma = 0.00006
 big_sigma = 0.006
 upper_delta = 0.035
 lower_delta = 0.01
-ENVIRONMENT_NAME = "RoboschoolWalker2d-v1"
+ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "ker_v10"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -59,12 +59,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 20000
-experience_replay_size = 20000
+experience_replay_size = 10000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 500
-mini_batch = 512
+training_epochs = 3
+mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
@@ -73,7 +73,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
-CLIP_ACTION = False
+CLIP_ACTION = True
 max_steps = 1490
 
 
@@ -126,8 +126,8 @@ Qmodel.add(Dense(25, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
-opt = optimizers.adam(lr=learning_rate)
-#opt = optimizers.Adadelta()
+#opt = optimizers.adam(lr=learning_rate)
+opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -143,7 +143,7 @@ action_predictor_model.add(Dense(25, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-opt2 = optimizers.adam(lr=apLearning_rate)
+#opt2 = optimizers.adam(lr=apLearning_rate)
 opt2 = optimizers.Adadelta()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
