@@ -77,6 +77,7 @@ CLIP_ACTION = True
 max_steps = 1490
 
 
+
 #Selective memory settings
 sm_normalizer = 20
 sm_memory_size = 10500
