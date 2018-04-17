@@ -1,5 +1,5 @@
 '''
-PyBullet Hopper Walker with
+LunarLanderContinuous solution with
  - Selective Memory
  - Actor Critic
  - Parameter Noising
@@ -9,7 +9,7 @@ https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
-Starts Hopping at 200
+Starts to land consistantly at 350
 
 
 '''
@@ -45,7 +45,7 @@ num_initial_observation = 0
 learning_rate =  0.002
 apLearning_rate = 0.001
 littl_sigma = 0.00006
-big_sigma = 0.0006
+big_sigma = 0.006
 upper_delta = 0.035
 lower_delta = 0.01
 ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
@@ -57,15 +57,14 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.995
-max_memory_len = 200000
-experience_replay_size = 50000
+b_discount = 0.98
+max_memory_len = 20000
+experience_replay_size = 10000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 5
-critic_training_epochs = 5
-mini_batch = 512
+training_epochs = 3
+mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
@@ -127,8 +126,8 @@ Qmodel.add(Dense(25, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
-opt = optimizers.adam(lr=learning_rate)
-#opt = optimizers.Adadelta()
+#opt = optimizers.adam(lr=learning_rate)
+opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -144,8 +143,8 @@ action_predictor_model.add(Dense(25, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
-opt2 = optimizers.adam(lr=apLearning_rate)
-#opt2 = optimizers.Adadelta()
+#opt2 = optimizers.adam(lr=apLearning_rate)
+opt2 = optimizers.Adadelta()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -154,9 +153,9 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 noisy_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
-noisy_model.add(Dropout(0.5))
+#noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(50, activation='relu'))
-noisy_model.add(Dropout(0.5))
+#noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(25, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
@@ -270,7 +269,7 @@ def add_noise_to_model(targetModel,largeNoise = False):
         w = targetModel.layers[k].get_weights()
         if np.alen(w) >0 :
             #print("k==>",k)
-            w[0] = add_noise_simple(w[0],largeNoise)
+            w[0] = add_noise(w[0],largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
@@ -488,10 +487,10 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
         tX_train = tX
         tY_train = tY
-        if t%training_epochs==0:
+        if t%89==1:
             print("%8d were better After removing first element"%np.alen(tX_train), "Upper_cut",memoryR.mean()+stdDev,"gameStdDev",memoryW.mean()+gameStdDev)
         if np.alen(tX_train)>0:
-            action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=10,verbose=0)
+            action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
 
 
@@ -778,14 +777,14 @@ for game in range(num_games_to_play):
 
                 actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 3 and game %1 ==0 and uses_critic:
-                for t in range(critic_training_epochs):
+                for t in range(training_epochs):
                     tSA = (memorySA)
                     tR = (memoryR)
                     train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
                     tR = tR[train_A,:]
                     tSA = tSA    [train_A,:]
                     #print("Training Critic n elements =", np.alen(tR))
-                    Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=10,verbose=0)
+                    Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=1,verbose=0)
             if game > 3 and game %5 ==-1 and uses_parameter_noising:
                 print("Training noisy_actor")
                 train_noisy_actor()
@@ -814,8 +813,6 @@ for game in range(num_games_to_play):
             if gameR.mean() >0:
                 num_positive_avg_games += 1
             if game%1==0:
-
-                print("Memory sizes SA",np.alen(memorySA),"R    ",np.alen(memoryR),"A    ",np.alen(memoryA), "S    ",np.alen(memoryS),"W    ",np.alen(memoryW))
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
                 if is_noisy_game:
                     print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryW.max() , memoryR.shape[0], memoryR.max(), step,num_positive_avg_games    ) )
