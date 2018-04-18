@@ -58,8 +58,8 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 20000
-experience_replay_size = 10000
+max_memory_len = 50000
+experience_replay_size = 25000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
@@ -74,6 +74,7 @@ do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
 CLIP_ACTION = True
+HAS_REWARD_SCALLING = False
 max_steps = 1490
 
 
@@ -119,11 +120,13 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(100, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(512, activation='relu', input_dim=dataX.shape[1]))
 Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(50, activation='relu'))
+Qmodel.add(Dense(256, activation='relu'))
 Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(25, activation='relu'))
+
+''' KEEP THE LAST LAYER JUST A FEW NEURONES ABOVE ACTION SPACE'''
+Qmodel.add(Dense(4, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
@@ -136,11 +139,13 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
 action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(50, activation='relu'))
+action_predictor_model.add(Dense(256, activation='relu'))
 action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(25, activation='relu'))
+
+''' KEEP THE LAST LAYER ON THE SAME SIZE AS ACTION SPACE'''
+action_predictor_model.add(Dense(2, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -659,7 +664,9 @@ for game in range(num_games_to_play):
 
         #if done and step<max_steps-3:
         #    r = -100
-        #r=r*100
+        if True or HAS_REWARD_SCALLING:
+            r=r/200 #reward scalling to from [-1,1] to [-100,100]
+
         if step ==0:
             gameSA[0] = qs_a
             gameS[0] = qs
