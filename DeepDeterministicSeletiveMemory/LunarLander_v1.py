@@ -46,8 +46,8 @@ learning_rate =  0.002
 apLearning_rate = 0.001
 littl_sigma = 0.00006
 big_sigma = 0.006
-upper_delta = 0.035
-lower_delta = 0.01
+upper_delta = 0.0035
+lower_delta = 0.001
 ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "ker_v10"
 weigths_filename = version_name+"-weights.h5"
@@ -58,12 +58,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 20000
-experience_replay_size = 10000
-random_every_n = 50
+max_memory_len = 40000
+experience_replay_size = 40000
+random_every_n = 30
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 3
+training_epochs = 1
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -74,7 +74,10 @@ do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
 CLIP_ACTION = True
+HAS_REWARD_SCALLING = True
+REWARD_SCALE = 1/300
 max_steps = 1490
+
 
 
 #Selective memory settings
@@ -115,14 +118,29 @@ def custom_error(y_true, y_pred, Qsa):
     return cce
 
 
+
+
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(100, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(50, activation='relu'))
-Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(25, activation='relu'))
+Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
+#Qmodel.add(Dropout(0.5))
+Qmodel.add(Dense(32, activation='relu'))
+
+Qmodel.add(Dense(32, activation='relu'))
+
+Qmodel.add(Dense(32, activation='relu'))
+
+Qmodel.add(Dense(32, activation='relu'))
+
+Qmodel.add(Dense(32, activation='relu'))
+
+Qmodel.add(Dense(32, activation='relu'))
+
+Qmodel.add(Dense(32, activation='relu'))
+
+#Qmodel.add(Dropout(0.5))
+Qmodel.add(Dense(4, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 
 Qmodel.add(Dense(dataY.shape[1]))
@@ -135,11 +153,23 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
-action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(50, activation='relu'))
-action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(25, activation='relu'))
+action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+#action_predictor_model.add(Dropout(0.5))
+action_predictor_model.add(Dense(32, activation='relu'))
+
+action_predictor_model.add(Dense(32, activation='relu'))
+
+action_predictor_model.add(Dense(32, activation='relu'))
+
+action_predictor_model.add(Dense(32, activation='relu'))
+
+action_predictor_model.add(Dense(32, activation='relu'))
+
+action_predictor_model.add(Dense(32, activation='relu'))
+
+action_predictor_model.add(Dense(32, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
+action_predictor_model.add(Dense(3, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 
 action_predictor_model.add(Dense(apdataY.shape[1]))
@@ -149,14 +179,16 @@ opt2 = optimizers.Adadelta()
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
 
+
+
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(50, activation='relu'))
+#noisy_model.add(Dense(256, activation='relu'))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(25, activation='relu'))
+#noisy_model.add(Dense(3, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
@@ -269,7 +301,7 @@ def add_noise_to_model(targetModel,largeNoise = False):
         w = targetModel.layers[k].get_weights()
         if np.alen(w) >0 :
             #print("k==>",k)
-            w[0] = add_noise(w[0],largeNoise)
+            w[0] = add_noise_simple(w[0],largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
@@ -444,7 +476,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
         distance = math.fabs(memoryR.max()-memoryR.mean())
         #treshold = memoryR.mean()+ distance*0.75
-        treshold = memoryR.mean()+ stdDev*1
+        treshold = memoryR.mean()+ stdDev*1.1
         gameAverage = memoryR.mean()
         gameDistance = math.fabs(memoryW.max() - memoryR.mean())
         gameTreshold = memoryW.mean() + gameStdDev*0
@@ -487,7 +519,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
         tX_train = tX
         tY_train = tY
-        if t%89==1:
+        if t%89==0:
             print("%8d were better After removing first element"%np.alen(tX_train), "Upper_cut",memoryR.mean()+stdDev,"gameStdDev",memoryW.mean()+gameStdDev)
         if np.alen(tX_train)>0:
             action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=1,verbose=0)
@@ -649,16 +681,18 @@ for game in range(num_games_to_play):
 
 
 
-        env.render()
+
         qs_a = np.concatenate((qs,a), axis=0)
 
         #get the target state and reward
         s,r,done,info = env.step(a)
         #record only the first x number of states
-
+        env.render()
         #if done and step<max_steps-3:
         #    r = -100
-        #r=r*100
+        if HAS_REWARD_SCALLING:
+            r= r * REWARD_SCALE #reward scalling to from [-1,1] to [-100,100]
+
         if step ==0:
             gameSA[0] = qs_a
             gameS[0] = qs
@@ -810,6 +844,9 @@ for game in range(num_games_to_play):
 
 
         if done:
+            rScale = 1
+            if HAS_REWARD_SCALLING:
+                rScale = 1*REWARD_SCALE
             if gameR.mean() >0:
                 num_positive_avg_games += 1
             if game%1==0:
@@ -823,7 +860,7 @@ for game in range(num_games_to_play):
                 mGames.append(game)
                 mSteps.append(step/1000*100)
                 mAPPicks.append(mAP_Counts/step*100)
-                mAverageScores.append(max(memoryR.mean(), -150))
+                mAverageScores.append(max(memoryR.mean()*rScale, -150))
                 bar_chart = pygal.HorizontalLine()
                 bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                 bar_chart.add('Average score', mAverageScores)  # Add some values
