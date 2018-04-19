@@ -38,6 +38,7 @@ from keras import optimizers
 PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = False
+USE_Q_AS_DISCRIMINATOR = False
 
 num_env_variables = 26
 num_env_actions = 6
@@ -57,14 +58,14 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.99
+b_discount = 0.98
 max_memory_len = 40000
-experience_replay_size = 15000
+experience_replay_size = 40000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
 training_epochs = 2
-critic_training_epochs = 3
+critic_training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -75,8 +76,8 @@ do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
 CLIP_ACTION = True
-HAS_EARLY_TERMINATION_REWARD = True
-EARLY_TERMINATION_REWARD = -20
+HAS_EARLY_TERMINATION_REWARD = False
+EARLY_TERMINATION_REWARD = -2
 HAS_REWARD_SCALLING = True
 REWARD_SCALE = 1/90
 max_steps = 496
@@ -125,17 +126,11 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(32, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(64, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
+Qmodel.add(Dense(64, activation='relu'))
 
-Qmodel.add(Dense(32, activation='relu'))
-
-Qmodel.add(Dense(32, activation='relu'))
-
-Qmodel.add(Dense(32, activation='relu'))
-
-
+Qmodel.add(Dense(64, activation='relu'))
 
 #Qmodel.add(Dropout(0.5))
 Qmodel.add(Dense(4, activation='relu'))
@@ -151,15 +146,11 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(32, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(64, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(32, activation='relu'))
+action_predictor_model.add(Dense(64, activation='relu'))
 
-action_predictor_model.add(Dense(32, activation='relu'))
-
-action_predictor_model.add(Dense(32, activation='relu'))
-
-action_predictor_model.add(Dense(32, activation='relu'))
+action_predictor_model.add(Dense(64, activation='relu'))
 
 #action_predictor_model.add(Dropout(0.5))
 action_predictor_model.add(Dense(6, activation='relu'))
@@ -409,6 +400,14 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
 
         #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
+        train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+
+        tX = tX[train_A,:]
+        tY = tY[train_A,:]
+        tW = tW[train_A,:]
+        tR = tR[train_A,:]
+        tS = tS[train_A,:]
+
         train_C = np.arange(np.alen(tR))
         #train_C = train_C[tR.flatten()>treshold]
         tX = tX[train_C,:]
@@ -418,13 +417,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         tS = tS[train_C,:]
 
 
-        train_A = np.random.randint(tY.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
 
-        tX = tX[train_A,:]
-        tY = tY[train_A,:]
-        tW = tW[train_A,:]
-        tR = tR[train_A,:]
-        tS = tS[train_A,:]
 
         tX_train = np.zeros(shape=(1,num_env_variables))
         tY_train = np.zeros(shape=(1,num_env_actions))
@@ -801,10 +794,14 @@ for game in range(num_games_to_play):
 
             if game > 3 and game %1 ==0:
                 # train on all memory
-                print("Experience Replay")
+                #print("Experience Replay")
                 #for i in range(3):
-
-                actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
+                if USE_Q_AS_DISCRIMINATOR:
+                    print("Experience Replay with Q as discriminator")
+                    pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
+                else:
+                    print("Experience Replay with stdVar as discriminator")
+                    actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 3 and game %1 ==0 and uses_critic:
                 for t in range(critic_training_epochs):
                     tSA = (memorySA)
