@@ -1,6 +1,8 @@
 import numpy as np
 import keras
 import gym
+import roboschool
+
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -8,19 +10,19 @@ from keras import optimizers
 
 from Lib.Individual import Individual
 
-ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
-OBSERVATION_SPACE = 8
-ACTION_SPACE = 2
+ENVIRONMENT_NAME = "RoboschoolHopper-v1"
+OBSERVATION_SPACE = 15
+ACTION_SPACE = 3
 
 B_DISCOUNT = 0.98
 
 POPULATION_SIZE = 10
 NETWORK_WIDTH = 512
-NUM_TEST_EPISODES = 5
+NUM_TEST_EPISODES = 3
 NUM_SELECTED_FOR_REPRODUCTION = 2
 NOISE_SIGMA = 0.06
 
-MAX_GENERATIONS = 2000
+MAX_GENERATIONS = 20000
 
 CLIP_ACTIONS = True
 MAX_STEPS = 996
@@ -36,7 +38,7 @@ total_population_counter = 0
 '''---------ENVIRONMENT INITIALIZATION--------'''
 
 env = gym.make(ENVIRONMENT_NAME)
-env.render(mode="human")
+#env.render(mode="human")
 env.reset()
 
 print("-- Observations",env.observation_space)
@@ -97,18 +99,21 @@ def test_individual(indiv,num_test_episodes):
             if done:
                 episodeRewards.reverse()
                 for j in range(len(episodeRewards)):
-                    if j ==0:
-                        print("last reward ",episodeRewards[j])
+                    #if j ==0:
+                    #    print("last reward ",episodeRewards[j])
                     if j > 0:
                         episodeRewards[j] = episodeRewards[j] + B_DISCOUNT * episodeRewards[j-1]
                 #avg = sum(episodeRewards)/len(episodeRewards)
                 #print("episode average ", avg)
-                allRewards = allRewards + episodeRewards
+                for j in range(len(episodeRewards)):
+                    allRewards.append(episodeRewards[j])
+                #allRewards = allRewards + episodeRewards
                 break
-        avg = sum(allRewards) / len(allRewards)
-        print("test rewards ",avg)
-        indiv.lifeScore = avg
+        epAvg = sum(episodeRewards) / len(episodeRewards)
+        print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
 
+    avg = sum(allRewards) / len(allRewards)
+    indiv.lifeScore = avg
     #indiv.lifeScore = np.random.rand(1)[0]*50
     print("indivID - ",indiv.indivID,"lifeScore =",indiv.lifeScore)
 
