@@ -1,7 +1,7 @@
 import numpy as np
 import keras
 import gym
-#import roboschool
+import roboschool
 
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
@@ -10,22 +10,25 @@ from keras import optimizers
 
 from Lib.Individual import Individual
 
-ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
-OBSERVATION_SPACE = 8
-ACTION_SPACE = 2
+ENVIRONMENT_NAME = "RoboschoolWalker2d-v1"
+OBSERVATION_SPACE = 22
+ACTION_SPACE = 6
 
-B_DISCOUNT = 0.94
+B_DISCOUNT = 0.99
 
-POPULATION_SIZE = 10
-NETWORK_WIDTH = 512
+POPULATION_SIZE = 8
+NETWORK_WIDTH = 32
+NETWORK_HIDDEN_LAYERS = 1
 NUM_TEST_EPISODES = 3
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.06
+NOISE_SIGMA = 0.1
 
 MAX_GENERATIONS = 20000
 
+HAS_EARLY_TERMINATION_REWARD = False
+EARLY_TERMINATION_REWARD = -2
 CLIP_ACTIONS = True
-MAX_STEPS = 996
+MAX_STEPS = 950
 
 all_individuals = []
 generations_count = 0
@@ -62,16 +65,19 @@ def GetRememberedOptimalPolicy(targetModel,qstate):
     return r_remembered_optimal_policy
 
 
-def create_model(network_width, observation_space, action_space):
+def create_model(network_width, network_hidden_layers, observation_space, action_space):
     action_predictor_model = Sequential()
     action_predictor_model.add(Dense(network_width, activation='relu', input_dim=observation_space))
+    for i in range(network_hidden_layers):
+        action_predictor_model.add(Dense(network_width, activation='relu'))
+
     action_predictor_model.add(Dense(action_space))
     return action_predictor_model
 
-def initialize_population(population_size,network_width, observation_space, action_space, environment_name,total_population_counter):
+def initialize_population(population_size,network_width,network_hidden_layers, observation_space, action_space, environment_name,total_population_counter):
     initial_population = []
     for i in range (population_size):
-        action_predictor_model = create_model(network_width, observation_space, action_space)
+        action_predictor_model = create_model(network_width,network_hidden_layers, observation_space, action_space)
         indiv = Individual(generationID=0, indivID=total_population_counter , network = action_predictor_model)
         total_population_counter += 1
         initial_population.append(indiv)
@@ -91,7 +97,10 @@ def test_individual(indiv,num_test_episodes):
                     if a[i] < -1: a[i]=-0.99999999999
                     if a[i] > 1: a[i] = 0.99999999999
             qs,r,done,info = env.step(a)
+            if HAS_EARLY_TERMINATION_REWARD and done and step<MAX_STEPS-3:
+                r = EARLY_TERMINATION_REWARD
             episodeRewards.append(r)
+
             #indiv.lifeScore += r
             env.render()
             if step > MAX_STEPS:
@@ -174,13 +183,14 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
-        individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma,True)
+        if i >=2 and i%5==0:
+            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*3,True)
 
 
-def populate_next_generation(generationID,top_individuals,population_size, network_width, observation_space, action_space,total_population_counter):
+def populate_next_generation(generationID,top_individuals,population_size, network_width,network_hidden_layers, observation_space, action_space,total_population_counter):
     newPop = top_individuals
     for i in range( population_size - len(top_individuals)):
-        newModel = create_model(network_width, observation_space, action_space)
+        newModel = create_model(network_width, network_hidden_layers, observation_space, action_space)
         model1 = top_individuals[0].network
         model2 = top_individuals[1].network
         sz = len(newModel.layers)
@@ -221,6 +231,7 @@ def populate_next_generation(generationID,top_individuals,population_size, netwo
 
 all_individuals,total_population_counter = initialize_population(population_size=POPULATION_SIZE,
     network_width=NETWORK_WIDTH,
+    network_hidden_layers = NETWORK_HIDDEN_LAYERS,
     observation_space=OBSERVATION_SPACE,
     action_space=ACTION_SPACE,
     environment_name=ENVIRONMENT_NAME,
@@ -233,7 +244,7 @@ for gens in range (MAX_GENERATIONS):
     generations_count += 1
     print("Generating next Gen ",generations_count)
     all_individuals,total_population_counter = populate_next_generation(generations_count,top_individuals,
-        POPULATION_SIZE,NETWORK_WIDTH,
+        POPULATION_SIZE,NETWORK_WIDTH, NETWORK_HIDDEN_LAYERS,
         OBSERVATION_SPACE,
         ACTION_SPACE,
         total_population_counter)
