@@ -1,7 +1,7 @@
 import numpy as np
 import keras
 import gym
-#import roboschool
+import roboschool
 
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
@@ -9,19 +9,23 @@ from keras.layers import Dense, Dropout
 from keras import optimizers
 
 from Lib.Individual import Individual
-
+'''
+ENVIRONMENT_NAME = "RoboschoolAnt-v1"
+OBSERVATION_SPACE = 28
+ACTION_SPACE = 8
+'''
 ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 OBSERVATION_SPACE = 8
 ACTION_SPACE = 2
 
 B_DISCOUNT = 0.99
 
-POPULATION_SIZE = 20
-NETWORK_WIDTH = 512
+POPULATION_SIZE = 40
+NETWORK_WIDTH = 512*2
 NETWORK_HIDDEN_LAYERS = 0
-NUM_TEST_EPISODES = 2
+NUM_TEST_EPISODES = 1
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.06
+NOISE_SIGMA = 0.1
 
 MAX_GENERATIONS = 20000
 
@@ -69,7 +73,6 @@ def create_model(network_width, network_hidden_layers, observation_space, action
     action_predictor_model = Sequential()
     action_predictor_model.add(Dense(network_width, activation='relu', input_dim=observation_space))
     for i in range(network_hidden_layers):
-        print("Adding network_hidden_layers")
         action_predictor_model.add(Dense(network_width, activation='relu'))
 
     action_predictor_model.add(Dense(action_space))
@@ -122,12 +125,12 @@ def test_individual(indiv,num_test_episodes):
                 allRewards.append(epAvg)
 
                 break
-        print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
+        #print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
 
         avg = sum(allRewards) / len(allRewards)
         indiv.lifeScore = avg
     #indiv.lifeScore = np.random.rand(1)[0]*50
-    print("indivID - ",indiv.indivID,"lifeScore =",indiv.lifeScore)
+    print("generationID",indiv.generationID,"indivID - ",indiv.indivID,"lifeScore =",indiv.lifeScore)
 
 
 def test_all_individuals(num_test_episodes):
@@ -149,6 +152,8 @@ def select_top_individuals(num_selected,population_size):
             #print("Selecting individual",i," with score ", all_individuals[i].lifeScore,"cuttoff ", topScores.min())
             selected_individuals.append(all_individuals[i])
 
+
+    print("Selected individuals ")
     for i in range (len(selected_individuals)):
         print(selected_individuals[i].printme())
 
@@ -184,13 +189,8 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
-        if i >=2:
-        print("adding noiseSigma",noiseSigma)
-            if i%5==0:
-                individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*3,True)
-            else:
-                individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma,True)
-
+        if i >=2 and i%5==0:
+            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*2,True)
 
 
 def populate_next_generation(generationID,top_individuals,population_size, network_width,network_hidden_layers, observation_space, action_space,total_population_counter):
@@ -248,13 +248,13 @@ for gens in range (MAX_GENERATIONS):
     test_all_individuals(NUM_TEST_EPISODES)
     top_individuals = select_top_individuals(NUM_SELECTED_FOR_REPRODUCTION,POPULATION_SIZE)
     generations_count += 1
-    print("Generating next Gen ",generations_count," pop count ",len(all_individuals))
+    print("Generating next Gen ",generations_count)
     all_individuals,total_population_counter = populate_next_generation(generations_count,top_individuals,
         POPULATION_SIZE,NETWORK_WIDTH, NETWORK_HIDDEN_LAYERS,
         OBSERVATION_SPACE,
         ACTION_SPACE,
         total_population_counter)
-    print("@@@@ Adding Noise @@@@")
+    #print("@@@@ Adding Noise @@@@")
     add_mutations(all_individuals)
 
 
