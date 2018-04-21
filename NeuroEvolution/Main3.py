@@ -20,12 +20,12 @@ ACTION_SPACE = 2
 
 B_DISCOUNT = 0.99
 
-POPULATION_SIZE = 40
+POPULATION_SIZE = 20
 NETWORK_WIDTH = 512*2
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.1
+NOISE_SIGMA = 0.05
 
 MAX_GENERATIONS = 20000
 
@@ -37,6 +37,7 @@ MAX_STEPS = 650
 all_individuals = []
 generations_count = 0
 total_population_counter = 0
+numLandings = 0
 
 
 
@@ -123,6 +124,8 @@ def test_individual(indiv,num_test_episodes):
                 #allRewards = allRewards + episodeRewards
                 epAvg = sum(episodeRewards) / len(episodeRewards)
                 allRewards.append(epAvg)
+                if epAvg >0:
+                    numLandings = numLandings+1
 
                 break
         #print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
@@ -130,7 +133,7 @@ def test_individual(indiv,num_test_episodes):
         avg = sum(allRewards) / len(allRewards)
         indiv.lifeScore = avg
     #indiv.lifeScore = np.random.rand(1)[0]*50
-    print("generationID",indiv.generationID,"indivID - ",indiv.indivID,"lifeScore =",indiv.lifeScore)
+    print("generationID",indiv.generationID,"indivID - ",indiv.indivID,"numLandings ",numLandings,"lifeScore =",indiv.lifeScore)
 
 
 def test_all_individuals(num_test_episodes):
@@ -160,6 +163,22 @@ def select_top_individuals(num_selected,population_size):
     return selected_individuals
 
 # --- Parameter Noising
+
+def add_noise(mu,noiseSigma, largeNoise=False):
+
+    if largeNoise:
+        sig = noiseSigma
+    else:
+        #print("Adding Large parameter noise")
+        sig = noiseSigma #Sigma = width of the standard deviaion
+    #mu = means
+    x =   np.random.rand(1) #probability of doing x
+    #print ("x prob ",x)
+    if x >0.5:
+        return mu + np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    else:
+        return mu - np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+
 def add_noise_simple(mu,noiseSigma, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
     if not largeNoise:
@@ -171,7 +190,7 @@ def add_noise_simple(mu,noiseSigma, largeNoise=False):
 
 
 add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
-
+add_noise = np.vectorize(add_noise,otypes=[np.float])
 
 def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 
@@ -187,6 +206,8 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
         targetModel.layers[k].set_weights(w)
     return targetModel
 
+
+''' MUTATIONS '''
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
         if i >=2 and i%5==0:
