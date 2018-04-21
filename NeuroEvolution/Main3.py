@@ -29,6 +29,7 @@ NOISE_SIGMA = 0.05
 
 MAX_GENERATIONS = 20000
 
+USE_GAUSSIAN_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -2
 CLIP_ACTIONS = True
@@ -210,7 +211,7 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 ''' MUTATIONS '''
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
-        if i >=2 and i%5==0:
+        if i >2 and i%5==0:
             individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*2,True)
 
 
