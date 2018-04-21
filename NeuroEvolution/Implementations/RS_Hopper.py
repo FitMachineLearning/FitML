@@ -3,6 +3,7 @@ import keras
 import gym
 import roboschool
 
+
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
