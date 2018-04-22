@@ -3,7 +3,6 @@ import keras
 import gym
 import roboschool
 
-
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -17,15 +16,17 @@ ACTION_SPACE = 3
 
 B_DISCOUNT = 0.98
 
-POPULATION_SIZE = 20
-NETWORK_WIDTH = 256
+POPULATION_SIZE = 10
+NETWORK_WIDTH = 512
 NUM_TEST_EPISODES = 3
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.06
+NOISE_SIGMA = 0.3
+MUTATION_PROB = 0.05
+
 
 MAX_GENERATIONS = 20000
 
-CLIP_ACTIONS = False
+CLIP_ACTIONS = True
 MAX_STEPS = 996
 
 all_individuals = []
@@ -146,11 +147,15 @@ def select_top_individuals(num_selected,population_size):
 # --- Parameter Noising
 def add_noise_simple(mu,noiseSigma, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
-    if not largeNoise:
-        x = x*noiseSigma
+    if np.random.rand(1) < MUTATION_PROB:
+        #print("mutating")
+        if not largeNoise:
+            x = x*noiseSigma
+        else:
+            x = x*noiseSigma   #Sigma = width of the standard deviaion
     else:
-        x = x*noiseSigma   #Sigma = width of the standard deviaion
-    #print ("x/200",x,"big_sigma",big_sigma)
+        x = 0
+        #print ("x/200",x,"big_sigma",big_sigma)
     return mu + x
 
 
@@ -173,8 +178,7 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
-        if i >2:
-            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma,True)
+        individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma,True)
 
 
 def populate_next_generation(generationID,top_individuals,population_size, network_width, observation_space, action_space,total_population_counter):
