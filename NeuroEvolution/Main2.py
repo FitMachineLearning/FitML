@@ -9,30 +9,37 @@ from keras.layers import Dense, Dropout
 from keras import optimizers
 
 from Lib.Individual import Individual
+'''
+ENVIRONMENT_NAME = "RoboschoolAnt-v1"
+OBSERVATION_SPACE = 28
+ACTION_SPACE = 8
+'''
+ENVIRONMENT_NAME = "RoboschoolHopper-v1"
+OBSERVATION_SPACE = 15
+ACTION_SPACE = 3
 
-ENVIRONMENT_NAME = "RoboschoolWalker2d-v1"
-OBSERVATION_SPACE = 22
-ACTION_SPACE = 6
+B_DISCOUNT = 0.98
 
-B_DISCOUNT = 0.99
-
-POPULATION_SIZE = 8
+POPULATION_SIZE = 15
 NETWORK_WIDTH = 32
 NETWORK_HIDDEN_LAYERS = 1
-NUM_TEST_EPISODES = 3
+NUM_TEST_EPISODES = 1
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.1
+NOISE_SIGMA = 0.01
+MUTATION_PROB = 0.05
 
-MAX_GENERATIONS = 20000
+MAX_GENERATIONS = 200000
 
+USE_GAUSSIAN_NOISE = False
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -2
-CLIP_ACTIONS = True
-MAX_STEPS = 950
+CLIP_ACTIONS = False
+MAX_STEPS = 650
 
 all_individuals = []
 generations_count = 0
 total_population_counter = 0
+#numLandings = 0
 
 
 
@@ -119,14 +126,16 @@ def test_individual(indiv,num_test_episodes):
                 #allRewards = allRewards + episodeRewards
                 epAvg = sum(episodeRewards) / len(episodeRewards)
                 allRewards.append(epAvg)
+                #if epAvg >0:
+                #    numLandings = numLandings+1
 
                 break
-        print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
+        #print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
 
         avg = sum(allRewards) / len(allRewards)
         indiv.lifeScore = avg
     #indiv.lifeScore = np.random.rand(1)[0]*50
-    print("indivID - ",indiv.indivID,"lifeScore =",indiv.lifeScore)
+    print("generationID",indiv.generationID,"indivID - ",indiv.indivID,"numLandings ",0,"lifeScore =",indiv.lifeScore)
 
 
 def test_all_individuals(num_test_episodes):
@@ -148,24 +157,46 @@ def select_top_individuals(num_selected,population_size):
             #print("Selecting individual",i," with score ", all_individuals[i].lifeScore,"cuttoff ", topScores.min())
             selected_individuals.append(all_individuals[i])
 
+
+    print("Selected individuals ")
     for i in range (len(selected_individuals)):
         print(selected_individuals[i].printme())
 
     return selected_individuals
 
 # --- Parameter Noising
+
+def add_noise(mu,noiseSigma, largeNoise=False):
+
+    if largeNoise:
+        sig = noiseSigma
+    else:
+        #print("Adding Large parameter noise")
+        sig = noiseSigma #Sigma = width of the standard deviaion
+    #mu = means
+    x =   np.random.rand(1) #probability of doing x
+    #print ("x prob ",x)
+    if x >0.5:
+        return mu + np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    else:
+        return mu - np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+
 def add_noise_simple(mu,noiseSigma, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
-    if not largeNoise:
-        x = x*noiseSigma
+    if np.random.rand(1) < MUTATION_PROB:
+        print("mutating")
+        if not largeNoise:
+            x = x*noiseSigma
+        else:
+            x = x*noiseSigma   #Sigma = width of the standard deviaion
     else:
-        x = x*noiseSigma   #Sigma = width of the standard deviaion
-    #print ("x/200",x,"big_sigma",big_sigma)
+        x = 0
+        #print ("x/200",x,"big_sigma",big_sigma)
     return mu + x
 
 
 add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
-
+add_noise = np.vectorize(add_noise,otypes=[np.float])
 
 def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 
@@ -181,10 +212,12 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
         targetModel.layers[k].set_weights(w)
     return targetModel
 
+
+''' MUTATIONS '''
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
-        if i >=2 and i%5==0:
-            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*3,True)
+        if i >2 and i%5==0:
+            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*2,True)
 
 
 def populate_next_generation(generationID,top_individuals,population_size, network_width,network_hidden_layers, observation_space, action_space,total_population_counter):
@@ -248,7 +281,7 @@ for gens in range (MAX_GENERATIONS):
         OBSERVATION_SPACE,
         ACTION_SPACE,
         total_population_counter)
-    print("@@@@ Adding Noise @@@@")
+    #print("@@@@ Adding Noise @@@@")
     add_mutations(all_individuals)
 
 
