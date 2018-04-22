@@ -20,12 +20,13 @@ ACTION_SPACE = 2
 
 B_DISCOUNT = 0.99
 
-POPULATION_SIZE = 20
+POPULATION_SIZE = 15
 NETWORK_WIDTH = 512*2
 NETWORK_HIDDEN_LAYERS = 0
-NUM_TEST_EPISODES = 1
+NUM_TEST_EPISODES = 3
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.05
+NOISE_SIGMA = 0.3
+MUTATION_PROB = 0.05
 
 MAX_GENERATIONS = 20000
 
@@ -38,7 +39,7 @@ MAX_STEPS = 650
 all_individuals = []
 generations_count = 0
 total_population_counter = 0
-numLandings = 0
+#numLandings = 0
 
 
 
@@ -125,8 +126,8 @@ def test_individual(indiv,num_test_episodes):
                 #allRewards = allRewards + episodeRewards
                 epAvg = sum(episodeRewards) / len(episodeRewards)
                 allRewards.append(epAvg)
-                if epAvg >0:
-                    numLandings = numLandings+1
+                #f epAvg >0:
+                #    numLandings = numLandings+1
 
                 break
         #print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
@@ -134,7 +135,7 @@ def test_individual(indiv,num_test_episodes):
         avg = sum(allRewards) / len(allRewards)
         indiv.lifeScore = avg
     #indiv.lifeScore = np.random.rand(1)[0]*50
-    print("generationID",indiv.generationID,"indivID - ",indiv.indivID,"numLandings ",numLandings,"lifeScore =",indiv.lifeScore)
+    print("generationID",indiv.generationID,"indivID - ",indiv.indivID,"numLandings ",0,"lifeScore =",indiv.lifeScore)
 
 
 def test_all_individuals(num_test_episodes):
@@ -182,11 +183,15 @@ def add_noise(mu,noiseSigma, largeNoise=False):
 
 def add_noise_simple(mu,noiseSigma, largeNoise=False):
     x =   np.random.rand(1) - 0.5 #probability of doing x
-    if not largeNoise:
-        x = x*noiseSigma
+    if np.random.rand(1) < MUTATION_PROB:
+        #print("mutating")
+        if not largeNoise:
+            x = x*noiseSigma
+        else:
+            x = x*noiseSigma   #Sigma = width of the standard deviaion
     else:
-        x = x*noiseSigma   #Sigma = width of the standard deviaion
-    #print ("x/200",x,"big_sigma",big_sigma)
+        x = 0
+        #print ("x/200",x,"big_sigma",big_sigma)
     return mu + x
 
 
