@@ -1,7 +1,7 @@
 import numpy as np
 import keras
 import gym
-import roboschool
+#import roboschool
 
 
 from random import randint
@@ -24,20 +24,20 @@ ACTION_SPACE = 2
 
 B_DISCOUNT = 0.98
 
-POPULATION_SIZE = 40
+POPULATION_SIZE = 8
 NETWORK_WIDTH = 512
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
 NUM_SELECTED_FOR_REPRODUCTION = 4
-NOISE_SIGMA = 0.2
-MUTATION_PROB = 0.1
+NOISE_SIGMA = 0.5
+MUTATION_PROB = 0.25
 
 MAX_GENERATIONS = 200000
 
 USE_GAUSSIAN_NOISE = False
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -100
-CLIP_ACTIONS = False
+CLIP_ACTIONS = True
 MAX_STEPS = 650
 
 all_individuals = []
@@ -202,9 +202,13 @@ def add_noise_simple(mu,noiseSigma, largeNoise=False):
         #print ("x/200",x,"big_sigma",big_sigma)
     return mu + x
 
+def add_gaussian_noise(mu,noiseSigma,largeNoise=False):
+    return gauss(mu, noiseSigma)
 
 add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 add_noise = np.vectorize(add_noise,otypes=[np.float])
+add_gaussian_noise = np.vectorize(add_gaussian_noise,otypes=[np.float])
+
 
 def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 
@@ -215,7 +219,7 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
         w = targetModel.layers[k].get_weights()
         if np.alen(w) >0 :
             #print("k==>",k)
-            w[0] = add_noise_simple(w[0],noiseSigma,largeNoise)
+            w[0] = add_gaussian_noise(w[0],noiseSigma,largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
