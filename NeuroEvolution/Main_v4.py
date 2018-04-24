@@ -1,6 +1,7 @@
 import numpy as np
 import keras
 import gym
+from random import gauss
 #import roboschool
 
 
@@ -24,12 +25,12 @@ ACTION_SPACE = 2
 
 B_DISCOUNT = 0.98
 
-POPULATION_SIZE = 8
+POPULATION_SIZE = 10
 NETWORK_WIDTH = 512
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
-NUM_SELECTED_FOR_REPRODUCTION = 4
-NOISE_SIGMA = 0.5
+NUM_SELECTED_FOR_REPRODUCTION = 2
+NOISE_SIGMA = 0.1
 MUTATION_PROB = 0.25
 
 MAX_GENERATIONS = 200000
@@ -203,6 +204,7 @@ def add_noise_simple(mu,noiseSigma, largeNoise=False):
     return mu + x
 
 def add_gaussian_noise(mu,noiseSigma,largeNoise=False):
+    #print ( gauss(mu, noiseSigma) )
     return gauss(mu, noiseSigma)
 
 add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
@@ -228,8 +230,8 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 ''' MUTATIONS '''
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
-        if i >NUM_SELECTED_FOR_REPRODUCTION*2 and i%5==0:
-            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*2,True)
+        if i >NUM_SELECTED_FOR_REPRODUCTION :
+            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma,True)
 
 
 def populate_next_generation(generationID,top_individuals,population_size, network_width,network_hidden_layers, observation_space, action_space,total_population_counter):
