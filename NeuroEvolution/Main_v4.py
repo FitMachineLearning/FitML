@@ -5,6 +5,7 @@ See the agents in action at
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 '''
 
+
 import numpy as np
 import keras
 import gym
@@ -37,8 +38,8 @@ NETWORK_WIDTH = 512
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.1
-MUTATION_PROB = 0.25
+NOISE_SIGMA = 0.05
+MUTATION_PROB = 0.05
 
 MAX_GENERATIONS = 200000
 
