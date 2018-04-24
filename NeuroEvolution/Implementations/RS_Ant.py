@@ -26,13 +26,13 @@ ACTION_SPACE = 2
 
 B_DISCOUNT = 0.98
 
-POPULATION_SIZE = 40
+POPULATION_SIZE = 12
 NETWORK_WIDTH = 512
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
 NUM_SELECTED_FOR_REPRODUCTION = 4
 NOISE_SIGMA = 0.3
-MUTATION_PROB = 0.7
+MUTATION_PROB = 0.4
 
 MAX_GENERATIONS = 200000
 
@@ -233,7 +233,7 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 ''' MUTATIONS '''
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
-        if i >NUM_SELECTED_FOR_REPRODUCTION*2 and i%5==0:
+        if i >NUM_SELECTED_FOR_REPRODUCTION*1.5 and i%5==0:
             individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*2,True)
 
 
