@@ -10,9 +10,8 @@ https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 Update
 Deep Network
 Starts to land consistantly at 350
-
-
 '''
+
 import numpy as np
 import keras
 import gym
@@ -27,6 +26,7 @@ import h5py
 #import matplotlib.pyplot as plt
 import math
 
+from random import gauss
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -37,7 +37,7 @@ from keras import optimizers
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
-uses_parameter_noising = False
+uses_parameter_noising = True
 
 num_env_variables = 8
 num_env_actions = 2
@@ -45,9 +45,11 @@ num_initial_observation = 0
 learning_rate =  0.002
 apLearning_rate = 0.001
 littl_sigma = 0.00006
-big_sigma = 0.006
+big_sigma = 0.01
 upper_delta = 0.035
 lower_delta = 0.01
+#gaussSigma = 0.01
+MUTATION_PROB = 0.1
 ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "ker_v10"
 weigths_filename = version_name+"-weights.h5"
@@ -73,6 +75,7 @@ load_memory_arrays = False
 do_training = True
 num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
+USE_GAUSSIAN_NOISE = True
 CLIP_ACTION = True
 HAS_REWARD_SCALLING = False
 max_steps = 1490
@@ -121,14 +124,11 @@ def custom_error(y_true, y_pred, Qsa):
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 Qmodel.add(Dense(512, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Dropout(0.5))
+#Qmodel.add(Dropout(0.5))
 Qmodel.add(Dense(256, activation='relu'))
-Qmodel.add(Dropout(0.5))
-
-''' KEEP THE LAST LAYER JUST A FEW NEURONES ABOVE ACTION SPACE'''
+#Qmodel.add(Dropout(0.5))
 Qmodel.add(Dense(4, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-
 Qmodel.add(Dense(dataY.shape[1]))
 #opt = optimizers.adam(lr=learning_rate)
 opt = optimizers.Adadelta()
@@ -139,15 +139,12 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(512, activation='relu', input_dim=apdataX.shape[1]))
-action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(256, activation='relu'))
-action_predictor_model.add(Dropout(0.5))
-
-''' KEEP THE LAST LAYER ON THE SAME SIZE AS ACTION SPACE'''
+action_predictor_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
+#action_predictor_model.add(Dropout(0.5))
+action_predictor_model.add(Dense(50, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
 action_predictor_model.add(Dense(2, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-
 action_predictor_model.add(Dense(apdataY.shape[1]))
 #opt2 = optimizers.adam(lr=apLearning_rate)
 opt2 = optimizers.Adadelta()
@@ -162,7 +159,7 @@ noisy_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(50, activation='relu'))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(25, activation='relu'))
+noisy_model.add(Dense(2, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
@@ -257,10 +254,18 @@ def add_noise_simple(mu, largeNoise=False):
     #print ("x/200",x,"big_sigma",big_sigma)
     return mu + x
 
+def add_gaussian_noise(mu,noiseSigma,largeNoise=False):
+    #print ( gauss(mu, noiseSigma) )
+    if np.random.rand(1) < MUTATION_PROB:
+        return gauss(mu, noiseSigma)
+    else:
+        return mu+0.0
 
 #add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 add_noise = np.vectorize(add_noise,otypes=[np.float])
 add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
+add_gaussian_noise = np.vectorize(add_gaussian_noise,otypes=[np.float])
+
 
 
 def add_noise_to_model(targetModel,largeNoise = False):
@@ -275,7 +280,10 @@ def add_noise_to_model(targetModel,largeNoise = False):
         w = targetModel.layers[k].get_weights()
         if np.alen(w) >0 :
             #print("k==>",k)
-            w[0] = add_noise(w[0],largeNoise)
+            if USE_GAUSSIAN_NOISE:
+                w[0] = add_gaussian_noise(w[0],big_sigma,largeNoise)
+            else:
+                w[0] = add_noise(w[0],largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
@@ -532,7 +540,7 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
         a = a.flatten()
     #print("Output Before noise ",a)
 
-    while ( delta > upper_delta or delta < lower_delta) and deltaCount <3:
+    while ( delta > upper_delta or delta < lower_delta) and deltaCount <1:
         #noisy_model.set_weights(action_predictor_model.get_weights())
         reset_noisy_model()
         targetModel = noisy_model
