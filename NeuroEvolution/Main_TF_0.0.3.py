@@ -30,12 +30,12 @@ ACTION_SPACE = 2
 
 B_DISCOUNT = 0.98
 
-POPULATION_SIZE = 5
-NETWORK_WIDTH = 2
+POPULATION_SIZE = 12
+NETWORK_WIDTH = 32
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
-NUM_SELECTED_FOR_REPRODUCTION = 3
-NOISE_SIGMA = 0.5
+NUM_SELECTED_FOR_REPRODUCTION = 2
+NOISE_SIGMA = 0.05
 MUTATION_PROB = 0.85
 
 MAX_GENERATIONS = 200000
@@ -126,7 +126,7 @@ def create_individualTF(network_width, network_hidden_layers, observation_space,
 def initialize_population(population_size,network_width,network_hidden_layers, observation_space, action_space, environment_name,total_population_counter):
     initial_population = []
     for i in range (population_size):
-        print("kk", network_width,network_hidden_layers,observation_space,action_space)
+        #print("kk", network_width,network_hidden_layers,observation_space,action_space)
         indiv = create_individualTF( network_width, network_hidden_layers, observation_space, action_space)
         total_population_counter += 1
         initial_population.append(indiv)
@@ -198,7 +198,7 @@ def select_top_individuals(num_selected,population_size):
     for i in range(np.alen(scores)):
         scores[i] = all_individuals[i].lifeScore
 
-    print( scores )
+    #print( scores )
     topScores = scores[ scores.argsort()[-num_selected:][::-1] ]
     #print ("Top Scores ", topScores)
     selected_individuals = []
@@ -240,7 +240,7 @@ add_gaussian_noise = np.vectorize(add_gaussian_noise,otypes=[np.float])
 
 
 def add_noise_to_model_TF(indiv,noiseSigma,largeNoise = False):
-    print ("ADDING NOISE TF")
+    #print ("ADDING NOISE TF")
     variables_names =[v.name for v in tf.trainable_variables()]
     values = sess.run(variables_names)
     #for k,v in zip(variables_names, values):
@@ -320,7 +320,7 @@ def mergeArraysRandom(arr1,arr2):
     a = arr1
     b = arr2
 
-    print("arr1", a)
+    #print("arr1", a)
 
     af = a.flatten()
     bf = b.flatten()
@@ -399,8 +399,8 @@ for gens in range (MAX_GENERATIONS):
         OBSERVATION_SPACE,
         ACTION_SPACE,
         total_population_counter)
-    for i in range (len(all_individuals)):
-        all_individuals[i].printNetwork()
+    #for i in range (len(all_individuals)):
+    #    all_individuals[i].printNetwork()
     #print("@@@@ Adding Noise @@@@")
     add_mutations(all_individuals)
 
