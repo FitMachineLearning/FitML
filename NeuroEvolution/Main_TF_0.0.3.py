@@ -10,7 +10,7 @@ import numpy as np
 import keras
 import gym
 from random import gauss
-import roboschool
+#import roboschool
 import math
 
 
@@ -30,7 +30,7 @@ ACTION_SPACE = 2
 
 B_DISCOUNT = 0.98
 
-POPULATION_SIZE = 10
+POPULATION_SIZE = 5
 NETWORK_WIDTH = 2
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
@@ -247,7 +247,7 @@ def add_noise_to_model_TF(indiv,noiseSigma,largeNoise = False):
     #    if(k==naw_h.name):
     #        print(k, v)
     for k,v in zip(variables_names, values):
-        if(k==indiv.naw_h.name):
+        if(k==indiv.apw_h.name):
             if USE_GAUSSIAN_NOISE:
                 v2=add_gaussian_noise(v,noiseSigma,True)
             else:
@@ -255,21 +255,21 @@ def add_noise_to_model_TF(indiv,noiseSigma,largeNoise = False):
 
             #v2 = v+0.001
     #print("Noise added. showing res v2",v2)
-    assign_op = tf.assign(indiv.naw_h,v2)
+    assign_op = tf.assign(indiv.apw_h,v2)
     sess.run(assign_op)
 
     #for k,v in zip(variables_names, values):
     #    if(k==naw_o.name):
     #        print(k, v)
     for k,v in zip(variables_names, values):
-        if(k==indiv.naw_o.name):
+        if(k==indiv.apw_o.name):
             if USE_GAUSSIAN_NOISE:
                 v2=add_gaussian_noise(v,noiseSigma,True)
             else:
                 v2=add_noise_simple(v,noiseSigma,True)
             #v2 = v+0.001
     #print("Noise added. showing res v2",v2)
-    assign_op2 = tf.assign(indiv.naw_o,v2)
+    assign_op2 = tf.assign(indiv.apw_o,v2)
     sess.run(assign_op2)
     '''
     variables_names =[v.name for v in tf.trainable_variables()]
@@ -316,16 +316,60 @@ def randomSelect(m1,m2):
 
 randomSelect = np.vectorize(randomSelect,otypes=[np.float])
 
+def mergeArraysRandom(arr1,arr2):
+    a = arr1
+    b = arr2
+
+    print("arr1", a)
+
+    af = a.flatten()
+    bf = b.flatten()
+
+    comb = np.array([af,bf])
+    res = np.zeros(np.alen(af))
+    for i in range (np.alen(af)):
+        res[i] = comb[np.random.randint(0,2),i]+0.0
+    fres = res.reshape(a.shape[0],a.shape[1])
+    return fres
 
 def populate_next_generation(generationID,top_individuals,population_size, network_width,network_hidden_layers, observation_space, action_space,total_population_counter):
     newPop = top_individuals
     num_selected = len(top_individuals)
+
+    variables_names =[v.name for v in tf.trainable_variables()]
+    values = sess.run(variables_names)
+
+    ## RESET FIRST LAYER
+
     for i in range( population_size - len(top_individuals)):
         indiv = create_individualTF(network_width, network_hidden_layers, observation_space, action_space)
         indiv1 = top_individuals[0]
         indiv2 = top_individuals[1]
 
-        indiv.apw_h = randomSelect(indiv1.apw_h,indiv2.apw_h)
+        for k,v in zip(variables_names, values):
+            #if(k==indiv.apw_h.name):
+            #    indivArray=v+0.0
+            if(k==indiv1.apw_h.name):
+                indiv1Array=v+0.0
+            if(k==indiv2.apw_h.name):
+                indiv2Array=v+0.0
+        indivArray = mergeArraysRandom(indiv1Array,indiv2Array)
+        assign_op = tf.assign(indiv.apw_h, indivArray)
+        sess.run(assign_op)
+
+        for k,v in zip(variables_names, values):
+            #if(k==indiv.apw_h.name):
+            #    indivArray=v+0.0
+            if(k==indiv1.apw_o.name):
+                indiv1Array=v+0.0
+            if(k==indiv2.apw_o.name):
+                indiv2Array=v+0.0
+        indivArray = mergeArraysRandom(indiv1Array,indiv2Array)
+        assign_op = tf.assign(indiv.apw_o, indivArray)
+        sess.run(assign_op)
+
+        #indiv.apw_h = mergeArraysRandom(indiv1.apw_h,indiv2.apw_h)
+        #indiv.apw_0 = mergeArraysRandom(indiv1.apw_0,indiv2.apw_0)
 
         top_individuals.append( indiv )
         total_population_counter+=1
