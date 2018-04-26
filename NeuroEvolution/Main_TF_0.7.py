@@ -35,7 +35,7 @@ NETWORK_WIDTH = 32
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.05
+NOISE_SIGMA = 0.1
 MUTATION_PROB = 0.85
 
 MAX_GENERATIONS = 200000
@@ -100,10 +100,10 @@ def GetRememberedOptimalPolicy(indiv,qstate):
 
 def create_individualTF(network_width, network_hidden_layers, observation_space, action_space):
     ''' apModel '''
-    apw_h = init_weights([OBSERVATION_SPACE, 32]) # create symbolic variables
+    apw_h = init_weights([OBSERVATION_SPACE, 512]) # create symbolic variables
     apw_h2 = init_weights([32, 32]) # create symbolic variables
     apw_h3 = init_weights([32, 32]) # create symbolic variable
-    apw_o = init_weights([32, ACTION_SPACE])
+    apw_o = init_weights([512, ACTION_SPACE])
 
     appy_x = apModel(apdataX, apw_h, apw_o)
 
@@ -115,9 +115,11 @@ def create_individualTF(network_width, network_hidden_layers, observation_space,
 
     sess.run(tf.global_variables_initializer())
     #action_predictor_model = create_model(network_width,network_hidden_layers, observation_space, action_space)
-    indiv = IndividualTF(generationID=0, indivID=total_population_counter ,
+    indiv = IndividualTF(generationID=generations_count, indivID=total_population_counter ,
             apw_h=apw_h,apw_h2=apw_h2,
             apw_h3=apw_h3,apw_o=apw_o,appy_x=appy_x)
+    print("Creating individual ",generations_count)
+
     return indiv
 
 
@@ -206,7 +208,10 @@ def select_top_individuals(num_selected,population_size):
         if all_individuals[i].lifeScore >= topScores.min():
             #print("Selecting individual",i," with score ", all_individuals[i].lifeScore,"cuttoff ", topScores.min())
             selected_individuals.append(all_individuals[i])
-
+        else:
+            all_individuals[i].indivID = -1
+            all_individuals[i].generationID = -1
+            all_individuals[i].lifeScore = -10000
 
     print("Selected individuals ")
     for i in range (len(selected_individuals)):
@@ -240,7 +245,7 @@ add_gaussian_noise = np.vectorize(add_gaussian_noise,otypes=[np.float])
 
 
 def add_noise_to_model_TF(indiv,noiseSigma,largeNoise = False):
-    #print ("ADDING NOISE TF")
+    print ("ADDING NOISE TF ", indiv.indivID)
     variables_names =[v.name for v in tf.trainable_variables()]
     values = sess.run(variables_names)
     #for k,v in zip(variables_names, values):
@@ -332,6 +337,16 @@ def mergeArraysRandom(arr1,arr2):
     fres = res.reshape(a.shape[0],a.shape[1])
     return fres
 
+def get_next_free_individual(indivID,generationID):
+    for i in range(len(all_individuals)):
+        if all_individuals[i].indivID == -1:
+            all_individuals[i].indivID = indivID
+            all_individuals[i].generationID = generationID
+            print("getting next free individual ", total_population_counter)
+            return all_individuals[i]
+    return None
+
+
 def populate_next_generation(generationID,top_individuals,population_size, network_width,network_hidden_layers, observation_space, action_space,total_population_counter):
     newPop = top_individuals
     num_selected = len(top_individuals)
@@ -342,7 +357,8 @@ def populate_next_generation(generationID,top_individuals,population_size, netwo
     ## RESET FIRST LAYER
 
     for i in range( population_size - len(top_individuals)):
-        indiv = create_individualTF(network_width, network_hidden_layers, observation_space, action_space)
+        indiv = get_next_free_individual(total_population_counter,generationID)
+        total_population_counter = total_population_counter + 1
         indiv1 = top_individuals[0]
         indiv2 = top_individuals[1]
 
@@ -399,9 +415,7 @@ for gens in range (MAX_GENERATIONS):
         OBSERVATION_SPACE,
         ACTION_SPACE,
         total_population_counter)
-    #for i in range (len(all_individuals)):
-    #    all_individuals[i].printNetwork()
-    #print("@@@@ Adding Noise @@@@")
+
     add_mutations(all_individuals)
 
 
