@@ -35,8 +35,8 @@ NETWORK_WIDTH = 32
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 1
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.1
-MUTATION_PROB = 0.15
+NOISE_SIGMA = 0.05
+MUTATION_PROB = 0.1
 
 MAX_GENERATIONS = 200000
 
@@ -100,10 +100,10 @@ def GetRememberedOptimalPolicy(indiv,qstate):
 
 def create_individualTF(network_width, network_hidden_layers, observation_space, action_space):
     ''' apModel '''
-    apw_h = init_weights([OBSERVATION_SPACE, 512]) # create symbolic variables
+    apw_h = init_weights([OBSERVATION_SPACE, 2048]) # create symbolic variables
     apw_h2 = init_weights([32, 32]) # create symbolic variables
     apw_h3 = init_weights([32, 32]) # create symbolic variable
-    apw_o = init_weights([512, ACTION_SPACE])
+    apw_o = init_weights([2048, ACTION_SPACE])
 
     appy_x = apModel(apdataX, apw_h, apw_o)
 
