@@ -17,7 +17,7 @@ import keras
 import gym
 #import pybullet
 #import pybullet_envs
-#import roboschool
+import roboschool
 
 
 import pygal
@@ -39,18 +39,22 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-num_env_variables = 8
-num_env_actions = 2
+ENVIRONMENT_NAME = "RoboschoolInvertedDoublePendulum-v1"
+num_env_variables = 9
+num_env_actions = 1
+
+
 num_initial_observation = 0
 learning_rate =  0.002
 apLearning_rate = 0.001
+
+MUTATION_PROB = 0.1
+
 littl_sigma = 0.00006
 big_sigma = 0.01
 upper_delta = 0.035
 lower_delta = 0.01
 #gaussSigma = 0.01
-MUTATION_PROB = 0.1
-ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 version_name = ENVIRONMENT_NAME + "ker_v10"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
@@ -78,6 +82,7 @@ random_num_games_to_play = num_games_to_play/3
 USE_GAUSSIAN_NOISE = True
 CLIP_ACTION = True
 HAS_REWARD_SCALLING = False
+USE_ADAPTIVE_NOISE = False
 max_steps = 1490
 
 
@@ -123,9 +128,9 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(512, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(64, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(256, activation='relu'))
+Qmodel.add(Dense(32, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 Qmodel.add(Dense(4, activation='relu'))
 #Qmodel.add(Dropout(0.5))
@@ -222,6 +227,7 @@ mGames = []
 mAverageScores = []
 mSteps = []
 mAP_Counts = 0
+oldAPCount = 0
 num_add_mem = 0
 mAPPicks = []
 
@@ -283,7 +289,7 @@ def add_noise_to_model(targetModel,largeNoise = False):
             if USE_GAUSSIAN_NOISE:
                 w[0] = add_gaussian_noise(w[0],big_sigma,largeNoise)
             else:
-                w[0] = add_noise(w[0],largeNoise)
+                w[0] = add_noise_simple(w[0],largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
@@ -555,16 +561,17 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
         delta = c.mean()
 
         deltaCount+=1
-        if delta > upper_delta:
-            big_sigma = big_sigma *0.9
-            #print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
+        if USE_ADAPTIVE_NOISE:
+            if delta > upper_delta:
+                big_sigma = big_sigma *0.9
+                #print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
 
-        if delta < lower_delta:
-            big_sigma = big_sigma *1.1
-            #print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
-        #if delta > 3 or delta <0.01:
-        #    print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",1/delta)
-        #    big_sigma = 1 / delta
+            if delta < lower_delta:
+                big_sigma = big_sigma *1.1
+                #print("Delta",delta," out of bound adjusting big_sigma", big_sigma)
+            #if delta > 3 or delta <0.01:
+            #    print("Delta",delta," out of bound adjusting big_sigma", big_sigma, "to",1/delta)
+            #    big_sigma = 1 / delta
     print("Tried x time ", deltaCount,"delta =", delta,"big_sigma ",big_sigma)
     return targetModel,big_sigma
 
@@ -630,11 +637,12 @@ for game in range(num_games_to_play):
                 #print("Using Actor")
                 if is_noisy_game and uses_parameter_noising:
                     remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(noisy_model,qs)
+                    mAP_Counts = oldAPCount
                 else:
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
                 a = remembered_optimal_policy
 
-                if uses_critic:
+                if uses_critic and not is_noisy_game:
                     #print("Using critric")
                     stock = np.zeros(num_retries)
                     stockAction = np.zeros(shape=(num_retries,num_env_actions))
@@ -826,6 +834,7 @@ for game in range(num_games_to_play):
 
 
         if done:
+            oldAPCount = mAP_Counts
             if gameR.mean() >0:
                 num_positive_avg_games += 1
             if game%1==0:
