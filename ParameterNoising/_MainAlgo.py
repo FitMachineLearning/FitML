@@ -39,9 +39,9 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-ENVIRONMENT_NAME = "RoboschoolInvertedDoublePendulum-v1"
-num_env_variables = 9
-num_env_actions = 1
+ENVIRONMENT_NAME = "RoboschoolHopper-v1"
+num_env_variables = 15
+num_env_actions = 3
 
 
 num_initial_observation = 0
@@ -51,11 +51,11 @@ apLearning_rate = 0.001
 MUTATION_PROB = 0.1
 
 littl_sigma = 0.00006
-big_sigma = 0.01
+big_sigma = 0.001
 upper_delta = 0.035
 lower_delta = 0.01
 #gaussSigma = 0.01
-version_name = ENVIRONMENT_NAME + "ker_v10"
+version_name = ENVIRONMENT_NAME + "ker_v11"
 weigths_filename = version_name+"-weights.h5"
 apWeights_filename = version_name+"-weights-ap.h5"
 
@@ -69,7 +69,7 @@ experience_replay_size = 25000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 3
+training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -83,7 +83,9 @@ USE_GAUSSIAN_NOISE = True
 CLIP_ACTION = True
 HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = False
-max_steps = 1490
+HAS_EARLY_TERMINATION_REWARD = False
+EARLY_TERMINATION_REWARD = -5
+max_steps = 995
 
 
 
@@ -128,15 +130,15 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(64, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(2048, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(32, activation='relu'))
+#Qmodel.add(Dense(64, activation='relu'))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(4, activation='relu'))
+#Qmodel.add(Dense(4, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 Qmodel.add(Dense(dataY.shape[1]))
-#opt = optimizers.adam(lr=learning_rate)
-opt = optimizers.Adadelta()
+opt = optimizers.rmsprop(lr=learning_rate)
+#opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -144,15 +146,15 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(50, activation='relu'))
+#action_predictor_model.add(Dense(50, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(2, activation='relu'))
+#action_predictor_model.add(Dense(2, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 action_predictor_model.add(Dense(apdataY.shape[1]))
-#opt2 = optimizers.adam(lr=apLearning_rate)
-opt2 = optimizers.Adadelta()
+opt2 = optimizers.rmsprop(lr=apLearning_rate)
+#opt2 = optimizers.Adadelta()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
@@ -160,11 +162,11 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(100, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(50, activation='relu'))
+#noisy_model.add(Dense(50, activation='relu'))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(2, activation='relu'))
+#noisy_model.add(Dense(2, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
@@ -432,7 +434,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
                 tW[i]=0.15
             #if (tR[i]>pr and tS[i]>gameAverage):
             #    tW[i]=0.25
-            if (tR[i]>pr + d*0.5 and tS[i]>gameAverage):
+            if (tR[i]>pr + d*0.0 ):
                 tW[i]=1
             #if (tR[i]>pr+d*0.005 and tR[i]>game_max) :
             #    tW[i] = 1
@@ -637,12 +639,12 @@ for game in range(num_games_to_play):
                 #print("Using Actor")
                 if is_noisy_game and uses_parameter_noising:
                     remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(noisy_model,qs)
-                    mAP_Counts = oldAPCount
+                    #mAP_Counts = oldAPCount
                 else:
                     remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
                 a = remembered_optimal_policy
 
-                if uses_critic and not is_noisy_game:
+                if uses_critic :
                     #print("Using critric")
                     stock = np.zeros(num_retries)
                     stockAction = np.zeros(shape=(num_retries,num_env_actions))
@@ -678,8 +680,9 @@ for game in range(num_games_to_play):
         s,r,done,info = env.step(a)
         #record only the first x number of states
 
-        #if done and step<max_steps-3:
-        #    r = -100
+        if HAS_EARLY_TERMINATION_REWARD:
+            if done and step<max_steps-3:
+                r = EARLY_TERMINATION_REWARD
         if True or HAS_REWARD_SCALLING:
             r=r/200 #reward scalling to from [-1,1] to [-100,100]
 
@@ -848,7 +851,10 @@ for game in range(num_games_to_play):
                 mGames.append(game)
                 mSteps.append(step/1000*100)
                 mAPPicks.append(mAP_Counts/step*100)
-                mAverageScores.append(max(memoryR.mean(), -150))
+
+                mAverageScores.append(max(memoryR.mean()*200, -150))
+
+
                 bar_chart = pygal.HorizontalLine()
                 bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
                 bar_chart.add('Average score', mAverageScores)  # Add some values
