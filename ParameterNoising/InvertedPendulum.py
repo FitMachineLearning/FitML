@@ -48,7 +48,7 @@ num_initial_observation = 0
 learning_rate =  0.002
 apLearning_rate = 0.001
 
-MUTATION_PROB = 0.8
+MUTATION_PROB = 0.1
 
 littl_sigma = 0.00006
 big_sigma = 0.1
@@ -153,8 +153,8 @@ action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shap
 #action_predictor_model.add(Dense(2, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 action_predictor_model.add(Dense(apdataY.shape[1]))
-#opt2 = optimizers.adam(lr=apLearning_rate)
-opt2 = optimizers.Adadelta()
+opt2 = optimizers.rmsprop(lr=apLearning_rate)
+#opt2 = optimizers.Adadelta()
 
 action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
