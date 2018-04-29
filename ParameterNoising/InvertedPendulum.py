@@ -137,8 +137,8 @@ Qmodel.add(Dense(2048, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dense(4, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 Qmodel.add(Dense(dataY.shape[1]))
-#opt = optimizers.adam(lr=learning_rate)
-opt = optimizers.Adadelta()
+opt = optimizers.rmsprop(lr=learning_rate)
+#opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 
@@ -802,7 +802,7 @@ for game in range(num_games_to_play):
                 print("Experience Replay")
                 #for i in range(3):
 
-                pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
+                actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 3 and game %1 ==0 and uses_critic:
                 for t in range(training_epochs):
                     tSA = (memorySA)
