@@ -17,7 +17,7 @@ import keras
 import gym
 #import pybullet
 #import pybullet_envs
-import roboschool
+#import roboschool
 
 
 import pygal
@@ -39,9 +39,9 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-ENVIRONMENT_NAME = "RoboschoolHopper-v1"
-num_env_variables = 15
-num_env_actions = 3
+ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
+num_env_variables = 8
+num_env_actions = 2
 
 
 num_initial_observation = 0
@@ -69,7 +69,7 @@ experience_replay_size = 25000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 2
+training_epochs = 1
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
