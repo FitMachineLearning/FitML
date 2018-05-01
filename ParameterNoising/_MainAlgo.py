@@ -45,15 +45,15 @@ num_env_actions = 3
 
 
 num_initial_observation = 0
-learning_rate =  0.0002
-apLearning_rate = 0.0001
+learning_rate =  0.002
+apLearning_rate = 0.001
 
 MUTATION_PROB = 0.1
 
 littl_sigma = 0.00006
 big_sigma = 0.01
-upper_delta = 0.035
-lower_delta = 0.01
+upper_delta = 0.075
+lower_delta = 0.05
 #gaussSigma = 0.01
 version_name = ENVIRONMENT_NAME + "ker_v11"
 weigths_filename = version_name+"-weights.h5"
@@ -69,7 +69,7 @@ experience_replay_size = 25000
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 1
+training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -77,12 +77,12 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 200000
+num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
 USE_GAUSSIAN_NOISE = True
 CLIP_ACTION = True
 HAS_REWARD_SCALLING = False
-USE_ADAPTIVE_NOISE = False
+USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
 max_steps = 995
@@ -130,12 +130,9 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(256, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(2048, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(256, activation='relu'))
-Qmodel.add(Dense(256, activation='relu'))
-Qmodel.add(Dense(256, activation='relu'))
-Qmodel.add(Dense(256, activation='relu'))
+#Qmodel.add(Dense(64, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dense(4, activation='relu'))
 #Qmodel.add(Dropout(0.5))
@@ -149,14 +146,11 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(128, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(128, activation='relu'))
-action_predictor_model.add(Dense(128, activation='relu'))
-action_predictor_model.add(Dense(128, activation='relu'))
-action_predictor_model.add(Dense(128, activation='relu'))
+#action_predictor_model.add(Dense(50, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
-#action_predictor_model.add(Dense(num_env_actions, activation='relu'))
+#action_predictor_model.add(Dense(2, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 action_predictor_model.add(Dense(apdataY.shape[1]))
 opt2 = optimizers.rmsprop(lr=apLearning_rate)
@@ -168,14 +162,11 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(128, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(2048, activation='relu', input_dim=apdataX.shape[1]))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(128, activation='relu'))
-noisy_model.add(Dense(128, activation='relu'))
-noisy_model.add(Dense(128, activation='relu'))
-noisy_model.add(Dense(128, activation='relu'))
+#noisy_model.add(Dense(50, activation='relu'))
 #noisy_model.add(Dropout(0.5))
-#noisy_model.add(Dense(num_env_actions, activation='relu'))
+#noisy_model.add(Dense(2, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 noisy_model.add(Dense(apdataY.shape[1]))
 opt3 = optimizers.Adadelta()
