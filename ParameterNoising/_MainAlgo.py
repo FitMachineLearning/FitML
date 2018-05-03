@@ -45,8 +45,8 @@ num_env_actions = 2
 
 
 num_initial_observation = 0
-learning_rate =  0.002
-apLearning_rate = 0.001
+learning_rate =  0.0002
+apLearning_rate = 0.0001
 
 MUTATION_PROB = 0.4
 
@@ -64,12 +64,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 500000
+max_memory_len = 100000
 experience_replay_size = 2500
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 20
+training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
