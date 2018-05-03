@@ -45,15 +45,15 @@ num_env_actions = 2
 
 
 num_initial_observation = 0
-learning_rate =  0.0002
-apLearning_rate = 0.0001
+learning_rate =  0.002
+apLearning_rate = 0.001
 
 MUTATION_PROB = 0.4
 
 littl_sigma = 0.00006
 big_sigma = 0.01
-upper_delta = 0.375
-lower_delta = 0.15
+upper_delta = 0.0375
+lower_delta = 0.015
 #gaussSigma = 0.01
 version_name = ENVIRONMENT_NAME + "ker_v11"
 weigths_filename = version_name+"-weights.h5"
@@ -65,11 +65,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 500000
-experience_replay_size = 250000
+experience_replay_size = 2500
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 1
+training_epochs = 20
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -130,9 +130,9 @@ def custom_error(y_true, y_pred, Qsa):
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-Qmodel.add(Dense(1024, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
 #Qmodel.add(Dropout(0.5))
-Qmodel.add(Dense(512, activation='relu'))
+#Qmodel.add(Dense(512, activation='relu'))
 #Qmodel.add(Dropout(0.5))
 #Qmodel.add(Dense(4, activation='relu'))
 #Qmodel.add(Dropout(0.5))
@@ -146,9 +146,9 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 #initialize the action predictor model
 action_predictor_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_predictor_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
+action_predictor_model.add(Dense(10024, activation='relu', input_dim=apdataX.shape[1]))
 #action_predictor_model.add(Dropout(0.5))
-action_predictor_model.add(Dense(512, activation='relu'))
+#action_predictor_model.add(Dense(512, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 #action_predictor_model.add(Dense(2, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
@@ -162,9 +162,9 @@ action_predictor_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_model.add(Dense(1024, activation='relu', input_dim=apdataX.shape[1]))
+noisy_model.add(Dense(10024, activation='relu', input_dim=apdataX.shape[1]))
 #noisy_model.add(Dropout(0.5))
-noisy_model.add(Dense(512, activation='relu'))
+#noisy_model.add(Dense(512, activation='relu'))
 #noisy_model.add(Dropout(0.5))
 #noisy_model.add(Dense(2, activation='relu'))
 #noisy_model.add(Dropout(0.5))
