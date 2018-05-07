@@ -94,7 +94,7 @@ HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
-max_steps = 400
+max_steps = 900
 
 
 
@@ -697,6 +697,7 @@ for game in range(num_games_to_play):
         imgbuff0 = preprocessing2(qs)
         qs = appendBufferImages(imgbuff0,imgbuff1,imgbuff2)
 
+
         #if PLAY_GAME:
         #    remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
         #    a = remembered_optimal_policy
@@ -704,9 +705,18 @@ for game in range(num_games_to_play):
             #take a radmon action
             a = np.argmax ( keras.utils.to_categorical(env.action_space.sample(),num_env_actions) )
         else:
+            prob = np.random.rand(1)
+            explore_prob = starting_explore_prob-(starting_explore_prob/random_num_games_to_play)*game
 
-            last_prediction = DeepQPredictBestAction(qs)
-            a = np.argmax(last_prediction)
+            if game > random_num_games_to_play:
+                prob = 0.000001
+            #Chose between prediction and chance
+            if prob < explore_prob or game%random_every_n==1:
+                #take a random action
+                a = np.argmax ( keras.utils.to_categorical(env.action_space.sample(),num_env_actions) )
+            else:
+                last_prediction = DeepQPredictBestAction(qs)
+                a = np.argmax(last_prediction)
 
 
 
