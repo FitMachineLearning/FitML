@@ -211,15 +211,15 @@ if load_previous_weights:
         print("File ",apWeights_filename," does not exis. Retraining... ")
 
 
-memorySA = np.zeros(shape=(1,IMG_DIM*3,IMG_DIM))
-memoryS = np.zeros(shape=(1,IMG_DIM*3,IMG_DIM))
+memorySA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
+memoryS = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
 memoryA = np.zeros(shape=(1,1))
 memoryR = np.zeros(shape=(1,1))
 memoryRR = np.zeros(shape=(1,1))
 memoryW = np.zeros(shape=(1,1))
 
-BestGameSA = np.zeros(shape=(1,IMG_DIM*3,IMG_DIM))
-BestGameS = np.zeros(shape=(1,IMG_DIM*3,IMG_DIM))
+BestGameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
+BestGameS = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
 BestGameA = np.zeros(shape=(1,num_env_actions))
 BestGameR = np.zeros(shape=(1,1))
 BestGameW = np.zeros(shape=(1,1))
@@ -282,20 +282,10 @@ def preprocessing2(I):
 
 def appendBufferImages(img1,img2,img3):
 
-    images = []
-    images.append(img1)
-    images.append(img2)
-    images.append(img3)
+    new_im = np.concatenate((img1,img2,img3),axis=1)
 
-    new_im = Image.new('RGB', (IMG_DIM*3, IMG_DIM))
-
-    x_offset = 0
-    for im in images:
-      new_im.paste(im, (x_offset,0))
-      x_offset += im.size[0]
-
-    matplotlib.pyplot.imshow(I)
-    matplotlib.pyplot.show()
+    #matplotlib.pyplot.imshow(new_im)
+    #matplotlib.pyplot.show()
     return new_im
 
 
@@ -655,8 +645,8 @@ def add_controlled_noise(targetModel,big_sigma,largeNoise = False):
 
 #Play the game 500 times
 for game in range(num_games_to_play):
-    gameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM))
-    gameS = np.zeros(shape=(1,IMG_DIM,IMG_DIM))
+    gameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
+    gameS = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
     gameA = np.zeros(shape=(1,num_env_actions))
     gameR = np.zeros(shape=(1,1))
     gameW = np.zeros(shape=(1,1))
@@ -751,8 +741,8 @@ for game in range(num_games_to_play):
             #qs = qs_a
             #print("gameSA",gameSA.shape)
             #print("qs_a",qs_a.shape)
-            gameSA= np.vstack((gameSA, qs_a.reshape(1,IMG_DIM*3,IMG_DIM)))
-            gameS= np.vstack((gameS, qs.reshape(1,IMG_DIM*3,IMG_DIM)))
+            gameSA= np.vstack((gameSA, qs_a.reshape(1,IMG_DIM,IMG_DIM*3)))
+            gameS= np.vstack((gameS, qs.reshape(1,IMG_DIM,IMG_DIM*3)))
             gameR = np.vstack((gameR, np.array([r])))
             gameA = np.vstack((gameA, np.array([a])))
             gameW = np.vstack((gameW, np.array([0.000000005])))
@@ -761,8 +751,8 @@ for game in range(num_games_to_play):
             done = True
 
         if done :
-            tempGameSA = np.zeros(shape=(1,IMG_DIM*3,IMG_DIM))
-            tempGameS = np.zeros(shape=(1,IMG_DIM*3,IMG_DIM))
+            tempGameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
+            tempGameS = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
             tempGameA = np.zeros(shape=(1,num_env_actions))
             tempGameR = np.zeros(shape=(1,1))
             tempGameRR = np.zeros(shape=(1,1))
