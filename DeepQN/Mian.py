@@ -54,8 +54,8 @@ num_env_actions = 6
 
 
 num_initial_observation = 1
-learning_rate =  0.001
-apLearning_rate = 0.001
+learning_rate =  0.01
+apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
 
@@ -78,7 +78,7 @@ experience_replay_size = 500
 random_every_n = 5
 num_retries = 60
 starting_explore_prob = 0.10
-training_epochs = 2
+training_epochs = 1
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -86,7 +86,7 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 20000
+num_games_to_play = 200000
 random_num_games_to_play = num_games_to_play/3
 USE_GAUSSIAN_NOISE = True
 CLIP_ACTION = True
@@ -144,11 +144,11 @@ def custom_error(y_true, y_pred, Qsa):
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 #Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Conv2D(32, (8, 8), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
+Qmodel.add(Conv2D(32, (4, 4), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
 #Qmodel.add(Activation('relu'))
 Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(512,activation='relu'))
+Qmodel.add(Dense(2048,activation='relu'))
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.rmsprop(lr=learning_rate)
@@ -332,7 +332,8 @@ for game in range(num_games_to_play):
         s,r,done,info = env.step(a)
         #record only the first x number of states
 
-
+        if r==1 or r==-1:
+            done = True
 
         if HAS_EARLY_TERMINATION_REWARD:
             if done and step<max_steps-3:
@@ -436,7 +437,7 @@ for game in range(num_games_to_play):
                 #for i in range(3):
 
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 1 and game %1 ==0 and uses_critic:
+            if game > 1 and game %4 ==0 and uses_critic:
                 for t in range(training_epochs):
                     tSA = (memorySA)
                     tR = (memoryA)
