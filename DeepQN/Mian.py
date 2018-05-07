@@ -74,7 +74,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 100000
-experience_replay_size = 2500
+experience_replay_size = 500
 random_every_n = 5
 num_retries = 60
 starting_explore_prob = 0.5
@@ -94,7 +94,7 @@ HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
-max_steps = 99500
+max_steps = 400
 
 
 
@@ -398,11 +398,11 @@ def predictTotalRewards(qstate, action):
 
 def DeepQPredictBestAction(qstate):
     qs_a = qstate
-    predX = np.zeros(shape=(1,IMG_DIM,IMG_DIM))
+    predX = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
     predX[0] = qs_a
 
     #print("trying to predict reward at qs_a", predX[0])
-    pred = Qmodel.predict(predX[0].reshape(1,1,IMG_DIM,IMG_DIM))
+    pred = Qmodel.predict(predX[0].reshape(1,1,IMG_DIM*3,IMG_DIM))
     remembered_total_reward = pred[0]
     return remembered_total_reward
 
@@ -651,7 +651,7 @@ for game in range(num_games_to_play):
     gameR = np.zeros(shape=(1,1))
     gameW = np.zeros(shape=(1,1))
 
-    print("gameSA",gameSA)
+    #print("gameSA",gameSA)
 
     #Get the Q state
     qs = env.reset()
@@ -787,11 +787,11 @@ for game in range(num_games_to_play):
 
 
             for i in range(gameR.shape[0]):
-                tempGameSA = np.vstack((tempGameSA,gameSA[i].reshape(1,IMG_DIM,IMG_DIM) ))
+                tempGameSA = np.vstack((tempGameSA,gameSA[i].reshape(1,IMG_DIM,IMG_DIM*3) ))
                 tempGameR = np.vstack((tempGameR,gameR[i]))
 
                 tempGameA = np.vstack((tempGameA,gameA[i]))
-                tempGameS = np.vstack((tempGameS,gameS[i].reshape(1,IMG_DIM,IMG_DIM)))
+                tempGameS = np.vstack((tempGameS,gameS[i].reshape(1,IMG_DIM,IMG_DIM*3)))
                 tempGameRR = np.vstack((tempGameRR,gameR[i]))
                 tempGameW = np.vstack((tempGameW,gameR.mean()))
 
@@ -860,7 +860,7 @@ for game in range(num_games_to_play):
                     tR = tR[train_A,:]
                     tSA = tSA    [train_A,:]
                     #print("Training Critic n elements =", np.alen(tR))
-                    Qmodel.fit(tSA.reshape(num_records,1,IMG_DIM,IMG_DIM) ,tR, batch_size=mini_batch, nb_epoch=2,verbose=0)
+                    Qmodel.fit(tSA.reshape(num_records,1,IMG_DIM*3,IMG_DIM) ,tR, batch_size=mini_batch, nb_epoch=2,verbose=0)
 
 
 
