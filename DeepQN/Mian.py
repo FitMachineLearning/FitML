@@ -77,7 +77,7 @@ max_memory_len = 100000
 experience_replay_size = 500
 random_every_n = 5
 num_retries = 60
-starting_explore_prob = 0.5
+starting_explore_prob = 0.20
 training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
@@ -303,6 +303,7 @@ for game in range(num_games_to_play):
         #if PLAY_GAME:
         #    remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
         #    a = remembered_optimal_policy
+        #print("last_prediction",last_prediction)
         if game < num_initial_observation:
             #take a radmon action
             a = np.argmax ( keras.utils.to_categorical(env.action_space.sample(),num_env_actions) )
@@ -318,10 +319,11 @@ for game in range(num_games_to_play):
                 a = np.argmax ( keras.utils.to_categorical(env.action_space.sample(),num_env_actions) )
             else:
                 last_prediction = DeepQPredictBestAction(qs)
+
                 a = np.argmax(last_prediction)
 
 
-
+        #print("a",a)
 
         env.render()
         qs_a = qs
@@ -341,11 +343,11 @@ for game in range(num_games_to_play):
         #set action array index to reward
         last_prediction[a] = r
 
-        a = last_prediction
+        a = keras.utils.to_categorical(a,num_env_actions)
         if step ==0:
             gameSA[0] = qs_a
             gameR[0] = np.array([r])
-            gameA[0] = np.array([r])
+            gameA[0] = np.array([a])
         else:
             gameSA= np.vstack((gameSA, qs_a.reshape(1,IMG_DIM,IMG_DIM*3)))
             gameR = np.vstack((gameR, np.array([r])))
@@ -370,6 +372,13 @@ for game in range(num_games_to_play):
                     #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
                     gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
                     #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
+
+            for i in range(np.alen(gameR)):
+                action = gameA[i]
+                indx = np.argmax(action)
+                action[indx] = gameR[i][0]
+                gameA[i] = action
+                #print("gameA[i]",gameA[i])
 
             if memoryR.shape[0] ==1:
                 memorySA = gameSA
@@ -445,7 +454,7 @@ for game in range(num_games_to_play):
                 #Save model
                 #print("Saving weights")
                 Qmodel.save_weights(weigths_filename)
-                action_predictor_model.save_weights(apWeights_filename)
+                #action_predictor_model.save_weights(apWeights_filename)
 
             if save_memory_arrays and game%20 == 0 and game >35:
                 np.save(version_name+'memorySA.npy',memorySA)
