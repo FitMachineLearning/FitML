@@ -54,8 +54,8 @@ num_env_actions = 6
 
 
 num_initial_observation = 1
-learning_rate =  0.1
-apLearning_rate = 0.1
+learning_rate =  0.001
+apLearning_rate = 0.001
 
 MUTATION_PROB = 0.4
 
@@ -77,7 +77,7 @@ max_memory_len = 100000
 experience_replay_size = 500
 random_every_n = 5
 num_retries = 60
-starting_explore_prob = 0.20
+starting_explore_prob = 0.10
 training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
@@ -86,7 +86,7 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 200
+num_games_to_play = 20000
 random_num_games_to_play = num_games_to_play/3
 USE_GAUSSIAN_NOISE = True
 CLIP_ACTION = True
@@ -94,7 +94,7 @@ HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
-max_steps = 600
+max_steps = 700
 
 
 
