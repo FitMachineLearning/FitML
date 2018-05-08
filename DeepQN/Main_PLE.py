@@ -160,8 +160,6 @@ opt = optimizers.rmsprop(lr=learning_rate)
 #opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
-
-
 print("Model Created")
 
 
@@ -211,27 +209,39 @@ mAPPicks = []
 
 def preprocessing2(I):
   """ prepro 210x160x3 uint8 frame into 6400 (80x80) 1D float vector """
+  #print("I",I.shape)
 
-  I = I[35:195] # crop
-  matplotlib.pyplot.imshow(I)
-  matplotlib.pyplot.show()
+
+  I = I[35:195,30:190] # crop
+  #print("I",I.shape,"min",I.min(),"max",I.max())
+  #print("I",I)
+  #matplotlib.pyplot.imshow(I)
+  #matplotlib.pyplot.show()
   #print("x_t1",I.shape)
+  #print("after imshow")
+  #print("after img I",I)
+
   x_t1 = skimage.color.rgb2gray(I)
+  #print("after img rgb2gray",x_t1)
+
+  #matplotlib.pyplot.imshow(x_t1)
+  #matplotlib.pyplot.show()
   x_t1 = skimage.transform.resize(x_t1,(IMG_DIM,IMG_DIM))
   x_t1 = skimage.exposure.rescale_intensity(x_t1, out_range=(0, 255))
   #print("x_t1",x_t1.shape)
   #print("x_t1",x_t1)
+  #print("after img transform",x_t1)
+  #matplotlib.pyplot.imshow(x_t1)
+  #matplotlib.pyplot.show()
 
-  #x_t1 = x_t1.reshape(1, 1, x_t1.shape[0], x_t1.shape[1])
-  #s_t1 = np.append(x_t1, s_t1[:, :3, :, :], axis=1)
   return x_t1 #flattens
 
 def appendBufferImages(img1,img2,img3):
 
     new_im = np.concatenate((img1,img2,img3),axis=1)
 
-    matplotlib.pyplot.imshow(new_im)
-    matplotlib.pyplot.show()
+    #matplotlib.pyplot.imshow(new_im)
+    #matplotlib.pyplot.show()
     return new_im
 
 
@@ -258,15 +268,19 @@ for game in range(num_games_to_play):
     gameA = np.zeros(shape=(1,num_env_actions))
     gameR = np.zeros(shape=(1,1))
 
-    print(" Before Preprocessing")
+    print(" Before Preprocçessing")
 
     #Get the Q state
     p.reset_game()
     qs = p.getScreenRGB()
 
+    print(" after A1")
+
     imgbuff0 = preprocessing2(qs)
     imgbuff1 = preprocessing2(qs)
     imgbuff2 = preprocessing2(qs)
+
+    print(" after A2")
 
 
     mAP_Counts = 0
@@ -335,7 +349,7 @@ for game in range(num_games_to_play):
         qs_a = qs
 
         #get the target state and reward
-        r = p.act(a)
+        r = p.act(a+118)
         done = p.game_over()
         s = p.getScreenRGB()
         #s,r,done,info = env.step(a)
