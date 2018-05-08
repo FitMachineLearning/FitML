@@ -41,6 +41,7 @@ from matplotlib import pyplot as plt
 import skimage
 from PIL import Image
 from skimage import color,transform,exposure
+from scipy.misc import toimage
 
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
@@ -48,7 +49,7 @@ uses_critic = True
 uses_parameter_noising = False
 
 
-IMG_DIM = 40
+IMG_DIM = 80
 
 ENVIRONMENT_NAME = "Pong-v0"
 game = FlappyBird()
@@ -58,8 +59,8 @@ num_env_actions = 2
 
 
 num_initial_observation = 1
-learning_rate =  0.01
-apLearning_rate = 0.01
+learning_rate =  0.1
+apLearning_rate = 0.1
 
 MUTATION_PROB = 0.4
 
@@ -81,7 +82,7 @@ max_memory_len = 100000
 experience_replay_size = 500
 random_every_n = 5
 num_retries = 60
-starting_explore_prob = 0.10
+starting_explore_prob = 0.25
 training_epochs = 1
 mini_batch = 512*4
 load_previous_weights = False
@@ -145,22 +146,27 @@ def custom_error(y_true, y_pred, Qsa):
 
 print("Creating model")
 
+
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 #Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Conv2D(32, (4, 4), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
+Qmodel.add(Conv2D(32, (8, 8), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
 #Qmodel.add(Activation('relu'))
+Qmodel.add(MaxPooling2D(pool_size=(4, 4)))
+Qmodel.add(Conv2D(64, (4, 4), activation='relu' , padding='same'))
 Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
+Qmodel.add(MaxPooling2D(pool_size=(1, 1)))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(2048,activation='relu'))
+Qmodel.add(Dense(512,activation='relu'))
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.rmsprop(lr=learning_rate)
 #opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
-print("Model Created")
+
 
 
 
@@ -212,7 +218,7 @@ def preprocessing2(I):
   #print("I",I.shape)
 
 
-  I = I[35:195,30:190] # crop
+  #I = I[35:195,30:190] # crop
   #print("I",I.shape,"min",I.min(),"max",I.max())
   #print("I",I)
   #matplotlib.pyplot.imshow(I)
@@ -355,8 +361,8 @@ for game in range(num_games_to_play):
         #s,r,done,info = env.step(a)
         #record only the first x number of states
 
-        #if r==1 or r==-1:
-        #    done = True
+        if r<0:
+            done = True
 
         if HAS_EARLY_TERMINATION_REWARD:
             if done and step<max_steps-3:
@@ -416,6 +422,8 @@ for game in range(num_games_to_play):
 
             for i in range(gameR.shape[0]):
                 tempGameSA = np.vstack((tempGameSA,gameSA[i].reshape(1,IMG_DIM,IMG_DIM*3) ))
+                #if i%51==1:
+                #    toimage(gameSA[i]).show()
                 tempGameR = np.vstack((tempGameR,gameR[i]))
                 tempGameA = np.vstack((tempGameA,gameA[i]))
 
@@ -460,7 +468,7 @@ for game in range(num_games_to_play):
                 #for i in range(3):
 
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 1 and game %4 ==0 and uses_critic:
+            if game > 1 and game %20 ==0 and uses_critic:
                 for t in range(training_epochs):
                     tSA = (memorySA)
                     tR = (memoryA)
