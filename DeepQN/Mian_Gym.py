@@ -39,6 +39,7 @@ from matplotlib import pyplot as plt
 import skimage
 from PIL import Image
 from skimage import color,transform,exposure
+from scipy.misc import toimage
 
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
@@ -46,16 +47,16 @@ uses_critic = True
 uses_parameter_noising = False
 
 
-IMG_DIM = 40
+IMG_DIM = 80
 
-ENVIRONMENT_NAME = "Pong-v0"
+ENVIRONMENT_NAME = "Breakout-v0"
 num_env_variables = 8
-num_env_actions = 6
+num_env_actions = 4
 
 
 num_initial_observation = 1
-learning_rate =  0.01
-apLearning_rate = 0.01
+learning_rate =  0.001
+apLearning_rate = 0.001
 
 MUTATION_PROB = 0.4
 
@@ -74,11 +75,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 100000
-experience_replay_size = 500
+experience_replay_size = 25
 random_every_n = 5
 num_retries = 60
-starting_explore_prob = 0.10
-training_epochs = 1
+starting_explore_prob = 0.20
+training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -140,15 +141,42 @@ def custom_error(y_true, y_pred, Qsa):
     return cce
 
 
+'''
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 #Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Conv2D(32, (4, 4), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
+Qmodel.add(Conv2D(32, (3, 3), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
 #Qmodel.add(Activation('relu'))
-Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+#Qmodel.add(MaxPooling2D(pool_size=(4, 4)))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
+#Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
+#Qmodel.add(MaxPooling2D(pool_size=(1, 1)))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(2048,activation='relu'))
+Qmodel.add(Dense(128,activation='relu'))
+
+Qmodel.add(Dense(dataY.shape[1]))
+opt = optimizers.rmsprop(lr=learning_rate)
+#opt = optimizers.Adadelta()
+
+Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
+'''
+
+
+#nitialize the Reward predictor model
+Qmodel = Sequential()
+#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
+#Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Conv2D(32, (8, 8), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
+#Qmodel.add(Activation('relu'))
+Qmodel.add(MaxPooling2D(pool_size=(4, 4)))
+Qmodel.add(Conv2D(64, (4, 4), activation='relu' , padding='same'))
+Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
+Qmodel.add(MaxPooling2D(pool_size=(1, 1)))
+Qmodel.add(Flatten())
+Qmodel.add(Dense(256,activation='relu'))
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.rmsprop(lr=learning_rate)
@@ -208,8 +236,7 @@ def preprocessing2(I):
   """ prepro 210x160x3 uint8 frame into 6400 (80x80) 1D float vector """
 
   I = I[35:195] # crop
-  #matplotlib.pyplot.imshow(I)
-  #matplotlib.pyplot.show()
+
   #print("x_t1",I.shape)
   x_t1 = skimage.color.rgb2gray(I)
   x_t1 = skimage.transform.resize(x_t1,(IMG_DIM,IMG_DIM))
@@ -219,6 +246,7 @@ def preprocessing2(I):
 
   #x_t1 = x_t1.reshape(1, 1, x_t1.shape[0], x_t1.shape[1])
   #s_t1 = np.append(x_t1, s_t1[:, :3, :, :], axis=1)
+
   return x_t1 #flattens
 
 def appendBufferImages(img1,img2,img3):
@@ -252,6 +280,7 @@ for game in range(num_games_to_play):
     gameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
     gameA = np.zeros(shape=(1,num_env_actions))
     gameR = np.zeros(shape=(1,1))
+    gameI  = np.zeros(shape=(1,1))
 
     #print("gameSA",gameSA)
 
@@ -298,7 +327,7 @@ for game in range(num_games_to_play):
         imgbuff1 = imgbuff0
         imgbuff0 = preprocessing2(qs)
         qs = appendBufferImages(imgbuff0,imgbuff1,imgbuff2)
-
+        index = 0
 
         #if PLAY_GAME:
         #    remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
@@ -316,11 +345,15 @@ for game in range(num_games_to_play):
             #Chose between prediction and chance
             if prob < explore_prob or game%random_every_n==1:
                 #take a random action
+                last_prediction = DeepQPredictBestAction(qs)
+
                 a = np.argmax ( keras.utils.to_categorical(env.action_space.sample(),num_env_actions) )
+                index = a
             else:
                 last_prediction = DeepQPredictBestAction(qs)
 
                 a = np.argmax(last_prediction)
+                index = a
 
 
         #print("a",a)
@@ -332,7 +365,8 @@ for game in range(num_games_to_play):
         s,r,done,info = env.step(a)
         #record only the first x number of states
 
-        if r==1 or r==-1:
+        #print("r",r)
+        if r==-1:
             done = True
 
         if HAS_EARLY_TERMINATION_REWARD:
@@ -344,7 +378,7 @@ for game in range(num_games_to_play):
         #set action array index to reward
         last_prediction[a] = r
 
-        a = keras.utils.to_categorical(a,num_env_actions)
+        a = last_prediction
         if step ==0:
             gameSA[0] = qs_a
             gameR[0] = np.array([r])
@@ -393,6 +427,10 @@ for game in range(num_games_to_play):
 
             for i in range(gameR.shape[0]):
                 tempGameSA = np.vstack((tempGameSA,gameSA[i].reshape(1,IMG_DIM,IMG_DIM*3) ))
+                #if i%61==1:
+                #    toimage(gameSA[i]).show()
+                    #matplotlib.pyplot.imshow(gameSA[i][0])
+                    #matplotlib.pyplot.show()
                 tempGameR = np.vstack((tempGameR,gameR[i]))
                 tempGameA = np.vstack((tempGameA,gameA[i]))
 
@@ -431,14 +469,14 @@ for game in range(num_games_to_play):
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
-            if game > 3 and game %1 ==0:
+            #if game > 3 and game %1 ==0:
                 # train on all memory
-                print("Experience Replay")
                 #for i in range(3):
 
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 1 and game %4 ==0 and uses_critic:
                 for t in range(training_epochs):
+                    print("Experience Replay")
                     tSA = (memorySA)
                     tR = (memoryA)
                     train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
@@ -451,7 +489,7 @@ for game in range(num_games_to_play):
 
 
         if done and game >= num_initial_observation and not PLAY_GAME:
-            if save_weights and game%20 == 0 and game >35:
+            if save_weights and game%5 == 0 and game >35:
                 #Save model
                 #print("Saving weights")
                 Qmodel.save_weights(weigths_filename)
