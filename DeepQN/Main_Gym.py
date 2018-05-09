@@ -55,7 +55,7 @@ num_env_actions = 4
 
 
 num_initial_observation = 1
-learning_rate =  0.0001
+learning_rate =  0.000001
 apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
@@ -176,7 +176,7 @@ Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
 Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
 Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(256,activation='relu'))
+Qmodel.add(Dense(512,activation='relu'))
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.rmsprop(lr=learning_rate)
@@ -474,7 +474,7 @@ for game in range(num_games_to_play):
                     tA = tA[train_A,:]
                     tSA = tSA[train_A,:]
                     tR = tR[train_A,:]
-                    print("Training Critic n elements =", np.alen(tR))
+                    print("Training Critic n elements =", np.alen(tR),"treshold",treshold)
                     tSA = tSA.reshape(num_records,1,IMG_DIM,IMG_DIM*3)
                     #toimage(tSA[0][0]).show()
                     Qmodel.fit(tSA ,tA, batch_size=mini_batch, nb_epoch=1,verbose=0)
