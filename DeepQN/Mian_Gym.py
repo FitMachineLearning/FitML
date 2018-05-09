@@ -95,7 +95,7 @@ HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
-max_steps = 700
+max_steps = 1400
 
 
 
@@ -202,9 +202,9 @@ if load_previous_weights:
 
 
 
-memorySA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
-memoryA = np.zeros(shape=(1,1))
-memoryR = np.zeros(shape=(1,1))
+memorySA = []
+memoryA = []
+memoryR = []
 
 
 if load_memory_arrays:
@@ -277,10 +277,15 @@ def DeepQPredictBestAction(qstate):
 
 #Play the game 500 times
 for game in range(num_games_to_play):
-    gameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
-    gameA = np.zeros(shape=(1,num_env_actions))
-    gameR = np.zeros(shape=(1,1))
-    gameI  = np.zeros(shape=(1,1))
+    #gameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
+    #gameA = np.zeros(shape=(1,num_env_actions))
+    #gameR = np.zeros(shape=(1,1))
+    #gameI  = np.zeros(shape=(1,1))
+
+    gameSA = []
+    gameA = []
+    gameR = []
+    gameI  = []
 
     #print("gameSA",gameSA)
 
@@ -380,33 +385,29 @@ for game in range(num_games_to_play):
 
         #a = last_prediction
         a = keras.utils.to_categorical(a,num_env_actions)
-        if step ==0:
-            gameSA[0] = qs_a
-            gameR[0] = np.array([r])
-            gameA[0] = np.array([a])
-        else:
-            gameSA= np.vstack((gameSA, qs_a.reshape(1,IMG_DIM,IMG_DIM*3)))
-            gameR = np.vstack((gameR, np.array([r])))
-            gameA = np.vstack((gameA, np.array([a])))
+
+        gameSA.append( qs_a.reshape(1,IMG_DIM,IMG_DIM*3))
+        gameR.append( [r])
+        gameA.append( a)
 
         if step > max_steps:
             done = True
 
         if done :
-            tempGameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
-            tempGameA = np.zeros(shape=(1,num_env_actions))
-            tempGameR = np.zeros(shape=(1,1))
+            tempGameSA = []
+            tempGameA = []
+            tempGameR = []
 
             #Calculate Q values from end to start of game
             #mstats.append(step)
-            for i in range(0,gameR.shape[0]):
+            for i in range(0,len(gameR)):
                 #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                 if i==0:
                     #print("reward at the last step ",gameY[(gameY.shape[0]-1)-i][0])
-                    gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]
+                    gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]
                 else:
                     #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
-                    gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
+                    gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0]
                     #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
 
             for i in range(np.alen(gameR)):
@@ -416,56 +417,26 @@ for game in range(num_games_to_play):
                 gameA[i] = action
                 #print("gameA[i]",gameA[i])
 
-            if memoryR.shape[0] ==1:
-                memorySA = gameSA
-                memoryR = gameR
-                memoryA = gameA
 
-            tempGameA = tempGameA[1:]
-            tempGameR = tempGameR[1:]
-            tempGameSA = tempGameSA[1:]
+            memorySA = memorySA+ gameSA
+            memoryR = memoryR+ gameR
+            memoryA = memoryA+ gameA
 
-
-            for i in range(gameR.shape[0]):
-                tempGameSA = np.vstack((tempGameSA,gameSA[i].reshape(1,IMG_DIM,IMG_DIM*3) ))
-                #if i%61==1:
-                #    toimage(gameSA[i]).show()
-                    #matplotlib.pyplot.imshow(gameSA[i][0])
-                    #matplotlib.pyplot.show()
-                tempGameR = np.vstack((tempGameR,gameR[i]))
-                tempGameA = np.vstack((tempGameA,gameA[i]))
-
-
-
-
-
-            if memoryR.shape[0] ==1:
-                memoryA = tempGameA
-                memoryR = tempGameR
-                memorySA = tempGameSA
-            else:
-                #Add experience to memory
-                memoryA = np.concatenate((memoryA,tempGameA),axis=0)
-                memorySA = np.concatenate((memorySA,tempGameSA),axis=0)
-
-                memoryR = np.concatenate((memoryR,tempGameR),axis=0)
-
-
-                if gameR.mean() > max_game_average :
-                    max_game_average = gameR.mean()
+            if np.mean(gameR) > max_game_average :
+                max_game_average = np.mean(gameR)
 
             #if memory is full remove first element
             if np.alen(memoryR) >= max_memory_len:
-                memorySA = memorySA[gameR.shape[0]:]
-                memoryR = memoryR[gameR.shape[0]:]
-                memoryA = memoryA[gameR.shape[0]:]
+                memorySA = memorySA[len(gameR):]
+                memoryR = memoryR[len(gameR):]
+                memoryA = memoryA[len(gameR):]
 
 
         qs=s
 
         if done and game > num_initial_observation and not PLAY_GAME:
-            last_game_average = gameR.mean()
-            if is_noisy_game and last_game_average > memoryR.mean():
+            last_game_average = np.mean(gameR)
+            if is_noisy_game and last_game_average > np.mean(memoryR):
                 last_best_noisy_game = last_game_average
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
@@ -478,9 +449,9 @@ for game in range(num_games_to_play):
             if game > 1 and game %4 ==0 and uses_critic:
                 for t in range(training_epochs):
                     print("Experience Replay")
-                    tSA = (memorySA)
-                    tA = (memoryA)
-                    tR = (memoryR)
+                    tSA = np.asarray(memorySA)
+                    tA = np.asarray(memoryA)
+                    tR = np.asarray(memoryR)
 
                     stdDev = np.std(tR)
                     treshold = tR.mean() + stdDev
@@ -497,7 +468,7 @@ for game in range(num_games_to_play):
                     tSA = tSA[train_A,:]
                     tR = tR[train_A,:]
                     print("Training Critic n elements =", np.alen(tR))
-                    Qmodel.fit(tSA.reshape(num_records,1,IMG_DIM*3,IMG_DIM) ,tA, batch_size=mini_batch, nb_epoch=2,verbose=0)
+                    Qmodel.fit(tSA.reshape(num_records,1,IMG_DIM*3,IMG_DIM) ,tA, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
 
 
@@ -509,30 +480,30 @@ for game in range(num_games_to_play):
                 #action_predictor_model.save_weights(apWeights_filename)
 
             if save_memory_arrays and game%20 == 0 and game >35:
-                np.save(version_name+'memorySA.npy',memorySA)
-                np.save(version_name+'memoryA.npy',memoryA)
-                np.save(version_name+'memoryR.npy',memoryR)
+                np.save(version_name+'memorySA.npy',np.asarray(npmemorySA))
+                np.save(version_name+'memoryA.npy',np.asarray(memoryA))
+                np.save(version_name+'memoryR.npy',np.asarray(memoryR))
 
 
 
 
         if done:
             oldAPCount = mAP_Counts
-            if gameR.mean() >0:
+            if np.mean(gameR) >0:
                 num_positive_avg_games += 1
             if game%1==0:
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
                 if is_noisy_game:
-                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryR.max() , memoryR.shape[0], memoryR.max(), step,num_positive_avg_games    ) )
+                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, np.mean(memoryR), last_game_average, np.mean(memoryR) , len(memoryR), np.max(memoryR), step,num_positive_avg_games    ) )
                 else:
-                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryR.max() , memoryR.shape[0], memoryR.max(), step ,num_positive_avg_games   ) )
+                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, np.mean(memoryR), last_game_average, np.mean(memoryR) , len(memoryR), np.max(memoryR), step,num_positive_avg_games    ) )
 
             if game%5 ==0 and np.alen(memoryR)>1000:
                 mGames.append(game)
                 mSteps.append(step/1000*100)
                 mAPPicks.append(mAP_Counts/step*100)
 
-                mAverageScores.append(max(memoryR.mean()*200, -150))
+                mAverageScores.append(max(np.mean(memoryR)*200, -150))
 
 
                 bar_chart = pygal.HorizontalLine()
