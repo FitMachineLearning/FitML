@@ -55,13 +55,13 @@ num_env_actions = 4
 
 
 num_initial_observation = 1
-learning_rate =  0.001
-apLearning_rate = 0.001
+learning_rate =  0.01
+apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
 
 littl_sigma = 0.00006
-big_sigma = 0.01
+big_sigma = 0.0001
 upper_delta = 0.0375
 lower_delta = 0.015
 #gaussSigma = 0.01
@@ -74,12 +74,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 100000
+max_memory_len = 30000
 experience_replay_size = 25
 random_every_n = 5
 num_retries = 60
-starting_explore_prob = 0.20
-training_epochs = 2
+starting_explore_prob = 0.02
+training_epochs = 1
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -176,7 +176,7 @@ Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
 Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
 Qmodel.add(MaxPooling2D(pool_size=(1, 1)))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(256,activation='relu'))
+Qmodel.add(Dense(512,activation='relu'))
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.rmsprop(lr=learning_rate)
@@ -378,7 +378,8 @@ for game in range(num_games_to_play):
         #set action array index to reward
         last_prediction[a] = r
 
-        a = last_prediction
+        #a = last_prediction
+        a = keras.utils.to_categorical(a,num_env_actions)
         if step ==0:
             gameSA[0] = qs_a
             gameR[0] = np.array([r])
@@ -478,13 +479,25 @@ for game in range(num_games_to_play):
                 for t in range(training_epochs):
                     print("Experience Replay")
                     tSA = (memorySA)
-                    tR = (memoryA)
-                    train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+                    tA = (memoryA)
+                    tR = (memoryR)
+
+                    stdDev = np.std(tR)
+                    treshold = tR.mean() + stdDev
+                    train_C = np.arange(np.alen(tR))
+                    #train_C = train_C[tR.flatten()> treshold] # Only take games that are above gameTreshold
+                    tSA = tSA[train_C,:]
+                    tA = tA[train_C,:]
+                    tR = tR[train_C,:]
+                    print("Selected after treshold ", np.alen(tR))
+
+                    train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tA) )))
                     num_records = np.alen(train_A)
+                    tA = tA[train_A,:]
+                    tSA = tSA[train_A,:]
                     tR = tR[train_A,:]
-                    tSA = tSA    [train_A,:]
-                    #print("Training Critic n elements =", np.alen(tR))
-                    Qmodel.fit(tSA.reshape(num_records,1,IMG_DIM*3,IMG_DIM) ,tR, batch_size=mini_batch, nb_epoch=2,verbose=0)
+                    print("Training Critic n elements =", np.alen(tR))
+                    Qmodel.fit(tSA.reshape(num_records,1,IMG_DIM*3,IMG_DIM) ,tA, batch_size=mini_batch, nb_epoch=2,verbose=0)
 
 
 
