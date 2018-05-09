@@ -55,13 +55,13 @@ num_env_actions = 4
 
 
 num_initial_observation = 1
-learning_rate =  0.01
+learning_rate =  0.0001
 apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
 
 littl_sigma = 0.00006
-big_sigma = 0.0001
+big_sigma = 0.003
 upper_delta = 0.0375
 lower_delta = 0.015
 #gaussSigma = 0.01
@@ -75,10 +75,10 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 30000
-experience_replay_size = 25
+experience_replay_size = 200
 random_every_n = 5
 num_retries = 60
-starting_explore_prob = 0.02
+starting_explore_prob = 0.20
 training_epochs = 1
 mini_batch = 512*4
 load_previous_weights = False
@@ -168,15 +168,15 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 #Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Conv2D(32, (8, 8), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
+Qmodel.add(Conv2D(32, (3, 3), activation='relu' , padding='same',input_shape=(1,IMG_DIM,IMG_DIM*3)))
 #Qmodel.add(Activation('relu'))
 Qmodel.add(MaxPooling2D(pool_size=(4, 4)))
 Qmodel.add(Conv2D(64, (4, 4), activation='relu' , padding='same'))
 Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
 Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
-Qmodel.add(MaxPooling2D(pool_size=(1, 1)))
+Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(512,activation='relu'))
+Qmodel.add(Dense(256,activation='relu'))
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.rmsprop(lr=learning_rate)
@@ -266,9 +266,11 @@ def DeepQPredictBestAction(qstate):
     qs_a = qstate
     predX = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
     predX[0] = qs_a
-
+    #print("qs_a",qs_a.shape)
+    #img = predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3)
+    #toimage(img[0][0]).show()
     #print("trying to predict reward at qs_a", predX[0])
-    pred = Qmodel.predict(predX[0].reshape(1,1,IMG_DIM*3,IMG_DIM))
+    pred = Qmodel.predict(predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3))
     remembered_total_reward = pred[0]
     return remembered_total_reward
 
@@ -331,7 +333,10 @@ for game in range(num_games_to_play):
         imgbuff2 = imgbuff1
         imgbuff1 = imgbuff0
         imgbuff0 = preprocessing2(qs)
+
         qs = appendBufferImages(imgbuff0,imgbuff1,imgbuff2)
+        #if step%300==1:
+        #    toimage(qs).show()
         index = 0
 
         #if PLAY_GAME:
@@ -387,6 +392,8 @@ for game in range(num_games_to_play):
         a = keras.utils.to_categorical(a,num_env_actions)
 
         gameSA.append( qs_a.reshape(1,IMG_DIM,IMG_DIM*3))
+        #if step%300 == 1:
+        #    toimage(gameSA[step-2][0]).show()
         gameR.append( [r])
         gameA.append( a)
 
@@ -446,7 +453,7 @@ for game in range(num_games_to_play):
                 #for i in range(3):
 
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 1 and game %4 ==0 and uses_critic:
+            if game > 1 and game %2 ==0 and uses_critic:
                 for t in range(training_epochs):
                     print("Experience Replay")
                     tSA = np.asarray(memorySA)
@@ -468,7 +475,9 @@ for game in range(num_games_to_play):
                     tSA = tSA[train_A,:]
                     tR = tR[train_A,:]
                     print("Training Critic n elements =", np.alen(tR))
-                    Qmodel.fit(tSA.reshape(num_records,1,IMG_DIM*3,IMG_DIM) ,tA, batch_size=mini_batch, nb_epoch=1,verbose=0)
+                    tSA = tSA.reshape(num_records,1,IMG_DIM,IMG_DIM*3)
+                    #toimage(tSA[0][0]).show()
+                    Qmodel.fit(tSA ,tA, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
 
 
@@ -480,7 +489,7 @@ for game in range(num_games_to_play):
                 #action_predictor_model.save_weights(apWeights_filename)
 
             if save_memory_arrays and game%20 == 0 and game >35:
-                np.save(version_name+'memorySA.npy',np.asarray(npmemorySA))
+                np.save(version_name+'memorySA.npy',np.asarray(memorySA))
                 np.save(version_name+'memoryA.npy',np.asarray(memoryA))
                 np.save(version_name+'memoryR.npy',np.asarray(memoryR))
 
