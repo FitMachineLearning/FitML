@@ -30,7 +30,7 @@ import matplotlib
 from random import gauss
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
-from keras.layers import Dense, Dropout,Conv2D,MaxPooling2D,Flatten
+from keras.layers import Dense, Dropout,Conv2D,MaxPooling2D,Flatten,Convolution2D
 from keras.layers import Embedding
 from keras.layers import LSTM
 from keras import optimizers
@@ -55,7 +55,7 @@ num_env_actions = 4
 
 
 num_initial_observation = 1
-learning_rate =  0.000001
+learning_rate =  0.001
 apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
@@ -95,7 +95,7 @@ HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
-max_steps = 1400
+max_steps = 70400
 
 
 
@@ -163,7 +163,7 @@ opt = optimizers.rmsprop(lr=learning_rate)
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 '''
 
-
+'''
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
@@ -177,6 +177,16 @@ Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
 Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
 Qmodel.add(Flatten())
 Qmodel.add(Dense(512,activation='relu'))
+
+'''
+
+Qmodel = Sequential()
+Qmodel.add(Conv2D(32, (8, 8), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
+Qmodel.add(Conv2D(64, (4, 4), activation='relu', subsample=(2, 2)))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu' ))
+Qmodel.add(Flatten())
+Qmodel.add(Dense(512,activation='relu'))
+
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.rmsprop(lr=learning_rate)
@@ -361,6 +371,8 @@ for game in range(num_games_to_play):
                 index = a
             else:
                 last_prediction = DeepQPredictBestAction(qs)
+                if step%50==1:
+                    print("prediction from actor ",last_prediction)
 
                 a = np.argmax(last_prediction)
                 index = a
@@ -376,8 +388,11 @@ for game in range(num_games_to_play):
         #record only the first x number of states
 
         #print("r",r)
-        if r==-1:
-            done = True
+        #if r<0:
+        #    print("negative reward")
+        #if r>0:
+        #    print("++")
+
 
         if HAS_EARLY_TERMINATION_REWARD:
             if done and step<max_steps-3:
@@ -389,7 +404,12 @@ for game in range(num_games_to_play):
         last_prediction[a] = r
 
         #a = last_prediction
+        #if step%50==1:
+        #    print("a",a)
         a = keras.utils.to_categorical(a,num_env_actions)
+        #if step%50==1:
+        #    print("a",a)
+
 
         gameSA.append( qs_a.reshape(1,IMG_DIM,IMG_DIM*3))
         #if step%300 == 1:
@@ -453,7 +473,7 @@ for game in range(num_games_to_play):
                 #for i in range(3):
 
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 1 and game %2 ==0 and uses_critic:
+            if game > 1 and game %1 ==0 and uses_critic:
                 for t in range(training_epochs):
                     print("Experience Replay")
                     tSA = np.asarray(memorySA)
@@ -463,7 +483,7 @@ for game in range(num_games_to_play):
                     stdDev = np.std(tR)
                     treshold = tR.mean() + stdDev
                     train_C = np.arange(np.alen(tR))
-                    #train_C = train_C[tR.flatten()> treshold] # Only take games that are above gameTreshold
+                    train_C = train_C[tR.flatten()> tR.mean()] # Only take games that are above gameTreshold
                     tSA = tSA[train_C,:]
                     tA = tA[train_C,:]
                     tR = tR[train_C,:]
