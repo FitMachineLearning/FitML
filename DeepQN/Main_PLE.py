@@ -14,12 +14,12 @@ Starts to land consistantly at 350
 
 import numpy as np
 import keras
-
-
+import gym
 #import pybullet
 #import pybullet_envs
 #import roboschool
 from ple.games.flappybird import FlappyBird
+from ple.games.pong import Pong
 from ple import PLE
 
 import pygal
@@ -32,7 +32,7 @@ import matplotlib
 from random import gauss
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
-from keras.layers import Dense, Dropout,Conv2D,MaxPooling2D,Flatten
+from keras.layers import Dense, Dropout,Conv2D,MaxPooling2D,Flatten,Convolution2D
 from keras.layers import Embedding
 from keras.layers import LSTM
 from keras import optimizers
@@ -52,20 +52,20 @@ uses_parameter_noising = False
 IMG_DIM = 80
 
 ENVIRONMENT_NAME = "Pong-v0"
-game = FlappyBird()
+game = Pong()
 p = PLE(game, fps=30, display_screen=True)
 num_env_variables = 8
 num_env_actions = 2
 
 
-num_initial_observation = 1
-learning_rate =  0.1
-apLearning_rate = 0.1
+num_initial_observation = 20
+learning_rate =  0.01
+apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
 
 littl_sigma = 0.00006
-big_sigma = 0.01
+big_sigma = 0.003
 upper_delta = 0.0375
 lower_delta = 0.015
 #gaussSigma = 0.01
@@ -78,13 +78,13 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.98
-max_memory_len = 100000
-experience_replay_size = 500
+max_memory_len = 5000
+experience_replay_size = 50
 random_every_n = 5
 num_retries = 60
-starting_explore_prob = 0.25
+starting_explore_prob = 0.03
 training_epochs = 1
-mini_batch = 512*4
+mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
@@ -99,7 +99,7 @@ HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
-max_steps = 700
+max_steps = 70400
 
 
 
@@ -126,7 +126,7 @@ actions_1_hot[np.arange(num_env_actions),possible_actions] = 1
 #env = gym.make(ENVIRONMENT_NAME)
 #env.render(mode="human")
 #env.reset()
-p.init()
+
 
 #print("-- Observations",env.observation_space)
 #print("-- actionspace",env.action_space)
@@ -144,28 +144,61 @@ def custom_error(y_true, y_pred, Qsa):
     cce=0.001*(y_true - y_pred)*Qsa
     return cce
 
-print("Creating model")
 
-
+'''
 #nitialize the Reward predictor model
 Qmodel = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
 #Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Conv2D(32, (8, 8), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
+Qmodel.add(Conv2D(32, (3, 3), activation='relu' , padding='same',input_shape=(1,IMG_DIM*3,IMG_DIM)))
 #Qmodel.add(Activation('relu'))
-Qmodel.add(MaxPooling2D(pool_size=(4, 4)))
-Qmodel.add(Conv2D(64, (4, 4), activation='relu' , padding='same'))
-Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+#Qmodel.add(MaxPooling2D(pool_size=(4, 4)))
 Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
-Qmodel.add(MaxPooling2D(pool_size=(1, 1)))
+#Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
+#Qmodel.add(MaxPooling2D(pool_size=(1, 1)))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(512,activation='relu'))
+Qmodel.add(Dense(128,activation='relu'))
 
 Qmodel.add(Dense(dataY.shape[1]))
 opt = optimizers.rmsprop(lr=learning_rate)
 #opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
+'''
+
+'''
+#nitialize the Reward predictor model
+Qmodel = Sequential()
+#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
+#Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
+Qmodel.add(Conv2D(32, (3, 3), activation='relu' , padding='same',input_shape=(1,IMG_DIM,IMG_DIM*3)))
+#Qmodel.add(Activation('relu'))
+Qmodel.add(MaxPooling2D(pool_size=(4, 4)))
+Qmodel.add(Conv2D(64, (4, 4), activation='relu' , padding='same'))
+Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
+Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+Qmodel.add(Flatten())
+Qmodel.add(Dense(512,activation='relu'))
+
+'''
+
+Qmodel = Sequential()
+Qmodel.add(Conv2D(32, (8, 8), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
+Qmodel.add(Conv2D(64, (4, 4), activation='relu', subsample=(2, 2)))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu' ))
+Qmodel.add(Flatten())
+Qmodel.add(Dense(1024,activation='relu'))
+#Qmodel.add(Dropout(0.3))
+
+Qmodel.add(Dense(dataY.shape[1]))
+opt = optimizers.rmsprop(lr=learning_rate)
+#opt = optimizers.Adadelta()
+
+Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
+
+
 
 
 
@@ -183,9 +216,9 @@ if load_previous_weights:
 
 
 
-memorySA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
-memoryA = np.zeros(shape=(1,1))
-memoryR = np.zeros(shape=(1,1))
+memorySA = []
+memoryA = []
+memoryR = []
 
 
 if load_memory_arrays:
@@ -199,14 +232,14 @@ if load_memory_arrays:
         print("No memory Files. Recreating")
 
 
-mstats = []
-mGames = []
-mAverageScores = []
-mSteps = []
+
+
+
+
 mAP_Counts = 0
 oldAPCount = 0
 num_add_mem = 0
-mAPPicks = []
+
 
 #------
 
@@ -215,30 +248,18 @@ mAPPicks = []
 
 def preprocessing2(I):
   """ prepro 210x160x3 uint8 frame into 6400 (80x80) 1D float vector """
-  #print("I",I.shape)
 
+  #I = I[35:195] # crop
 
-  #I = I[35:195,30:190] # crop
-  #print("I",I.shape,"min",I.min(),"max",I.max())
-  #print("I",I)
-  #matplotlib.pyplot.imshow(I)
-  #matplotlib.pyplot.show()
   #print("x_t1",I.shape)
-  #print("after imshow")
-  #print("after img I",I)
-
   x_t1 = skimage.color.rgb2gray(I)
-  #print("after img rgb2gray",x_t1)
-
-  #matplotlib.pyplot.imshow(x_t1)
-  #matplotlib.pyplot.show()
   x_t1 = skimage.transform.resize(x_t1,(IMG_DIM,IMG_DIM))
   x_t1 = skimage.exposure.rescale_intensity(x_t1, out_range=(0, 255))
   #print("x_t1",x_t1.shape)
   #print("x_t1",x_t1)
-  #print("after img transform",x_t1)
-  #matplotlib.pyplot.imshow(x_t1)
-  #matplotlib.pyplot.show()
+
+  #x_t1 = x_t1.reshape(1, 1, x_t1.shape[0], x_t1.shape[1])
+  #s_t1 = np.append(x_t1, s_t1[:, :3, :, :], axis=1)
 
   return x_t1 #flattens
 
@@ -259,34 +280,47 @@ def DeepQPredictBestAction(qstate):
     qs_a = qstate
     predX = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
     predX[0] = qs_a
-
+    #print("qs_a",qs_a.shape)
+    #img = predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3)
+    #toimage(img[0][0]).show()
     #print("trying to predict reward at qs_a", predX[0])
-    pred = Qmodel.predict(predX[0].reshape(1,1,IMG_DIM*3,IMG_DIM))
+    pred = Qmodel.predict(predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3))
     remembered_total_reward = pred[0]
     return remembered_total_reward
 
 
 
+p.act(118)
+p.game_over()
+p.getScreenRGB()
 
+p.act(118)
+p.game_over()
+p.getScreenRGB()
+p.act(118)
+p.game_over()
+p.getScreenRGB()
+p.act(118)
+p.game_over()
+p.getScreenRGB()
+p.act(119)
+p.game_over()
+p.getScreenRGB()
 #Play the game 500 times
 for game in range(num_games_to_play):
-    gameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
-    gameA = np.zeros(shape=(1,num_env_actions))
-    gameR = np.zeros(shape=(1,1))
 
-    print(" Before Preprocçessing")
+    gameSA = []
+    gameA = []
+    gameR = []
+    gameI  = []
 
-    #Get the Q state
+
     p.reset_game()
     qs = p.getScreenRGB()
-
-    print(" after A1")
 
     imgbuff0 = preprocessing2(qs)
     imgbuff1 = preprocessing2(qs)
     imgbuff2 = preprocessing2(qs)
-
-    print(" after A2")
 
 
     mAP_Counts = 0
@@ -301,30 +335,17 @@ for game in range(num_games_to_play):
     if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if (game%2==0 ):
-            is_noisy_game = True
-            if True or last_best_noisy_game < memoryR.mean() or game%6==0:
-                print("Adding BIG Noise")
-                #noisy_model = keras.models.clone_model(action_predictor_model)
-                reset_noisy_model()
-                noisy_model,big_sigma = add_controlled_noise(noisy_model,big_sigma,True)
-                #last_best_noisy_game = -1000
-            '''
-            else:
-                print("Adding Small Noise")
-                #print("Not Changing weights last_best_noisy_game", last_best_noisy_game," mean ",memoryR.mean())
-                reset_noisy_model()
-                add_controlled_noise(noisy_model,False)
-            '''
-
     for step in range (5000):
 
 
         imgbuff2 = imgbuff1
         imgbuff1 = imgbuff0
         imgbuff0 = preprocessing2(qs)
-        qs = appendBufferImages(imgbuff0,imgbuff1,imgbuff2)
 
+        qs = appendBufferImages(imgbuff0,imgbuff1,imgbuff2)
+        #if step%1==0:
+        #    toimage(qs).show()
+        index = 0
 
         #if PLAY_GAME:
         #    remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
@@ -332,7 +353,7 @@ for game in range(num_games_to_play):
         #print("last_prediction",last_prediction)
         if game < num_initial_observation:
             #take a radmon action
-            a = np.argmax ( keras.utils.to_categorical(np.random.randint(2),num_env_actions) )
+            a = np.argmax (keras.utils.to_categorical(np.random.randint(2),num_env_actions) )
         else:
             prob = np.random.rand(1)
             explore_prob = starting_explore_prob-(starting_explore_prob/random_num_games_to_play)*game
@@ -342,11 +363,17 @@ for game in range(num_games_to_play):
             #Chose between prediction and chance
             if prob < explore_prob or game%random_every_n==1:
                 #take a random action
-                a = np.argmax ( keras.utils.to_categorical(np.random.randint(2),num_env_actions) )
-            else:
                 last_prediction = DeepQPredictBestAction(qs)
 
+                a = np.argmax ( keras.utils.to_categorical(np.random.randint(2),num_env_actions) )
+                index = a
+            else:
+                last_prediction = DeepQPredictBestAction(qs)
+                if step%50==1:
+                    print("prediction from actor ",last_prediction[0],last_prediction[1])
+
                 a = np.argmax(last_prediction)
+                index = a
 
 
         #print("a",a)
@@ -358,11 +385,19 @@ for game in range(num_games_to_play):
         r = p.act(a+118)
         done = p.game_over()
         s = p.getScreenRGB()
-        #s,r,done,info = env.step(a)
         #record only the first x number of states
 
-        if r<0:
-            done = True
+        #if step%25==24:
+        #    toimage(s).show()
+        #    toimage(preprocessing2(s)).show()
+
+
+        #print("r",r)
+        #if r<0:
+        #    print("negative reward")
+        #if r>0:
+        #    print("++")
+
 
         if HAS_EARLY_TERMINATION_REWARD:
             if done and step<max_steps-3:
@@ -373,34 +408,38 @@ for game in range(num_games_to_play):
         #set action array index to reward
         last_prediction[a] = r
 
+        #a = last_prediction
+        #if step%50==1:
+        #    print("a",a)
         a = keras.utils.to_categorical(a,num_env_actions)
-        if step ==0:
-            gameSA[0] = qs_a
-            gameR[0] = np.array([r])
-            gameA[0] = np.array([a])
-        else:
-            gameSA= np.vstack((gameSA, qs_a.reshape(1,IMG_DIM,IMG_DIM*3)))
-            gameR = np.vstack((gameR, np.array([r])))
-            gameA = np.vstack((gameA, np.array([a])))
+        #if step%50==1:
+        #    print("a",a)
+
+
+        gameSA.append( qs_a.reshape(1,IMG_DIM,IMG_DIM*3))
+        #if step%300 == 1:
+        #    toimage(gameSA[step-2][0]).show()
+        gameR.append( [r])
+        gameA.append( a)
 
         if step > max_steps:
             done = True
 
         if done :
-            tempGameSA = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
-            tempGameA = np.zeros(shape=(1,num_env_actions))
-            tempGameR = np.zeros(shape=(1,1))
+            tempGameSA = []
+            tempGameA = []
+            tempGameR = []
 
             #Calculate Q values from end to start of game
             #mstats.append(step)
-            for i in range(0,gameR.shape[0]):
+            for i in range(0,len(gameR)):
                 #print("Updating total_reward at game epoch ",(gameY.shape[0]-1) - i)
                 if i==0:
                     #print("reward at the last step ",gameY[(gameY.shape[0]-1)-i][0])
-                    gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]
+                    gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]
                 else:
                     #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
-                    gameR[(gameR.shape[0]-1)-i][0] = gameR[(gameR.shape[0]-1)-i][0]+b_discount*gameR[(gameR.shape[0]-1)-i+1][0]
+                    gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0]
                     #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
 
             for i in range(np.alen(gameR)):
@@ -410,119 +449,88 @@ for game in range(num_games_to_play):
                 gameA[i] = action
                 #print("gameA[i]",gameA[i])
 
-            if memoryR.shape[0] ==1:
-                memorySA = gameSA
-                memoryR = gameR
-                memoryA = gameA
 
-            tempGameA = tempGameA[1:]
-            tempGameR = tempGameR[1:]
-            tempGameSA = tempGameSA[1:]
+            memorySA = memorySA+ gameSA
+            memoryR = memoryR+ gameR
+            memoryA = memoryA+ gameA
 
-
-            for i in range(gameR.shape[0]):
-                tempGameSA = np.vstack((tempGameSA,gameSA[i].reshape(1,IMG_DIM,IMG_DIM*3) ))
-                #if i%51==1:
-                #    toimage(gameSA[i]).show()
-                tempGameR = np.vstack((tempGameR,gameR[i]))
-                tempGameA = np.vstack((tempGameA,gameA[i]))
-
-
-
-
-
-            if memoryR.shape[0] ==1:
-                memoryA = tempGameA
-                memoryR = tempGameR
-                memorySA = tempGameSA
-            else:
-                #Add experience to memory
-                memoryA = np.concatenate((memoryA,tempGameA),axis=0)
-                memorySA = np.concatenate((memorySA,tempGameSA),axis=0)
-
-                memoryR = np.concatenate((memoryR,tempGameR),axis=0)
-
-
-                if gameR.mean() > max_game_average :
-                    max_game_average = gameR.mean()
+            if np.mean(gameR) > max_game_average :
+                max_game_average = np.mean(gameR)
 
             #if memory is full remove first element
             if np.alen(memoryR) >= max_memory_len:
-                memorySA = memorySA[gameR.shape[0]:]
-                memoryR = memoryR[gameR.shape[0]:]
-                memoryA = memoryA[gameR.shape[0]:]
+                memorySA = memorySA[len(gameR):]
+                memoryR = memoryR[len(gameR):]
+                memoryA = memoryA[len(gameR):]
 
 
         qs=s
 
         if done and game > num_initial_observation and not PLAY_GAME:
-            last_game_average = gameR.mean()
-            if is_noisy_game and last_game_average > memoryR.mean():
+            last_game_average = np.mean(gameR)
+            if is_noisy_game and last_game_average > np.mean(memoryR):
                 last_best_noisy_game = last_game_average
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
-            if game > 3 and game %1 ==0:
+            #if game > 3 and game %1 ==0:
                 # train on all memory
-                print("Experience Replay")
                 #for i in range(3):
 
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 1 and game %20 ==0 and uses_critic:
+            if game > 1 and game %1 ==0 and uses_critic:
                 for t in range(training_epochs):
-                    tSA = (memorySA)
-                    tR = (memoryA)
-                    train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
+                    print("Experience Replay")
+                    tSA = np.asarray(memorySA)
+                    tA = np.asarray(memoryA)
+                    tR = np.asarray(memoryR)
+
+                    stdDev = np.std(tR)
+                    treshold = tR.mean() + stdDev
+                    train_C = np.arange(np.alen(tR))
+                    train_C = train_C[tR.flatten()> tR.mean()] # Only take games that are above gameTreshold
+                    tSA = tSA[train_C,:]
+                    tA = tA[train_C,:]
+                    tR = tR[train_C,:]
+                    print("Selected after treshold ", np.alen(tR))
+
+                    train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tA) )))
                     num_records = np.alen(train_A)
+                    tA = tA[train_A,:]
+                    tSA = tSA[train_A,:]
                     tR = tR[train_A,:]
-                    tSA = tSA    [train_A,:]
-                    #print("Training Critic n elements =", np.alen(tR))
-                    Qmodel.fit(tSA.reshape(num_records,1,IMG_DIM*3,IMG_DIM) ,tR, batch_size=mini_batch, nb_epoch=2,verbose=0)
+                    print("Training Critic n elements =", np.alen(tR),"treshold",treshold)
+                    tSA = tSA.reshape(num_records,1,IMG_DIM,IMG_DIM*3)
+                    #toimage(tSA[0][0]).show()
+                    Qmodel.fit(tSA ,tA, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
 
 
         if done and game >= num_initial_observation and not PLAY_GAME:
-            if save_weights and game%20 == 0 and game >35:
+            if save_weights and game%5 == 0 and game >35:
                 #Save model
                 #print("Saving weights")
                 Qmodel.save_weights(weigths_filename)
                 #action_predictor_model.save_weights(apWeights_filename)
 
             if save_memory_arrays and game%20 == 0 and game >35:
-                np.save(version_name+'memorySA.npy',memorySA)
-                np.save(version_name+'memoryA.npy',memoryA)
-                np.save(version_name+'memoryR.npy',memoryR)
+                np.save(version_name+'memorySA.npy',np.asarray(memorySA))
+                np.save(version_name+'memoryA.npy',np.asarray(memoryA))
+                np.save(version_name+'memoryR.npy',np.asarray(memoryR))
 
 
 
 
         if done:
             oldAPCount = mAP_Counts
-            if gameR.mean() >0:
+            if np.mean(gameR) >0:
                 num_positive_avg_games += 1
             if game%1==0:
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
                 if is_noisy_game:
-                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryR.max() , memoryR.shape[0], memoryR.max(), step,num_positive_avg_games    ) )
+                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, np.mean(memoryR), last_game_average, np.mean(memoryR) , len(memoryR), np.max(memoryR), step,num_positive_avg_games    ) )
                 else:
-                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, memoryR.mean(), last_game_average, memoryR.max() , memoryR.shape[0], memoryR.max(), step ,num_positive_avg_games   ) )
-
-            if game%5 ==0 and np.alen(memoryR)>1000:
-                mGames.append(game)
-                mSteps.append(step/1000*100)
-                mAPPicks.append(mAP_Counts/step*100)
-
-                mAverageScores.append(max(memoryR.mean()*200, -150))
-
-
-                bar_chart = pygal.HorizontalLine()
-                bar_chart.x_labels = map(str, mGames)                                            # Then create a bar graph object
-                bar_chart.add('Average score', mAverageScores)  # Add some values
-                bar_chart.add('percent actor picks ', mAPPicks)  # Add some values
-                bar_chart.add('percent steps complete ', mSteps)  # Add some values
-
-
-                bar_chart.render_to_file(version_name+'Performance2_bar_chart.svg')
+                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, np.mean(memoryR), last_game_average, np.mean(memoryR) , len(memoryR), np.max(memoryR), step,num_positive_avg_games    ) )
 
             break
 
