@@ -20,6 +20,7 @@ import gym
 #import roboschool
 from ple.games.flappybird import FlappyBird
 from ple.games.pong import Pong
+from ple.games.pixelcopter import Pixelcopter
 from ple import PLE
 
 import pygal
@@ -52,14 +53,13 @@ uses_parameter_noising = False
 IMG_DIM = 80
 
 ENVIRONMENT_NAME = "Pong-v0"
-game = Pong()
+game = Pixelcopter(width=160, height=160)
 p = PLE(game, fps=30, display_screen=True)
 num_env_variables = 8
 num_env_actions = 2
 
-
-num_initial_observation = 20
-learning_rate =  0.01
+num_initial_observation = 3
+learning_rate =  0.001
 apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
@@ -77,13 +77,13 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.98
-max_memory_len = 5000
-experience_replay_size = 50
-random_every_n = 5
+b_discount = 0.97
+max_memory_len = 30000
+experience_replay_size = 512
+random_every_n = 2
 num_retries = 60
 starting_explore_prob = 0.03
-training_epochs = 1
+training_epochs = 5
 mini_batch = 512
 load_previous_weights = False
 observe_and_train = True
@@ -99,6 +99,8 @@ HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
+USES_CATEGORICAL_ACTIONS = False
+USES_SELECTIVE_MEMORY = False
 max_steps = 70400
 
 
@@ -185,15 +187,16 @@ Qmodel.add(Dense(512,activation='relu'))
 '''
 
 Qmodel = Sequential()
-Qmodel.add(Conv2D(32, (8, 8), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
+Qmodel.add(Conv2D(32, (3, 3), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
 Qmodel.add(Conv2D(64, (4, 4), activation='relu', subsample=(2, 2)))
 Qmodel.add(Conv2D(64, (3, 3), activation='relu' ))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(1024,activation='relu'))
-#Qmodel.add(Dropout(0.3))
+Qmodel.add(Dense(512,activation='relu'))
+Qmodel.add(Dropout(0.3))
+
 
 Qmodel.add(Dense(dataY.shape[1]))
-opt = optimizers.rmsprop(lr=learning_rate)
+opt = optimizers.adam(lr=learning_rate)
 #opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
@@ -399,22 +402,20 @@ for game in range(num_games_to_play):
         #    print("++")
 
 
-        if HAS_EARLY_TERMINATION_REWARD:
-            if done and step<max_steps-3:
-                r = EARLY_TERMINATION_REWARD
+
         if HAS_REWARD_SCALLING:
             r=r/200 #reward scalling to from [-1,1] to [-100,100]
 
-        #set action array index to reward
-        last_prediction[a] = r
+        if USES_CATEGORICAL_ACTIONS:
+            a = keras.utils.to_categorical(a,num_env_actions)
+            #set action array index to reward
 
-        #a = last_prediction
-        #if step%50==1:
-        #    print("a",a)
-        a = keras.utils.to_categorical(a,num_env_actions)
-        #if step%50==1:
-        #    print("a",a)
+        else:
+            last_prediction[a] = r
 
+            a = last_prediction
+            #if step%50==1:
+            #    print("a",a)
 
         gameSA.append( qs_a.reshape(1,IMG_DIM,IMG_DIM*3))
         #if step%300 == 1:
@@ -478,31 +479,33 @@ for game in range(num_games_to_play):
                 #for i in range(3):
 
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 1 and game %1 ==0 and uses_critic:
+            if game > 1 and game %10 ==0 and uses_critic:
                 for t in range(training_epochs):
                     print("Experience Replay")
                     tSA = np.asarray(memorySA)
                     tA = np.asarray(memoryA)
                     tR = np.asarray(memoryR)
 
-                    stdDev = np.std(tR)
-                    treshold = tR.mean() + stdDev
-                    train_C = np.arange(np.alen(tR))
-                    train_C = train_C[tR.flatten()> tR.mean()] # Only take games that are above gameTreshold
-                    tSA = tSA[train_C,:]
-                    tA = tA[train_C,:]
-                    tR = tR[train_C,:]
-                    print("Selected after treshold ", np.alen(tR))
+                    if USES_SELECTIVE_MEMORY:
+                        stdDev = np.std(tR)
+                        treshold = tR.mean() + stdDev
+                        train_C = np.arange(np.alen(tR))
+                        train_C = train_C[tR.flatten()> treshold] # Only take games that are above gameTreshold
+                        tSA = tSA[train_C,:]
+                        tA = tA[train_C,:]
+                        tR = tR[train_C,:]
+                        print("Selected after treshold ", np.alen(tR))
 
                     train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tA) )))
                     num_records = np.alen(train_A)
                     tA = tA[train_A,:]
                     tSA = tSA[train_A,:]
                     tR = tR[train_A,:]
-                    print("Training Critic n elements =", np.alen(tR),"treshold",treshold)
+                    #print("Training Critic n elements =", np.alen(tR),"treshold",treshold)
                     tSA = tSA.reshape(num_records,1,IMG_DIM,IMG_DIM*3)
                     #toimage(tSA[0][0]).show()
                     Qmodel.fit(tSA ,tA, batch_size=mini_batch, nb_epoch=1,verbose=0)
+
 
 
 
