@@ -146,7 +146,7 @@ def custom_error(y_true, y_pred, Qsa):
 Qmodel = Sequential()
 Qmodel.add(Conv2D(32, (3, 3), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
 Qmodel.add(Conv2D(64, (4, 4), activation='relu', subsample=(2, 2)))
-Qmodel.add(Conv2D(64, (3, 3), activation='relu' ))
+Qmodel.add(Conv2D(64, (3, 3), activation='relu', name="dense_one" ))
 Qmodel.add(Flatten())
 Qmodel.add(Dense(512,activation='relu'))
 #Qmodel.add(Dropout(0.3))
@@ -162,7 +162,7 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 noisyModel = Sequential()
 noisyModel.add(Conv2D(32, (3, 3), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
 noisyModel.add(Conv2D(64, (4, 4), activation='relu', subsample=(2, 2)))
-noisyModel.add(Conv2D(64, (3, 3), activation='relu' ))
+noisyModel.add(Conv2D(64, (3, 3), activation='relu', name="dense_one" ))
 noisyModel.add(Flatten())
 noisyModel.add(Dense(512,activation='relu'))
 
@@ -246,7 +246,9 @@ def add_noise_to_model(noisyModel,largeNoise = False):
     #    print("Setting Large Noise!")
     for k in range(sz):
         w = noisyModel.layers[k].get_weights()
-        if np.alen(w) >0 :
+        if np.alen(w) >0 and noisyModel.layers[k].name == 'dense_3':
+            print("Layer Name", noisyModel.layers[k].name,w[0].shape)
+
             #print("k==>",k)
             if USE_GAUSSIAN_NOISE:
                 w[0] = add_gaussian_noise(w[0],big_sigma,largeNoise)
