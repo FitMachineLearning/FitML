@@ -48,10 +48,10 @@ from scipy.misc import toimage
 
 PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
-uses_parameter_noising = True
+uses_parameter_noising = False
 
 
-IMG_DIM = 80
+IMG_DIM = 40
 
 ENVIRONMENT_NAME = "Pong-v0"
 game = Pixelcopter(width=160, height=160)
@@ -61,7 +61,7 @@ num_env_actions = 2
 
 
 num_initial_observation = 10
-learning_rate =  0.0001
+learning_rate =  0.01
 apLearning_rate = 0.01
 
 MUTATION_PROB = 0.1
@@ -81,7 +81,7 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 30000
-experience_replay_size = 512
+experience_replay_size = 2048
 random_every_n = 800
 num_retries = 60
 starting_explore_prob = 0.05
@@ -323,7 +323,7 @@ def DeepQPredictBestAction(qstate,is_noisy_game = False):
     #img = predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3)
     #toimage(img[0][0]).show()
     #print("trying to predict reward at qs_a", predX[0])
-    if is_noisy_game:
+    if not is_noisy_game:
         pred = Qmodel.predict(predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3))
     else:
         pred = noisyModel.predict(predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3))
