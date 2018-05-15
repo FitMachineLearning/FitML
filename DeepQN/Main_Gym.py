@@ -55,7 +55,7 @@ num_env_actions = 6
 
 
 num_initial_observation = 3
-learning_rate =  0.001
+learning_rate =  0.0025
 apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
@@ -181,16 +181,16 @@ Qmodel.add(Dense(512,activation='relu'))
 '''
 
 Qmodel = Sequential()
-Qmodel.add(Conv2D(32, (3, 3), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
+Qmodel.add(Conv2D(32, (8, 8), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
 Qmodel.add(Conv2D(64, (4, 4), activation='relu', subsample=(2, 2)))
 Qmodel.add(Conv2D(64, (3, 3), activation='relu' ))
 Qmodel.add(Flatten())
 Qmodel.add(Dense(512,activation='relu'))
-Qmodel.add(Dropout(0.3))
+#Qmodel.add(Dropout(0.3))
 
 
 Qmodel.add(Dense(dataY.shape[1]))
-opt = optimizers.adam(lr=learning_rate)
+opt = optimizers.rmsprop(lr=learning_rate)
 #opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
