@@ -55,7 +55,7 @@ num_env_actions = 6
 
 
 num_initial_observation = 3
-learning_rate =  0.001
+learning_rate =  0.00025
 apLearning_rate = 0.01
 
 MUTATION_PROB = 0.4
@@ -73,14 +73,14 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #range within wich the SmartCrossEntropy action parameters will deviate from
 #remembered optimal policy
 sce_range = 0.2
-b_discount = 0.97
+b_discount = 0.99
 max_memory_len = 30000
 experience_replay_size = 512
 random_every_n = 2
 num_retries = 60
-starting_explore_prob = 0.03
-training_epochs = 5
-mini_batch = 512
+starting_explore_prob = 0.02
+training_epochs = 4
+mini_batch = 512*2
 load_previous_weights = False
 observe_and_train = True
 save_weights = True
@@ -181,16 +181,16 @@ Qmodel.add(Dense(512,activation='relu'))
 '''
 
 Qmodel = Sequential()
-Qmodel.add(Conv2D(32, (3, 3), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
+Qmodel.add(Conv2D(32, (8, 8), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
 Qmodel.add(Conv2D(64, (4, 4), activation='relu', subsample=(2, 2)))
 Qmodel.add(Conv2D(64, (3, 3), activation='relu' ))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(512,activation='relu'))
-Qmodel.add(Dropout(0.3))
+Qmodel.add(Dense(1024,activation='relu'))
+#Qmodel.add(Dropout(0.3))
 
 
 Qmodel.add(Dense(dataY.shape[1]))
-opt = optimizers.adam(lr=learning_rate)
+opt = optimizers.rmsprop(lr=learning_rate)
 #opt = optimizers.Adadelta()
 
 Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
@@ -294,6 +294,7 @@ for game in range(num_games_to_play):
     #gameA = np.zeros(shape=(1,num_env_actions))
     #gameR = np.zeros(shape=(1,1))
     #gameI  = np.zeros(shape=(1,1))
+    gameStatus = "reg"
 
     gameSA = []
     gameA = []
@@ -324,6 +325,7 @@ for game in range(num_games_to_play):
         #print("Adding Noise")
         if (game%2==0 ):
             is_noisy_game = True
+            gameStatus = "Noisy"
             if True or last_best_noisy_game < memoryR.mean() or game%6==0:
                 print("Adding BIG Noise")
                 #noisy_model = keras.models.clone_model(action_predictor_model)
@@ -357,6 +359,7 @@ for game in range(num_games_to_play):
         if game < num_initial_observation:
             #take a radmon action
             a = np.argmax ( keras.utils.to_categorical(env.action_space.sample(),num_env_actions) )
+            gameStatus = "Obs"
         else:
             prob = np.random.rand(1)
             explore_prob = starting_explore_prob-(starting_explore_prob/random_num_games_to_play)*game
@@ -370,13 +373,15 @@ for game in range(num_games_to_play):
 
                 a = np.argmax ( keras.utils.to_categorical(env.action_space.sample(),num_env_actions) )
                 index = a
+                gameStatus = "Rand"
             else:
                 last_prediction = DeepQPredictBestAction(qs)
-                if step%50==1:
-                    print("prediction from actor ",last_prediction)
+                #if step%50==1:
+                #    print("prediction from actor ",last_prediction)
 
                 a = np.argmax(last_prediction)
                 index = a
+                gameStatus = "Reg"
 
 
         #print("a",a)
@@ -405,9 +410,11 @@ for game in range(num_games_to_play):
         #    done = True
 
         #set action array index to reward
+
         last_prediction[a] = r
 
         a = last_prediction
+
         #if step%50==1:
         #    print("a",a)
         #a = keras.utils.to_categorical(a,num_env_actions)
@@ -441,6 +448,7 @@ for game in range(num_games_to_play):
                     #print("local error before Bellman", gameY[(gameY.shape[0]-1)-i][0],"Next error ", gameY[(gameY.shape[0]-1)-i+1][0])
                     gameR[(len(gameR)-1)-i][0] = gameR[(len(gameR)-1)-i][0]+b_discount*gameR[(len(gameR)-1)-i+1][0]
                     #print("reward at step",i,"away from the end is",gameY[(gameY.shape[0]-1)-i][0])
+
 
             for i in range(np.alen(gameR)):
                 action = gameA[i]
@@ -485,16 +493,17 @@ for game in range(num_games_to_play):
                     tSA = np.asarray(memorySA)
                     tA = np.asarray(memoryA)
                     tR = np.asarray(memoryR)
-                    '''
-                    stdDev = np.std(tR)
-                    treshold = tR.mean() + stdDev
-                    train_C = np.arange(np.alen(tR))
-                    #train_C = train_C[tR.flatten()> treshold] # Only take games that are above gameTreshold
-                    tSA = tSA[train_C,:]
-                    tA = tA[train_C,:]
-                    tR = tR[train_C,:]
-                    print("Selected after treshold ", np.alen(tR))
-                    '''
+
+                    if game%2==1:
+                        stdDev = np.std(tR)
+                        treshold = tR.mean() + stdDev*.5
+                        train_C = np.arange(np.alen(tR))
+                        train_C = train_C[tR.flatten()> treshold] # Only take games that are above gameTreshold
+                        tSA = tSA[train_C,:]
+                        tA = tA[train_C,:]
+                        tR = tR[train_C,:]
+                        print("Selected after treshold ", np.alen(tR))
+
                     train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tA) )))
                     num_records = np.alen(train_A)
                     tA = tA[train_A,:]
@@ -528,10 +537,10 @@ for game in range(num_games_to_play):
                 num_positive_avg_games += 1
             if game%1==0:
                 #print("Training Game #",game,"last everage",memoryR.mean(),"max_game_average",max_game_average,,"game mean",gameR.mean(),"memMax",memoryR.max(),"memoryR",memoryR.shape[0], "SelectiveMem Size ",memoryRR.shape[0],"Selective Mem mean",memoryRR.mean(axis=0)[0], " steps = ", step )
-                if is_noisy_game:
-                    print("Noisy Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, np.mean(memoryR), last_game_average, np.mean(memoryR) , len(memoryR), np.max(memoryR), step,num_positive_avg_games    ) )
-                else:
-                    print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, np.mean(memoryR), last_game_average, np.mean(memoryR) , len(memoryR), np.max(memoryR), step,num_positive_avg_games    ) )
+                #if is_noisy_game:
+                print("",gameStatus, " Game #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, np.asarray(memoryR).mean(), last_game_average, np.mean(memoryR) , len(memoryR), np.max(np.asarray(memoryR)), step,num_positive_avg_games    ) )
+                #else:
+                    #print("Reg Game   #  %7d  avgScore %8.3f  last_game_avg %8.3f  max_game_avg %8.3f  memory size %8d memMax %8.3f steps %5d pos games %5d" % (game, np.mean(memoryR), last_game_average, np.mean(memoryR) , len(memoryR), np.max(memoryR), step,num_positive_avg_games    ) )
 
             if game%5 ==0 and np.alen(memoryR)>1000:
                 mGames.append(game)
