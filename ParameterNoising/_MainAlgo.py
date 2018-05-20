@@ -39,12 +39,12 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-ENVIRONMENT_NAME = "AntBulletEnv-v0"
-num_env_variables = 28
-num_env_actions = 8
+ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
+num_env_variables = 8
+num_env_actions = 2
 
 
-num_initial_observation = 0
+num_initial_observation = 20
 learning_rate =  0.0002
 apLearning_rate = 0.0001
 
@@ -52,8 +52,8 @@ MUTATION_PROB = 0.4
 
 littl_sigma = 0.00006
 big_sigma = 0.01
-upper_delta = 0.075
-lower_delta = 0.05
+upper_delta = 0.0075
+lower_delta = 0.005
 #gaussSigma = 0.01
 version_name = ENVIRONMENT_NAME + "ker_v11"
 weigths_filename = version_name+"-weights.h5"
@@ -65,11 +65,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 sce_range = 0.2
 b_discount = 0.98
 max_memory_len = 100000
-experience_replay_size = 2500
+experience_replay_size = 200
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 2
+training_epochs = 4
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -77,10 +77,10 @@ save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
 do_training = True
-num_games_to_play = 20000
+num_games_to_play = 200000
 random_num_games_to_play = num_games_to_play/3
 USE_GAUSSIAN_NOISE = True
-CLIP_ACTION = False
+CLIP_ACTION = True
 HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
@@ -518,7 +518,7 @@ def actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         if t%89==1:
             print("%8d were better After removing first element"%np.alen(tX_train), "Upper_cut",memoryR.mean()+stdDev,"gameStdDev",memoryW.mean()+gameStdDev)
         if np.alen(tX_train)>0:
-            action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=2,verbose=0)
+            action_predictor_model.fit(tX_train,tY_train, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
 
 
@@ -817,7 +817,7 @@ for game in range(num_games_to_play):
                     tR = tR[train_A,:]
                     tSA = tSA    [train_A,:]
                     #print("Training Critic n elements =", np.alen(tR))
-                    Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=2,verbose=0)
+                    Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=1,verbose=0)
             if game > 3 and game %5 ==-1 and uses_parameter_noising:
                 print("Training noisy_actor")
                 train_noisy_actor()
