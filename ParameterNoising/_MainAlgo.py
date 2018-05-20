@@ -45,15 +45,15 @@ num_env_actions = 2
 
 
 num_initial_observation = 20
-learning_rate =  0.0002
-apLearning_rate = 0.0001
+learning_rate =  0.002
+apLearning_rate = 0.001
 
 MUTATION_PROB = 0.4
 
 littl_sigma = 0.00006
 big_sigma = 0.01
-upper_delta = 0.0075
-lower_delta = 0.005
+upper_delta = 0.075
+lower_delta = 0.05
 #gaussSigma = 0.01
 version_name = ENVIRONMENT_NAME + "ker_v11"
 weigths_filename = version_name+"-weights.h5"
@@ -69,7 +69,7 @@ experience_replay_size = 200
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 4
+training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -413,7 +413,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
         #print("gameMean",tS.mean(),"gameMax",tS.max(),"gameTreshold",gameTreshold)
 
         train_C = np.arange(np.alen(tR))
-        train_C = train_C[tR.flatten()>treshold]
+        #train_C = train_C[tR.flatten()>treshold]
         tX = tX[train_C,:]
         tY = tY[train_C,:]
         tW = tW[train_C,:]
@@ -440,7 +440,7 @@ def pr_actor_experience_replay(memSA,memR,memS,memA,memW,num_epochs=1):
                 tW[i]=0.15
             #if (tR[i]>pr and tS[i]>gameAverage):
             #    tW[i]=0.25
-            if (tR[i]>pr + d*0.0 ):
+            if (tR[i]>pr + d*0.2 ):
                 tW[i]=1
             #if (tR[i]>pr+d*0.005 and tR[i]>game_max) :
             #    tW[i] = 1
@@ -606,7 +606,7 @@ for game in range(num_games_to_play):
     if game > num_initial_observation and uses_parameter_noising:
         is_noisy_game = False
         #print("Adding Noise")
-        if (game%2==0 ):
+        if (game%4==0 ):
             is_noisy_game = True
             if True or last_best_noisy_game < memoryR.mean() or game%6==0:
                 print("Adding BIG Noise")
@@ -808,7 +808,7 @@ for game in range(num_games_to_play):
                 print("Experience Replay")
                 #for i in range(3):
 
-                actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
+                pr_actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 3 and game %1 ==0 and uses_critic:
                 for t in range(training_epochs):
                     tSA = (memorySA)
