@@ -30,7 +30,7 @@ import matplotlib
 from random import gauss
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
-from keras.layers import Dense, Dropout,Conv2D,MaxPooling2D,Flatten,Convolution2D
+from keras.layers import Dense, Dropout,Conv2D,MaxPooling2D,Flatten,Convolution2D,Activation
 from keras.layers import Embedding
 from keras.layers import LSTM
 from keras import optimizers
@@ -54,9 +54,9 @@ num_env_variables = 8
 num_env_actions = 6
 
 
-num_initial_observation = 3
-learning_rate =  0.00025
-apLearning_rate = 0.01
+num_initial_observation = 30
+learning_rate =  0.0000025
+apLearning_rate = 0.0001
 
 MUTATION_PROB = 0.4
 
@@ -74,12 +74,12 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 30000
-experience_replay_size = 512
-random_every_n = 2
+max_memory_len = 20000
+experience_replay_size = 250
+random_every_n = 4
 num_retries = 60
 starting_explore_prob = 0.02
-training_epochs = 4
+training_epochs = 10
 mini_batch = 512*2
 load_previous_weights = False
 observe_and_train = True
@@ -95,7 +95,7 @@ HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -5
-max_steps = 70400
+max_steps = 1900
 
 
 
@@ -166,19 +166,17 @@ Qmodel.compile(loss='mse', optimizer=opt, metrics=['accuracy'])
 '''
 #nitialize the Reward predictor model
 Qmodel = Sequential()
-#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-#Qmodel.add(Dense(10024, activation='relu', input_dim=dataX.shape[1]))
-Qmodel.add(Conv2D(32, (3, 3), activation='relu' , padding='same',input_shape=(1,IMG_DIM,IMG_DIM*3)))
-#Qmodel.add(Activation('relu'))
-Qmodel.add(MaxPooling2D(pool_size=(4, 4)))
-Qmodel.add(Conv2D(64, (4, 4), activation='relu' , padding='same'))
-Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
-Qmodel.add(Conv2D(64, (3, 3), activation='relu' , padding='same'))
-Qmodel.add(MaxPooling2D(pool_size=(2, 2)))
+Qmodel.add(Convolution2D(32, 8, 8, subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
+Qmodel.add(Activation('relu'))
+Qmodel.add(Convolution2D(64, 4, 4, subsample=(2, 2)))
+Qmodel.add(Activation('relu'))
+Qmodel.add(Convolution2D(64, 3, 3))
+Qmodel.add(Activation('relu'))
 Qmodel.add(Flatten())
-Qmodel.add(Dense(512,activation='relu'))
-
+Qmodel.add(Dense(1024))
+Qmodel.add(Activation('relu'))
 '''
+
 
 Qmodel = Sequential()
 Qmodel.add(Conv2D(32, (8, 8), activation='relu', subsample=(4, 4), input_shape=(1,IMG_DIM,IMG_DIM*3)))
@@ -489,12 +487,12 @@ for game in range(num_games_to_play):
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
             if game > 1 and game %1 ==0 and uses_critic:
                 for t in range(training_epochs):
-                    print("Experience Replay")
+                    #print("Experience Replay")
                     tSA = np.asarray(memorySA)
                     tA = np.asarray(memoryA)
                     tR = np.asarray(memoryR)
 
-                    if game%2==1:
+                    if t%2==1:
                         stdDev = np.std(tR)
                         treshold = tR.mean() + stdDev*.5
                         train_C = np.arange(np.alen(tR))
@@ -502,7 +500,7 @@ for game in range(num_games_to_play):
                         tSA = tSA[train_C,:]
                         tA = tA[train_C,:]
                         tR = tR[train_C,:]
-                        print("Selected after treshold ", np.alen(tR))
+                        #print("Selected after treshold ", np.alen(tR))
 
                     train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tA) )))
                     num_records = np.alen(train_A)
