@@ -56,7 +56,7 @@ num_env_actions = 4
 
 num_initial_observation = 50
 learning_rate =  0.00025
-apLearning_rate = 0.0001
+apLearning_rate = 0.001
 
 MUTATION_PROB = 0.4
 
@@ -76,10 +76,10 @@ sce_range = 0.2
 b_discount = 0.99
 max_memory_len = 30000
 experience_replay_size = 250
-random_every_n = 4
+random_every_n = 2
 num_retries = 60
 starting_explore_prob = 0.1
-training_epochs = 10
+training_epochs = 4
 mini_batch = 512*2
 load_previous_weights = False
 observe_and_train = True
@@ -484,7 +484,7 @@ for game in range(num_games_to_play):
                 #for i in range(3):
 
                 #actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 1 and game %10 ==0 and uses_critic:
+            if game > 1 and game %5 ==0 and uses_critic:
                 for t in range(training_epochs):
                     #print("Experience Replay")
                     tSA = np.asarray(memorySA)
