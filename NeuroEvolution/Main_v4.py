@@ -9,6 +9,7 @@ https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
 import numpy as np
 import keras
 import gym
+import os
 from random import gauss
 #import roboschool
 
@@ -27,19 +28,19 @@ OBSERVATION_SPACE = 28
 ACTION_SPACE = 8
 '''
 
-ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
-OBSERVATION_SPACE = 8
-ACTION_SPACE = 2
+ENVIRONMENT_NAME = "RocketLander-v0"
+OBSERVATION_SPACE = 10
+ACTION_SPACE = 3
 
-B_DISCOUNT = 0.98
+B_DISCOUNT = 0.99
 
-POPULATION_SIZE = 10
-NETWORK_WIDTH = 512
+POPULATION_SIZE = 60
+NETWORK_WIDTH = 6000
 NETWORK_HIDDEN_LAYERS = 0
-NUM_TEST_EPISODES = 1
-NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.05
-MUTATION_PROB = 0.05
+NUM_TEST_EPISODES = 2
+NUM_SELECTED_FOR_REPRODUCTION = 4
+NOISE_SIGMA = 0.06
+MUTATION_PROB = 0.2
 
 MAX_GENERATIONS = 200000
 
@@ -47,11 +48,13 @@ USE_GAUSSIAN_NOISE = False
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -100
 CLIP_ACTIONS = True
-MAX_STEPS = 650
+MAX_STEPS = 5000
+LOAD_SAVED_TOP_INDIVIDUALS = True
 
 all_individuals = []
 generations_count = 0
 total_population_counter = 0
+versionName = "RocketLander_NE_v1.0_"
 #numLandings = 0
 
 
@@ -59,9 +62,16 @@ total_population_counter = 0
 
 
 '''---------ENVIRONMENT INITIALIZATION--------'''
+gym.envs.register(
+    id="my"+ENVIRONMENT_NAME,
+    entry_point='gym.envs.box2d:'+"RocketLander",
+    max_episode_steps=5500,      # MountainCar-v0 uses 200
 
-env = gym.make(ENVIRONMENT_NAME)
-#env.render(mode="human")
+)
+
+env = gym.make("my"+ENVIRONMENT_NAME)
+#env = gym.make(ENVIRONMENT_NAME)
+env.render(mode="human")
 env.reset()
 
 print("-- Observations",env.observation_space)
@@ -111,7 +121,8 @@ def test_individual(indiv,num_test_episodes):
         cumulativeRewards = 0
         #print("episode "+str(i)+" performing test for indiv ",indiv.printme())
         qs = env.reset()
-        for step in range (5000):
+        for step in range (MAX_STEPS):
+            epAvg = -10000
             a = GetRememberedOptimalPolicy(indiv.network, qs)
             if CLIP_ACTIONS:
                 for i in range (np.alen(a)):
@@ -146,7 +157,7 @@ def test_individual(indiv,num_test_episodes):
                 #    numLandings = numLandings+1
 
                 break
-        #print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
+        print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
 
         avg = sum(allRewards) / len(allRewards)
         indiv.lifeScore = avg
@@ -239,7 +250,11 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
         if i >NUM_SELECTED_FOR_REPRODUCTION :
-            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma,True)
+            if i >=len(individuals)-2:
+                individuals[i].network = create_model(NETWORK_WIDTH,NETWORK_HIDDEN_LAYERS, OBSERVATION_SPACE, ACTION_SPACE)
+
+            else:
+                individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma,True)
 
 
 def populate_next_generation(generationID,top_individuals,population_size, network_width,network_hidden_layers, observation_space, action_space,total_population_counter):
@@ -281,22 +296,59 @@ def populate_next_generation(generationID,top_individuals,population_size, netwo
     return top_individuals,total_population_counter
 
 
+def save_top_individuals(top_individuals):
+    for i in range(len(top_individuals)):
+        top_individuals[i].network.save_weights(""+versionName+""+str(i)+"-weights.h5")
+
+def load_top_individuals(population_size,network_width,network_hidden_layers, observation_space, action_space, environment_name,total_population_counter):
+    initial_population = []
+    for i in range(NUM_SELECTED_FOR_REPRODUCTION):
+        action_predictor_model = create_model(network_width,network_hidden_layers, observation_space, action_space)
+
+        dir_path = os.path.realpath(".")
+        fn = dir_path + "/"+""+versionName+""+str(i)+"-weights.h5"
+        print("filepath ", fn)
+        if  os.path.isfile(fn):
+            print("loading weights")
+            action_predictor_model.load_weights(""+versionName+""+str(i)+"-weights.h5")
+        else:
+            print("File ",""+versionName+""+str(i)+"-weights.h5"," does not exis. Retraining... ")
 
 
+        indiv = Individual(generationID=0, indivID=total_population_counter , network = action_predictor_model)
+        total_population_counter += 1
+        initial_population.append(indiv)
+    return initial_population, total_population_counter
 ''' ------------------'''
 
-all_individuals,total_population_counter = initialize_population(population_size=POPULATION_SIZE,
-    network_width=NETWORK_WIDTH,
-    network_hidden_layers = NETWORK_HIDDEN_LAYERS,
-    observation_space=OBSERVATION_SPACE,
-    action_space=ACTION_SPACE,
-    environment_name=ENVIRONMENT_NAME,
-    total_population_counter=total_population_counter)
+if LOAD_SAVED_TOP_INDIVIDUALS:
+    top_individuals,total_population_counter = load_top_individuals(population_size=POPULATION_SIZE,
+        network_width=NETWORK_WIDTH,
+        network_hidden_layers = NETWORK_HIDDEN_LAYERS,
+        observation_space=OBSERVATION_SPACE,
+        action_space=ACTION_SPACE,
+        environment_name=ENVIRONMENT_NAME,
+        total_population_counter=total_population_counter)
+    all_individuals,total_population_counter = populate_next_generation(generations_count,top_individuals,
+            POPULATION_SIZE,NETWORK_WIDTH, NETWORK_HIDDEN_LAYERS,
+            OBSERVATION_SPACE,
+            ACTION_SPACE,
+            total_population_counter)
+else:
+    all_individuals,total_population_counter = initialize_population(population_size=POPULATION_SIZE,
+        network_width=NETWORK_WIDTH,
+        network_hidden_layers = NETWORK_HIDDEN_LAYERS,
+        observation_space=OBSERVATION_SPACE,
+        action_space=ACTION_SPACE,
+        environment_name=ENVIRONMENT_NAME,
+        total_population_counter=total_population_counter)
+
 
 
 for gens in range (MAX_GENERATIONS):
     test_all_individuals(NUM_TEST_EPISODES)
     top_individuals = select_top_individuals(NUM_SELECTED_FOR_REPRODUCTION,POPULATION_SIZE)
+    save_top_individuals(top_individuals)
     generations_count += 1
     print("Generating next Gen ",generations_count)
     all_individuals,total_population_counter = populate_next_generation(generations_count,top_individuals,
