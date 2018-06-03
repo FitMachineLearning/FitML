@@ -55,9 +55,9 @@ num_env_variables = 8
 num_env_actions = 4
 
 
-num_initial_observation = 3
-learning_rate =  0.00025
-apLearning_rate = 0.01
+num_initial_observation = 2
+learning_rate =  0.0025
+apLearning_rate = 0.001
 
 MUTATION_PROB = 0.4
 
@@ -75,14 +75,14 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.99
-max_memory_len = 30000
+max_memory_len = 10000
 experience_replay_size = 512
 random_every_n = 2
 num_retries = 60
 starting_explore_prob = 0.02
-training_epochs = 4
+training_epochs = 2
 mini_batch = 512*2
-load_previous_weights = False
+load_previous_weights = True
 observe_and_train = True
 save_weights = True
 save_memory_arrays = True
@@ -279,30 +279,21 @@ def appendBufferImages(img1,img2,img3):
 
 
 def DeepQPredictBestAction(qstate):
+    qs_a = qstate
+    predX = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
+    predX[0] = qs_a
+    #print("qs_a",qs_a.shape)
+    #img = predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3)
+    #toimage(img[0][0]).show()
+    #print("trying to predict reward at qs_a", predX[0])
+    inputX = predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3)
     if CHANNEL_LAST:
-        qs_a = qstate
-        #print("qstate.shape",qstate.shape)
-        predX = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
-        predX[0] = qs_a
-        #print("predX[0].shape",predX[0].shape)
-        #print("qs_a",qs_a.shape)
-        #img = predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3)
-        #toimage(img[0][0]).show()
-        #print("trying to predict reward at qs_a", predX[0])
-        pred = Qmodel.predict(predX[0].reshape(1,IMG_DIM,IMG_DIM*3,1))
-        remembered_total_reward = pred[0]
-        return remembered_total_reward
-    else:
-        qs_a = qstate
-        predX = np.zeros(shape=(1,IMG_DIM,IMG_DIM*3))
-        predX[0] = qs_a
-        #print("qs_a",qs_a.shape)
-        #img = predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3)
-        #toimage(img[0][0]).show()
-        #print("trying to predict reward at qs_a", predX[0])
-        pred = Qmodel.predict(predX[0].reshape(1,1,IMG_DIM,IMG_DIM*3))
-        remembered_total_reward = pred[0]
-        return remembered_total_reward
+        inputX = np.transpose(inputX, (0, 2,3,1))
+        #toimage(inputX[0]).show()
+        #print("inputX",inputX.shape)
+    pred = Qmodel.predict(inputX)
+    remembered_total_reward = pred[0]
+    return remembered_total_reward
 
 
 
@@ -528,12 +519,12 @@ for game in range(num_games_to_play):
                     tSA = tSA[train_A,:]
                     tR = tR[train_A,:]
                     #print("Training Critic n elements =", np.alen(tR),"treshold",treshold)
-                    if CHANNEL_LAST:
-                        tSA = tSA.reshape(num_records,IMG_DIM,IMG_DIM*3,1)
-                    else:
-                        tSA = tSA.reshape(num_records,1,IMG_DIM,IMG_DIM*3)
+                    tSA = tSA.reshape(num_records,1,IMG_DIM,IMG_DIM*3)
 
-                    #toimage(tSA[0]).show()
+                    if CHANNEL_LAST:
+                        tSA = np.transpose(tSA, (0, 2,3,1))
+                        #toimage(tSA[0]).show()
+                        #plt.imshow(tSA[0])
                     Qmodel.fit(tSA ,tA, batch_size=mini_batch, nb_epoch=1,verbose=0)
 
 
