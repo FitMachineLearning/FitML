@@ -37,9 +37,9 @@ PLAY_GAME = False #Set to True if you want to agent to play without training
 uses_critic = True
 uses_parameter_noising = True
 
-ENVIRONMENT_NAME = "RocketLander-v0"
-num_env_variables = 10
-num_env_actions = 3
+ENVIRONMENT_NAME = "CartPole-v0"
+num_env_variables = 4
+num_env_actions = 2
 
 
 num_initial_observation = 30
@@ -64,7 +64,6 @@ sce_range = 0.2
 b_discount = 0.995
 max_memory_len = 200000
 experience_replay_size = 2000
-random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
 training_epochs = 10
@@ -74,11 +73,18 @@ observe_and_train = True
 save_weights = True
 save_memory_arrays = True
 load_memory_arrays = False
-do_training = True
+
+
+random_every_n = 3
+train_every_n_game = 2
 num_games_to_play = 200000
+num_games_to_test = 5
+test_game_every = 30
+
+
 random_num_games_to_play = num_games_to_play/3
 USE_GAUSSIAN_NOISE = True
-CLIP_ACTION = True
+CLIP_ACTION = False
 HAS_REWARD_SCALLING = False
 USE_ADAPTIVE_NOISE = True
 HAS_EARLY_TERMINATION_REWARD = False
@@ -143,6 +149,25 @@ opt2 = optimizers.rmsprop(lr=apLearning_rate)
 action_policy_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 
 
+#initialize the action predictor model
+noisy_policy_model = Sequential()
+#model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
+noisy_policy_model.add(Dense(256, activation='relu', input_dim=num_env_variables*2))
+#action_predictor_model.add(Dropout(0.5))
+noisy_policy_model.add(Dense(256, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
+#action_predictor_model.add(Dense(256, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
+#action_predictor_model.add(Dense(64, activation='relu'))
+#action_predictor_model.add(Dropout(0.5))
+noisy_policy_model.add(Dense(apdataY.shape[1]))
+opt2 = optimizers.rmsprop(lr=apLearning_rate)
+#opt2 = optimizers.Adadelta()
+
+noisy_policy_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
+
+
+
 #load previous model weights if they exist
 if load_previous_weights:
     dir_path = os.path.realpath(".")
@@ -168,7 +193,7 @@ if load_previous_weights:
 
 memorySA = np.zeros(shape=(1,num_env_variables+num_env_actions))
 memoryS = np.zeros(shape=(1,num_env_variables))
-memoryS_S1 = np.zeros(shape=(1,num_env_variables*))
+memoryS_S1 = np.zeros(shape=(1,num_env_variables))
 memoryA = np.zeros(shape=(1,1))
 memoryR = np.zeros(shape=(1,1))
 memoryRR = np.zeros(shape=(1,1))
@@ -237,6 +262,9 @@ for game in range(num_games_to_play):
     gameW = np.zeros(shape=(1,1))
     #Get the Q state
     qs = env.reset()
+    qs_s1 = np.concatenate((qs,qs), axis=0)
+    qs_1 = qs
+    qs_2 = qs
     mAP_Counts = 0
     num_add_mem = 0
     #print("qs ", qs)
@@ -251,7 +279,7 @@ for game in range(num_games_to_play):
             a = remembered_optimal_policy
         elif game < num_initial_observation:
             #take a radmon action
-            a = env.action_space.sample()
+            a = keras.utils.to_categorical(env.action_space.sample(),num_env_actions)
         else:
             prob = np.random.rand(1)
             explore_prob = starting_explore_prob-(starting_explore_prob/random_num_games_to_play)*game
@@ -261,7 +289,7 @@ for game in range(num_games_to_play):
             #Chose between prediction and chance
             if prob < explore_prob or game%random_every_n==1:
                 #take a random action
-                a = env.action_space.sample()
+                a =  keras.utils.to_categorical(env.action_space.sample(),num_env_actions)
 
             else:
                 #print("Using Actor")
@@ -269,28 +297,15 @@ for game in range(num_games_to_play):
                     remembered_optimal_policy = GetRememberedOptimalPolicyFromNoisyModel(noisy_model,qs)
                     #mAP_Counts = oldAPCount
                 else:
-                    remembered_optimal_policy = GetRememberedOptimalPolicy(qs)
+                    #remembered_optimal_policy = predictActionFromS_S1(qs_s1)
+                    pqs_1 = qs
+                    pqs_2 = [0,0,0,0]
+                    pqs_s1 = np.concatenate((pqs_1,pqs_2), axis=0)
+                    if testStep%100==0:
+                        print("#",game, " play qs_s1",pqs_s1)
+                    remembered_optimal_policy = predictActionFromS_S1(pqs_s1)
                 a = remembered_optimal_policy
 
-                if uses_critic :
-                    #print("Using critric")
-                    stock = np.zeros(num_retries)
-                    stockAction = np.zeros(shape=(num_retries,num_env_actions))
-                    for i in range(num_retries):
-                        stockAction[i] = env.action_space.sample()
-                        stock[i] = predictTotalRewards(qs,stockAction[i])
-                    best_index = np.argmax(stock)
-                    randaction = stockAction[best_index]
-
-                    #Compare R for SmartCrossEntropy action with remembered_optimal_policy and select the best
-                    #if predictTotalRewards(qs,remembered_optimal_policy) > utility_possible_actions[best_sce_i]:
-                    if predictTotalRewards(qs,remembered_optimal_policy) > predictTotalRewards(qs,randaction):
-                        a = remembered_optimal_policy
-                        mAP_Counts += 1
-                        #print(" | selecting remembered_optimal_policy ",a)
-                    else:
-                        a = randaction
-                        #print(" - selecting generated optimal policy ",a)
 
         if CLIP_ACTION:
             for i in range (np.alen(a)):
@@ -299,14 +314,22 @@ for game in range(num_games_to_play):
 
 
 
-
+        action = np.argmax(a)
 
         env.render()
+        print("a ", a, "qs", qs)
         qs_a = np.concatenate((qs,a), axis=0)
+        print("qs_a", qs_a)
 
+        qs_1 = qs
         #get the target state and reward
-        s,r,done,info = env.step(a)
+        s,r,done,info = env.step(action)
         #record only the first x number of states
+        qs_2 = s
+        qs_s1 = np.concatenate((qs_1,qs_2), axis=0)
+
+        if step%100==0:
+            print("play qs_s1",qs_s1)
 
         if HAS_EARLY_TERMINATION_REWARD:
             if done and step<max_steps-3:
@@ -317,12 +340,14 @@ for game in range(num_games_to_play):
         if step ==0:
             gameSA[0] = qs_a
             gameS[0] = qs
+            gameS_S1[0] = qs_s1
             gameR[0] = np.array([r])
             gameA[0] = np.array([r])
             gameW[0] =  np.array([0.000000005])
         else:
             gameSA= np.vstack((gameSA, qs_a))
             gameS= np.vstack((gameS, qs))
+            gameS_S1 = np.vstack((gameS_S1, qs_s1))
             gameR = np.vstack((gameR, np.array([r])))
             gameA = np.vstack((gameA, np.array([a])))
             gameW = np.vstack((gameW, np.array([0.000000005])))
@@ -333,6 +358,8 @@ for game in range(num_games_to_play):
         if done :
             tempGameSA = np.zeros(shape=(1,num_env_variables+num_env_actions))
             tempGameS = np.zeros(shape=(1,num_env_variables))
+            tempGameS_S1 = np.zeros(shape=(1,num_env_variables))
+
             tempGameA = np.zeros(shape=(1,num_env_actions))
             tempGameR = np.zeros(shape=(1,1))
             tempGameRR = np.zeros(shape=(1,1))
@@ -355,52 +382,34 @@ for game in range(num_games_to_play):
                 memoryR = gameR
                 memoryA = gameA
                 memoryS = gameS
+                memoryS_S1 = gameS_S1
+
                 memoryRR = gameR
                 memoryW = gameW
 
-            tempGameA = tempGameA[1:]
-            tempGameS = tempGameS[1:]
-            tempGameRR = tempGameRR[1:]
-            tempGameR = tempGameR[1:]
-            tempGameSA = tempGameSA[1:]
-            tempGameW =  tempGameW[1:]
-
-
-            for i in range(gameR.shape[0]):
-                tempGameSA = np.vstack((tempGameSA,gameSA[i]))
-                tempGameR = np.vstack((tempGameR,gameR[i]))
-
-                tempGameA = np.vstack((tempGameA,gameA[i]))
-                tempGameS = np.vstack((tempGameS,gameS[i]))
-                tempGameRR = np.vstack((tempGameRR,gameR[i]))
-                tempGameW = np.vstack((tempGameW,gameR.mean()))
-
-
-            #train actor network based on last rollout
-            if game>3:
-                tX = (tempGameS)
-                tY = (tempGameA)
-                tW = (tempGameW)
-                #action_predictor_model.fit(tX,tY,sample_weight=tW.flatten(), batch_size=mini_batch, nb_epoch=training_epochs,verbose=0)
 
 
 
             if memoryR.shape[0] ==1:
-                memoryA = tempGameA
-                memoryS = tempGameS
-                memoryRR = tempGameRR
-                memoryR = tempGameR
-                memorySA = tempGameSA
-                memoryW = tempGameW
+                memoryA = gameA
+                memoryS = gameS
+                memoryS_S1 = gameS_S1
+
+                memoryRR = gameRR
+                memoryR = gameR
+                memorySA = gameSA
+                memoryW = gameW
             else:
                 #Add experience to memory
-                memoryS = np.concatenate((memoryS,tempGameS),axis=0)
-                memoryRR = np.concatenate((memoryRR,tempGameRR),axis=0)
-                memoryA = np.concatenate((memoryA,tempGameA),axis=0)
-                memorySA = np.concatenate((memorySA,tempGameSA),axis=0)
+                memoryS = np.concatenate((memoryS,gameS),axis=0)
+                memoryS_S1 = np.concatenate((memoryS_S1,gameS_S1),axis=0)
 
-                memoryR = np.concatenate((memoryR,tempGameR),axis=0)
-                memoryW = np.concatenate((memoryW,tempGameW),axis=0)
+                #memoryRR = np.concatenate((memoryRR,gameRR),axis=0)
+                memoryA = np.concatenate((memoryA,gameA),axis=0)
+                memorySA = np.concatenate((memorySA,gameSA),axis=0)
+
+                memoryR = np.concatenate((memoryR,gameR),axis=0)
+                memoryW = np.concatenate((memoryW,gameW),axis=0)
 
 
                 if gameR.mean() > max_game_average :
@@ -412,7 +421,8 @@ for game in range(num_games_to_play):
                 memoryR = memoryR[gameR.shape[0]:]
                 memoryA = memoryA[gameR.shape[0]:]
                 memoryS = memoryS[gameR.shape[0]:]
-                memoryRR = memoryRR[gameR.shape[0]:]
+                memoryS_S1 = memoryS_S1[gameR.shape[0]:]
+                #memoryRR = memoryRR[gameR.shape[0]:]
                 memoryW = memoryW[gameR.shape[0]:]
 
 
@@ -425,33 +435,28 @@ for game in range(num_games_to_play):
             #if game >3:
                 #actor_experience_replay(gameSA,gameR,gameS,gameA,gameW,1)
 
-            if game > 3 and game %1 ==0:
-                # train on all memory
-                #print("Experience Replay")
-                #for i in range(3):
 
-                actor_experience_replay(memorySA,memoryR,memoryS,memoryA,memoryW,training_epochs)
-            if game > 3 and game %1 ==0 and uses_critic:
+            if game > 3 and game %train_every_n_game ==0:
+                print("Experience replay ")
                 for t in range(training_epochs):
-                    tSA = (memorySA)
-                    tR = (memoryR)
-                    train_A = np.random.randint(tR.shape[0],size=int(min(experience_replay_size,np.alen(tR) )))
-                    tR = tR[train_A,:]
-                    tSA = tSA    [train_A,:]
+                    #tSA = (memorySA)
+                    tS_S1 = (memoryS_S1)
+                    tA = (memoryA)
+                    #tR = (memoryR)
+                    train_A = np.random.randint(tA.shape[0],size=int(min(experience_replay_size,np.alen(tA) )))
+                    tA = tA[train_A,:]
+                    tS_S1 = tS_S1[train_A,:]
                     #print("Training Critic n elements =", np.alen(tR))
-                    Qmodel.fit(tSA,tR, batch_size=mini_batch, nb_epoch=1,verbose=0)
-            if game > 3 and game %5 ==-1 and uses_parameter_noising:
-                print("Training noisy_actor")
-                train_noisy_actor()
-                #Reinforce training with best game
+                    action_policy_model.fit(tS_S1,tA, batch_size=mini_batch, nb_epoch=1,verbose=0)
+
 
 
         if done and game >= num_initial_observation and not PLAY_GAME:
             if save_weights and game%20 == 0 and game >35:
                 #Save model
                 #print("Saving weights")
-                Qmodel.save_weights(weigths_filename)
-                action_predictor_model.save_weights(apWeights_filename)
+                #Qmodel.save_weights(weigths_filename)
+                action_policy_model.save_weights(apWeights_filename)
 
             if save_memory_arrays and game%20 == 0 and game >35:
                 np.save(version_name+'memorySA.npy',memorySA)
@@ -492,11 +497,37 @@ for game in range(num_games_to_play):
 
                 bar_chart.render_to_file(version_name+'Performance2_bar_chart.svg')
 
+
+        ''' TEST GAMES '''
+
+        if done and game%test_game_every==0:
+            for testGame in range (num_games_to_test):
+                qs = env.reset()
+                qs_s1 = np.concatenate((qs,qs), axis=0)
+                for testStep in range (max_steps):
+                    qs_1 = qs
+                    qs_2 = [0,0,0,0]
+                    qs_s1 = np.concatenate((qs_1,qs_2), axis=0)
+                    if testStep%100==0:
+                        print("#",testGame, " test qs_s1",qs_s1)
+                    action = predictActionFromS_S1(qs_s1)
+                    #get the target state and reward
+                    action = np.argmax(action)
+                    s,r,testDone,info = env.step(action)
+                    qs = s
+                    env.render()
+                    if testDone:
+                        qs = env.reset()
+                        break
+
+
+        if done:
             break
 
 
-plt.plot(mstats)
-plt.show()
+# PLAY_GAME,
+
+
 
 if save_weights:
     #Save model
