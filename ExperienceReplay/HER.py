@@ -43,8 +43,8 @@ num_env_actions = 2
 
 
 num_initial_observation = 30
-learning_rate =  0.00002
-apLearning_rate = 0.00001
+learning_rate =  0.0002
+apLearning_rate = 0.0001
 
 MUTATION_PROB = 0.4
 
@@ -65,8 +65,8 @@ b_discount = 0.995
 max_memory_len = 200000
 experience_replay_size = 2000
 num_retries = 60
-starting_explore_prob = 0.005
-training_epochs = 10
+starting_explore_prob = 0.05
+training_epochs = 5
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -75,9 +75,9 @@ save_memory_arrays = True
 load_memory_arrays = False
 
 
-random_every_n = 3
+random_every_n = 2
 train_every_n_game = 2
-num_games_to_play = 200000
+num_games_to_play = 20000
 num_games_to_test = 5
 test_game_every = 30
 
@@ -226,6 +226,16 @@ mAPPicks = []
 
 #------
 
+def add_noise_simple(mu,big_sigma, largeNoise=False):
+    x =   np.random.rand(1) - 0.5 #probability of doing x
+    if not largeNoise:
+        x = x*big_sigma
+    else:
+        x = x*big_sigma   #Sigma = width of the standard deviaion
+    #print ("x/200",x,"big_sigma",big_sigma)
+    return mu + x
+
+add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 
 # --- Parameter Noising
 
@@ -300,9 +310,10 @@ for game in range(num_games_to_play):
                     #remembered_optimal_policy = predictActionFromS_S1(qs_s1)
                     pqs_1 = qs
                     pqs_2 = [0,0,0,0]
+                    pqs_2 = add_noise_simple(pqs_2,0.2,True)
                     pqs_s1 = np.concatenate((pqs_1,pqs_2), axis=0)
-                    if testStep%100==0:
-                        print("#",game, " play qs_s1",pqs_s1)
+                    #if testStep%100==0:
+                    #    print("#",game, " play qs_s1",pqs_s1)
                     remembered_optimal_policy = predictActionFromS_S1(pqs_s1)
                 a = remembered_optimal_policy
 
@@ -317,9 +328,9 @@ for game in range(num_games_to_play):
         action = np.argmax(a)
 
         env.render()
-        print("a ", a, "qs", qs)
+        #print("a ", a, "qs", qs)
         qs_a = np.concatenate((qs,a), axis=0)
-        print("qs_a", qs_a)
+        #print("qs_a", qs_a)
 
         qs_1 = qs
         #get the target state and reward
@@ -328,8 +339,8 @@ for game in range(num_games_to_play):
         qs_2 = s
         qs_s1 = np.concatenate((qs_1,qs_2), axis=0)
 
-        if step%100==0:
-            print("play qs_s1",qs_s1)
+        #if step%100==0:
+        #    print("play qs_s1",qs_s1)
 
         if HAS_EARLY_TERMINATION_REWARD:
             if done and step<max_steps-3:
@@ -437,8 +448,8 @@ for game in range(num_games_to_play):
 
 
             if game > 3 and game %train_every_n_game ==0:
-                print("Experience replay ")
                 for t in range(training_epochs):
+                    print("Experience replay ")
                     #tSA = (memorySA)
                     tS_S1 = (memoryS_S1)
                     tA = (memoryA)
@@ -504,12 +515,13 @@ for game in range(num_games_to_play):
             for testGame in range (num_games_to_test):
                 qs = env.reset()
                 qs_s1 = np.concatenate((qs,qs), axis=0)
+                print("# ",testGame)
                 for testStep in range (max_steps):
                     qs_1 = qs
                     qs_2 = [0,0,0,0]
                     qs_s1 = np.concatenate((qs_1,qs_2), axis=0)
-                    if testStep%100==0:
-                        print("#",testGame, " test qs_s1",qs_s1)
+                    #if testStep%100==0:
+                    #    print("#",testGame, " test qs_s1",qs_s1)
                     action = predictActionFromS_S1(qs_s1)
                     #get the target state and reward
                     action = np.argmax(action)
