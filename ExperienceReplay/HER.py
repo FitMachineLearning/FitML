@@ -1,9 +1,7 @@
 '''
-LunarLanderContinuous solution with
- - Selective Memory
- - Actor Critic
- - Parameter Noising
- - Q as discriminator
+**** EXPERIMENTAL - THIS DOES NOT WORK YET ****
+
+
 solution by Michel Aka author of FitML github blog and repository
 https://github.com/FitMachineLearning/FitML/
 https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
