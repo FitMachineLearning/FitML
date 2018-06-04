@@ -44,7 +44,7 @@ num_env_variables = 8
 num_env_actions = 2
 
 
-num_initial_observation = 0
+num_initial_observation = 20
 learning_rate =  0.002
 apLearning_rate = 0.001
 
@@ -69,7 +69,7 @@ experience_replay_size = 2500
 random_every_n = 50
 num_retries = 60
 starting_explore_prob = 0.005
-training_epochs = 20
+training_epochs = 4
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -863,7 +863,7 @@ for game in range(num_games_to_play):
 
 
                 bar_chart.render_to_file(version_name+'Performance2_bar_chart.svg')
-
+            print("last observation ", qs)
             break
 
 
