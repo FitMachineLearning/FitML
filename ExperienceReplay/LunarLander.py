@@ -45,8 +45,8 @@ targetPosition = np.array([0.0, 0.0,  0.0,  0.0, 0.0,  0.0,  1.00000000e+00, 0.0
 
 
 num_initial_observation = 30
-learning_rate =  0.002
-apLearning_rate = 0.001
+learning_rate =  0.0002
+apLearning_rate = 0.0001
 
 MUTATION_PROB = 0.4
 
@@ -64,11 +64,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.95
-max_memory_len = 600000
+max_memory_len = 60000
 experience_replay_size = 2500
 num_retries = 60
-starting_explore_prob = 0.65
-training_epochs = 4
+starting_explore_prob = 0.25
+training_epochs = 2
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -136,9 +136,9 @@ def custom_error(y_true, y_pred, Qsa):
 #initialize the action predictor model
 action_policy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_policy_model.add(Dense(256, activation='relu', input_dim=num_env_variables*2))
+action_policy_model.add(Dense(512, activation='relu', input_dim=num_env_variables*2))
 #action_predictor_model.add(Dropout(0.5))
-action_policy_model.add(Dense(256, activation='relu'))
+action_policy_model.add(Dense(512, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 #action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
@@ -154,9 +154,9 @@ action_policy_model.compile(loss='mse', optimizer=opt2, metrics=['accuracy'])
 #initialize the action predictor model
 noisy_policy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-noisy_policy_model.add(Dense(256, activation='relu', input_dim=num_env_variables*2))
+noisy_policy_model.add(Dense(512, activation='relu', input_dim=num_env_variables*2))
 #action_predictor_model.add(Dropout(0.5))
-noisy_policy_model.add(Dense(256, activation='relu'))
+noisy_policy_model.add(Dense(512, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 #action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
