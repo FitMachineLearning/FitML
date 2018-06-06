@@ -45,8 +45,8 @@ targetPosition = np.array([0.0, 0.0,  0.0,  0.0, 0.0,  0.0,  1.00000000e+00, 0.0
 
 
 num_initial_observation = 30
-learning_rate =  0.0002
-apLearning_rate = 0.0001
+learning_rate =  0.00002
+apLearning_rate = 0.00001
 
 MUTATION_PROB = 0.4
 
@@ -64,11 +64,11 @@ apWeights_filename = version_name+"-weights-ap.h5"
 #remembered optimal policy
 sce_range = 0.2
 b_discount = 0.95
-max_memory_len = 60000
-experience_replay_size = 2500
+max_memory_len = 600000
+experience_replay_size = 250
 num_retries = 60
 starting_explore_prob = 0.25
-training_epochs = 2
+training_epochs = 1
 mini_batch = 512*4
 load_previous_weights = False
 observe_and_train = True
@@ -77,7 +77,7 @@ save_memory_arrays = True
 load_memory_arrays = False
 
 
-random_every_n = 2
+random_every_n = 20
 train_every_n_game = 2
 num_games_to_play = 400000
 num_games_to_test = 5
@@ -136,9 +136,9 @@ def custom_error(y_true, y_pred, Qsa):
 #initialize the action predictor model
 action_policy_model = Sequential()
 #model.add(Dense(num_env_variables+num_env_actions, activation='tanh', input_dim=dataX.shape[1]))
-action_policy_model.add(Dense(512, activation='relu', input_dim=num_env_variables*2))
+action_policy_model.add(Dense(25512, activation='relu', input_dim=num_env_variables*2))
 #action_predictor_model.add(Dropout(0.5))
-action_policy_model.add(Dense(512, activation='relu'))
+#action_policy_model.add(Dense(512, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
 #action_predictor_model.add(Dense(256, activation='relu'))
 #action_predictor_model.add(Dropout(0.5))
@@ -314,7 +314,8 @@ for game in range(num_games_to_play):
                     #remembered_optimal_policy = predictActionFromS_S1(qs_s1)
                     pqs_1 = qs+0.0
                     pqs_2 = targetPosition +0.0
-                    pqs_2 = add_noise_simple(pqs_2,1,True)
+                    if not game%8==1:
+                        pqs_2 = add_noise_simple(pqs_2,3,True)
                     pqs_s1 = np.concatenate((pqs_1,pqs_2), axis=0)
                     if step%300==0:
                         print("    play targetPosition ",pqs_2)
