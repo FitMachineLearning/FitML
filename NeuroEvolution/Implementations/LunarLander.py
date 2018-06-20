@@ -1,7 +1,20 @@
+'''
+Neuro Evolution Algorithm by Michel Aka author of FitML github blog and repository
+https://github.com/FitMachineLearning/FitML/
+See the agents in action at
+https://www.youtube.com/channel/UCi7_WxajoowBl4_9P0DhzzA/featured
+'''
+
+
 import numpy as np
 import keras
 import gym
-import roboschool
+import os
+from random import gauss
+#import roboschool
+
+
+from random import randint
 
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Sequential
@@ -14,31 +27,34 @@ ENVIRONMENT_NAME = "RoboschoolAnt-v1"
 OBSERVATION_SPACE = 28
 ACTION_SPACE = 8
 '''
+
 ENVIRONMENT_NAME = "LunarLanderContinuous-v2"
 OBSERVATION_SPACE = 8
 ACTION_SPACE = 2
 
 B_DISCOUNT = 0.99
 
-POPULATION_SIZE = 15
-NETWORK_WIDTH = 512*2
+POPULATION_SIZE = 48
+NETWORK_WIDTH = 2096
 NETWORK_HIDDEN_LAYERS = 0
-NUM_TEST_EPISODES = 3
+NUM_TEST_EPISODES = 2
 NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.3
-MUTATION_PROB = 0.05
+NOISE_SIGMA = 0.05
+MUTATION_PROB = 0.1
 
-MAX_GENERATIONS = 20000
+MAX_GENERATIONS = 200000
 
-USE_GAUSSIAN_NOISE = True
+USE_GAUSSIAN_NOISE = False
 HAS_EARLY_TERMINATION_REWARD = False
-EARLY_TERMINATION_REWARD = -2
+EARLY_TERMINATION_REWARD = -100
 CLIP_ACTIONS = True
-MAX_STEPS = 650
+MAX_STEPS = 2500
+LOAD_SAVED_TOP_INDIVIDUALS = False
 
 all_individuals = []
 generations_count = 0
 total_population_counter = 0
+versionName = "RocketLander_NE_v1.0_"
 #numLandings = 0
 
 
@@ -46,9 +62,18 @@ total_population_counter = 0
 
 
 '''---------ENVIRONMENT INITIALIZATION--------'''
+'''
+gym.envs.register(
+    id="my"+ENVIRONMENT_NAME,
+    entry_point='gym.envs.box2d:'+"RocketLander",
+    max_episode_steps=1500,      # MountainCar-v0 uses 200
 
+)
+'''
+
+#env = gym.make("my"+ENVIRONMENT_NAME)
 env = gym.make(ENVIRONMENT_NAME)
-#env.render(mode="human")
+env.render(mode="human")
 env.reset()
 
 print("-- Observations",env.observation_space)
@@ -95,9 +120,11 @@ def test_individual(indiv,num_test_episodes):
     allRewards = []
     for i in range(num_test_episodes):
         episodeRewards = []
+        cumulativeRewards = 0
         #print("episode "+str(i)+" performing test for indiv ",indiv.printme())
         qs = env.reset()
-        for step in range (5000):
+        for step in range (MAX_STEPS):
+            epAvg = -10000
             a = GetRememberedOptimalPolicy(indiv.network, qs)
             if CLIP_ACTIONS:
                 for i in range (np.alen(a)):
@@ -106,6 +133,8 @@ def test_individual(indiv,num_test_episodes):
             qs,r,done,info = env.step(a)
             if HAS_EARLY_TERMINATION_REWARD and done and step<MAX_STEPS-3:
                 r = EARLY_TERMINATION_REWARD
+
+            cumulativeRewards = cumulativeRewards + r
             episodeRewards.append(r)
 
             #indiv.lifeScore += r
@@ -130,12 +159,13 @@ def test_individual(indiv,num_test_episodes):
                 #    numLandings = numLandings+1
 
                 break
-        #print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
+        print("generationID",indiv.generationID,"IndivID",indiv.indivID,"episodeRewards rewards ",epAvg)
 
         avg = sum(allRewards) / len(allRewards)
         indiv.lifeScore = avg
-    #indiv.lifeScore = np.random.rand(1)[0]*50
-    print("generationID",indiv.generationID,"indivID - ",indiv.indivID,"numLandings ",0,"lifeScore =",indiv.lifeScore)
+    #indiv.lifeScore = cumulativeRewards
+
+    #print("generationID",indiv.generationID,"indivID - ",indiv.indivID,"numLandings ",0,"lifeScore =",indiv.lifeScore)
 
 
 def test_all_individuals(num_test_episodes):
@@ -194,9 +224,14 @@ def add_noise_simple(mu,noiseSigma, largeNoise=False):
         #print ("x/200",x,"big_sigma",big_sigma)
     return mu + x
 
+def add_gaussian_noise(mu,noiseSigma,largeNoise=False):
+    #print ( gauss(mu, noiseSigma) )
+    return gauss(mu, noiseSigma)
 
 add_noise_simple = np.vectorize(add_noise_simple,otypes=[np.float])
 add_noise = np.vectorize(add_noise,otypes=[np.float])
+add_gaussian_noise = np.vectorize(add_gaussian_noise,otypes=[np.float])
+
 
 def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 
@@ -207,7 +242,7 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
         w = targetModel.layers[k].get_weights()
         if np.alen(w) >0 :
             #print("k==>",k)
-            w[0] = add_noise_simple(w[0],noiseSigma,largeNoise)
+            w[0] = add_gaussian_noise(w[0],noiseSigma,largeNoise)
 
         targetModel.layers[k].set_weights(w)
     return targetModel
@@ -216,64 +251,108 @@ def add_noise_to_model(targetModel,noiseSigma=NOISE_SIGMA,largeNoise = True):
 ''' MUTATIONS '''
 def add_mutations(individuals,noiseSigma=NOISE_SIGMA):
     for i in range (len(individuals)):
-        if i >2 and i%5==0:
-            individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma*2,True)
+        if i >NUM_SELECTED_FOR_REPRODUCTION :
+            if i >=len(individuals)-2:
+                individuals[i].network = create_model(NETWORK_WIDTH,NETWORK_HIDDEN_LAYERS, OBSERVATION_SPACE, ACTION_SPACE)
+
+            else:
+                individuals[i].network = add_noise_to_model(individuals[i].network,noiseSigma,True)
 
 
 def populate_next_generation(generationID,top_individuals,population_size, network_width,network_hidden_layers, observation_space, action_space,total_population_counter):
     newPop = top_individuals
+    num_selected = len(top_individuals)
     for i in range( population_size - len(top_individuals)):
         newModel = create_model(network_width, network_hidden_layers, observation_space, action_space)
-        model1 = top_individuals[0].network
-        model2 = top_individuals[1].network
-        sz = len(newModel.layers)
-        #if largeNoise:
-        #    print("Setting Large Noise!")
-        for k in range(sz):
-            w = newModel.layers[k].get_weights()
-            w1 = model1.layers[k].get_weights()
-            w2 = model2.layers[k].get_weights()
+        if i < population_size - len(top_individuals) :
 
-            if np.alen(w) >0 :
-                #print("k==>",k)
-                #w[0][0] = combine_weights(w[0][0],w1[0][0],w2[0][0])
-                for j in range(np.alen(w[0])):
-                    y=w[0][j]
-                    y1 = w1[0][j]
-                    y2 = w2[0][j]
-                    for l in range (np.alen(y)):
-                        z=y[l]
-                        z1=y1[l]
-                        z2=y2[l]
-                        if np.random.rand(1)>0.5:
-                            z=z1+0.0
-                        else:
-                            z=z2+0.0
-                        y[l]=z
-                    w[0][j]=y
+            model1 = top_individuals[0].network
+            model2 = top_individuals[1].network
+            sz = len(newModel.layers)
+            #if largeNoise:
+            #    print("Setting Large Noise!")
+            for k in range(sz):
+                w = newModel.layers[k].get_weights()
+                w1 = model1.layers[k].get_weights()
+                w2 = model2.layers[k].get_weights()
 
-            newModel.layers[k].set_weights(w)
+                if np.alen(w) >0 :
+                    #print("k==>",k)
+                    #w[0][0] = combine_weights(w[0][0],w1[0][0],w2[0][0])
+                    for j in range(np.alen(w[0])):
+                        y=w[0][j]
+                        y1 = w1[0][j]
+                        y2 = w2[0][j]
+                        for l in range (np.alen(y)):
+                            z=y[l]
+                            #chrose randomly from top_individuals
+                            parentID = randint(0, num_selected-1)
+                            parent = top_individuals[parentID]
+                            parentNetwork = parent.network
+                            z1 = parentNetwork.layers[k].get_weights()[0][j][l]
+                            z = z1 + 0.0
+                            y[l]=z
+                        w[0][j]=y
+
+                newModel.layers[k].set_weights(w)
         top_individuals.append( Individual(generationID,total_population_counter,newModel) )
         total_population_counter+=1
     return top_individuals,total_population_counter
 
 
+def save_top_individuals(top_individuals):
+    for i in range(len(top_individuals)):
+        top_individuals[i].network.save_weights(""+versionName+""+str(i)+"-weights.h5")
+
+def load_top_individuals(population_size,network_width,network_hidden_layers, observation_space, action_space, environment_name,total_population_counter):
+    initial_population = []
+    for i in range(NUM_SELECTED_FOR_REPRODUCTION):
+        action_predictor_model = create_model(network_width,network_hidden_layers, observation_space, action_space)
+
+        dir_path = os.path.realpath(".")
+        fn = dir_path + "/"+""+versionName+""+str(i)+"-weights.h5"
+        print("filepath ", fn)
+        if  os.path.isfile(fn):
+            print("loading weights")
+            action_predictor_model.load_weights(""+versionName+""+str(i)+"-weights.h5")
+        else:
+            print("File ",""+versionName+""+str(i)+"-weights.h5"," does not exis. Retraining... ")
 
 
+        indiv = Individual(generationID=0, indivID=total_population_counter , network = action_predictor_model)
+        total_population_counter += 1
+        initial_population.append(indiv)
+    return initial_population, total_population_counter
 ''' ------------------'''
 
-all_individuals,total_population_counter = initialize_population(population_size=POPULATION_SIZE,
-    network_width=NETWORK_WIDTH,
-    network_hidden_layers = NETWORK_HIDDEN_LAYERS,
-    observation_space=OBSERVATION_SPACE,
-    action_space=ACTION_SPACE,
-    environment_name=ENVIRONMENT_NAME,
-    total_population_counter=total_population_counter)
+if LOAD_SAVED_TOP_INDIVIDUALS:
+    top_individuals,total_population_counter = load_top_individuals(population_size=POPULATION_SIZE,
+        network_width=NETWORK_WIDTH,
+        network_hidden_layers = NETWORK_HIDDEN_LAYERS,
+        observation_space=OBSERVATION_SPACE,
+        action_space=ACTION_SPACE,
+        environment_name=ENVIRONMENT_NAME,
+        total_population_counter=total_population_counter)
+    all_individuals,total_population_counter = populate_next_generation(generations_count,top_individuals,
+            POPULATION_SIZE,NETWORK_WIDTH, NETWORK_HIDDEN_LAYERS,
+            OBSERVATION_SPACE,
+            ACTION_SPACE,
+            total_population_counter)
+else:
+    all_individuals,total_population_counter = initialize_population(population_size=POPULATION_SIZE,
+        network_width=NETWORK_WIDTH,
+        network_hidden_layers = NETWORK_HIDDEN_LAYERS,
+        observation_space=OBSERVATION_SPACE,
+        action_space=ACTION_SPACE,
+        environment_name=ENVIRONMENT_NAME,
+        total_population_counter=total_population_counter)
+
 
 
 for gens in range (MAX_GENERATIONS):
     test_all_individuals(NUM_TEST_EPISODES)
     top_individuals = select_top_individuals(NUM_SELECTED_FOR_REPRODUCTION,POPULATION_SIZE)
+    save_top_individuals(top_individuals)
     generations_count += 1
     print("Generating next Gen ",generations_count)
     all_individuals,total_population_counter = populate_next_generation(generations_count,top_individuals,
@@ -281,6 +360,8 @@ for gens in range (MAX_GENERATIONS):
         OBSERVATION_SPACE,
         ACTION_SPACE,
         total_population_counter)
+    #for i in range (len(all_individuals)):
+    #    all_individuals[i].printNetwork()
     #print("@@@@ Adding Noise @@@@")
     add_mutations(all_individuals)
 
