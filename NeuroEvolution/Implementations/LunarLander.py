@@ -34,13 +34,13 @@ ACTION_SPACE = 2
 
 B_DISCOUNT = 0.99
 
-POPULATION_SIZE = 48
-NETWORK_WIDTH = 2096
+POPULATION_SIZE = 60
+NETWORK_WIDTH = 6000
 NETWORK_HIDDEN_LAYERS = 0
 NUM_TEST_EPISODES = 2
-NUM_SELECTED_FOR_REPRODUCTION = 2
-NOISE_SIGMA = 0.05
-MUTATION_PROB = 0.1
+NUM_SELECTED_FOR_REPRODUCTION = 4
+NOISE_SIGMA = 0.06
+MUTATION_PROB = 0.2
 
 MAX_GENERATIONS = 200000
 
@@ -48,13 +48,13 @@ USE_GAUSSIAN_NOISE = False
 HAS_EARLY_TERMINATION_REWARD = False
 EARLY_TERMINATION_REWARD = -100
 CLIP_ACTIONS = True
-MAX_STEPS = 2500
-LOAD_SAVED_TOP_INDIVIDUALS = False
+MAX_STEPS = 5000
+LOAD_SAVED_TOP_INDIVIDUALS = True
 
 all_individuals = []
 generations_count = 0
 total_population_counter = 0
-versionName = "RocketLander_NE_v1.0_"
+versionName = "LL_v1.0_"
 #numLandings = 0
 
 
@@ -62,14 +62,7 @@ versionName = "RocketLander_NE_v1.0_"
 
 
 '''---------ENVIRONMENT INITIALIZATION--------'''
-'''
-gym.envs.register(
-    id="my"+ENVIRONMENT_NAME,
-    entry_point='gym.envs.box2d:'+"RocketLander",
-    max_episode_steps=1500,      # MountainCar-v0 uses 200
 
-)
-'''
 
 #env = gym.make("my"+ENVIRONMENT_NAME)
 env = gym.make(ENVIRONMENT_NAME)
@@ -264,37 +257,35 @@ def populate_next_generation(generationID,top_individuals,population_size, netwo
     num_selected = len(top_individuals)
     for i in range( population_size - len(top_individuals)):
         newModel = create_model(network_width, network_hidden_layers, observation_space, action_space)
-        if i < population_size - len(top_individuals) :
+        model1 = top_individuals[0].network
+        model2 = top_individuals[1].network
+        sz = len(newModel.layers)
+        #if largeNoise:
+        #    print("Setting Large Noise!")
+        for k in range(sz):
+            w = newModel.layers[k].get_weights()
+            w1 = model1.layers[k].get_weights()
+            w2 = model2.layers[k].get_weights()
 
-            model1 = top_individuals[0].network
-            model2 = top_individuals[1].network
-            sz = len(newModel.layers)
-            #if largeNoise:
-            #    print("Setting Large Noise!")
-            for k in range(sz):
-                w = newModel.layers[k].get_weights()
-                w1 = model1.layers[k].get_weights()
-                w2 = model2.layers[k].get_weights()
+            if np.alen(w) >0 :
+                #print("k==>",k)
+                #w[0][0] = combine_weights(w[0][0],w1[0][0],w2[0][0])
+                for j in range(np.alen(w[0])):
+                    y=w[0][j]
+                    y1 = w1[0][j]
+                    y2 = w2[0][j]
+                    for l in range (np.alen(y)):
+                        z=y[l]
+                        #chrose randomly from top_individuals
+                        parentID = randint(0, num_selected-1)
+                        parent = top_individuals[parentID]
+                        parentNetwork = parent.network
+                        z1 = parentNetwork.layers[k].get_weights()[0][j][l]
+                        z = z1 + 0.0
+                        y[l]=z
+                    w[0][j]=y
 
-                if np.alen(w) >0 :
-                    #print("k==>",k)
-                    #w[0][0] = combine_weights(w[0][0],w1[0][0],w2[0][0])
-                    for j in range(np.alen(w[0])):
-                        y=w[0][j]
-                        y1 = w1[0][j]
-                        y2 = w2[0][j]
-                        for l in range (np.alen(y)):
-                            z=y[l]
-                            #chrose randomly from top_individuals
-                            parentID = randint(0, num_selected-1)
-                            parent = top_individuals[parentID]
-                            parentNetwork = parent.network
-                            z1 = parentNetwork.layers[k].get_weights()[0][j][l]
-                            z = z1 + 0.0
-                            y[l]=z
-                        w[0][j]=y
-
-                newModel.layers[k].set_weights(w)
+            newModel.layers[k].set_weights(w)
         top_individuals.append( Individual(generationID,total_population_counter,newModel) )
         total_population_counter+=1
     return top_individuals,total_population_counter
