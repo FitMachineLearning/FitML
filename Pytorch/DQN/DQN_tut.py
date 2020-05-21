@@ -25,15 +25,8 @@ class DQNAgent:
         self.targetModel = targetModel
 
     def get_actions(self, observations):
-        # print("Observation ", observations)
+        q_vals = self.model(torch.Tensor(observations).to(self.model.device))
 
-
-        q_vals = self.model(torch.Tensor(observations))
-        # print("q_vals", q_vals)
-        # q_vals = q_vals.argmax(-1)
-        # print("q_vals argmax", q_vals)
-        # print("q_vals.argmax", q_vals)
-        # retval = q_vals
 
         return q_vals.max(-1)[1]
 
@@ -48,11 +41,16 @@ class Model(nn.Module):
         self.num_action = num_actions
 
         self.net = torch.nn.Sequential(
-            torch.nn.Linear(obs_shape[0],64),
-            torch.nn.ReLU(),
-            torch.nn.Linear(64,num_actions)
+            torch.nn.Linear(obs_shape[0],128),
+            # torch.nn.ReLU(),
+            torch.nn.Linear(128,num_actions)
         )
         self.opt = optim.Adam(self.net.parameters(),lr=lr)
+        if torch.cuda.is_available():
+            print("Using CUDA")
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cuda:1')
+        self.to(self.device)
+
 
     def forward(self, x):
         return self.net(x)
@@ -62,15 +60,24 @@ class Model(nn.Module):
 class ReplayBuffer:
     def __init__(self, buffer_size = 1000):
         self.buffer_size = buffer_size
-        self.buffer = []
+        self.buffer = [None]*buffer_size
+        self.index = 0
 
     def insert(self, sars):
-        self.buffer.append(sars)
-        self.buffer = self.buffer[-self.buffer_size:]
+        # self.buffer.append(sars)
+        # print("inserting index ", self.index, "@",self.index%self.buffer_size)
+        self.buffer[self.index%self.buffer_size] = sars
+        self.index+=1
 
     def sample(self, num_samples):
-        assert num_samples < len(self.buffer)
-        return np.random.choice(self.buffer, num_samples)
+        # assert num_samples < min(len(self.buffer),self.index)
+        # if num_samples>self.index:
+        # print("sampling n ",min(num_samples,self.index))
+        a = self.buffer[0:(self.index%self.buffer_size)]
+        if len(a) > 0:
+            return np.random.choice(a, min(num_samples,self.index))
+        else:
+            return []
 
 
 
@@ -81,11 +88,14 @@ def get_one_hot(action,n_dim):
 
 
 def train_step(model, state_transitions, tgt, num_actions):
-    cur_states = torch.stack( ([torch.Tensor(s.state) for s in state_transitions]) )
-    rewards = torch.stack( ([torch.Tensor([s.reward]) for s in state_transitions]) )
-    Qs = torch.stack( ([torch.Tensor([s.qval]) for s in state_transitions]) )
-    mask = torch.stack(([torch.Tensor([0]) if s.done else torch.Tensor([1]) for s in state_transitions]))
-    next_states = torch.stack( ([torch.Tensor(s.next_state) for s in state_transitions]) )
+    if len(state_transitions) <=0:
+        print("empty state transitions")
+        return
+    cur_states = torch.stack( ([torch.Tensor(s.state) for s in state_transitions]) ).to(model.device)
+    rewards = torch.stack( ([torch.Tensor([s.reward]) for s in state_transitions]) ).to(model.device)
+    Qs = torch.stack( ([torch.Tensor([s.qval]) for s in state_transitions]) ).to(model.device)
+    mask = torch.stack(([torch.Tensor([0]) if s.done else torch.Tensor([1]) for s in state_transitions])).to(model.device)
+    next_states = torch.stack( ([torch.Tensor(s.next_state) for s in state_transitions]) ).to(model.device)
     actions = [s.action for s in state_transitions]
 
     with torch.no_grad():
@@ -95,10 +105,14 @@ def train_step(model, state_transitions, tgt, num_actions):
 
     model.opt.zero_grad()
     pred_qvals = model(cur_states)
-    one_hot_actions = F.one_hot(torch.LongTensor(actions),num_actions)
+    one_hot_actions = F.one_hot(torch.LongTensor(actions),num_actions).to(model.device)
+
 
     # loss = (rewards + mask[:,0]*pred_qvals_next - torch.sum(pred_qvals*one_hot_actions,-1)).mean()
-    loss = F.smooth_l1_loss(torch.sum(pred_qvals*one_hot_actions,-1), (rewards + mask[:,0]*pred_qvals_next) )
+    # print("loss input", torch.sum(pred_qvals*one_hot_actions,-1))
+    # print("loss target", (rewards + 0.98*mask[:,0]*pred_qvals_next))
+    # import ipdb; ipdb.set_trace()
+    loss = F.smooth_l1_loss(torch.sum(pred_qvals*one_hot_actions,-1), (rewards + 0.98*mask[:,0]*pred_qvals_next)[0] )
     loss.backward()
     model.opt.step()
     # print("loss ", loss)
@@ -162,19 +176,22 @@ if __name__=='__main__':
     TARGET_MODEL_UPDATE_INTERVAL = 50
     EPSILON_MIN = 0.01
     EPSILON_START = 0.8
-    EPSLILON_COUNT = 300 #Games
+    EPSLILON_COUNT = 2000 #Games
+    RANDOM_GAME_EVERY = 15
+    TRAIN_EVERY_N_STEPS = 5
 
     epsilon = EPSILON_START
-    # env = gym.make('LunarLander-v2')
-    env = gym.make('CartPole-v1')
+    env = gym.make('LunarLander-v2')
+    # env = gym.make('CartPole-v1')
 
     observation = env.reset()
     # obs2 = np.random.random(4)
     # allObs = np.array([observation,obs2])
-    m = Model(env.observation_space.shape,env.action_space.n,lr=0.001)
-    rb = ReplayBuffer(100000)
-    agent = DQNAgent(m, Model(env.observation_space.shape,env.action_space.n,lr=0.001) )
+    m = Model(env.observation_space.shape,env.action_space.n,lr=0.01)
+    rb = ReplayBuffer(30000)
+    agent = DQNAgent(m, Model(env.observation_space.shape,env.action_space.n,lr=0.01) )
     step_counter = 0
+    avg_reward = 0
     # qeval = m(torch.Tensor(allObs))
     # # print("allObs ", allObs)
     # # print("qeval ",qeval)
@@ -184,13 +201,13 @@ if __name__=='__main__':
         if game == 8:
             print("rb ",rb.buffer)
         if game%TARGET_MODEL_UPDATE_INTERVAL == 0 :
-            print("game", game," updating target model")
+            # print("game", game," updating target model")
             agent.update_target_model()
         for step in range (MAX_EPISODE_STEPS):
             env.render()
             # import ipdb; ipdb.set_trace()
             action = 0
-            if step_counter<1000 or random()<epsilon or game%10==0:
+            if step_counter<1000 or random()<epsilon or game%RANDOM_GAME_EVERY==0:
                 action = env.action_space.sample()
                 # print("random action")
             else:
@@ -199,13 +216,15 @@ if __name__=='__main__':
                 # action = action.data.cpu()
 
             observation_next, reward, done, info = env.step(action)
-            if done:
-                reward=-100
+            # if done:
+                # reward=-100
             _sars = sars(observation,action,reward,observation_next,done,0.0)
             rb.insert(_sars)
             observation = observation_next
-            if len(rb.buffer) > 1000 and step_counter%3==0:
-                train_step(agent.model,rb.sample(2),agent.targetModel,env.action_space.n)
+            avg_reward+=reward
+            if rb.index > 1000 and step_counter%TRAIN_EVERY_N_STEPS==0:
+                # print("rb sample", rb.sample(1))
+                train_step(agent.model,rb.sample(1),agent.targetModel,env.action_space.n)
                 # print("rb  size ", len(rb.buffer))
 
             step_counter+=1
@@ -216,4 +235,6 @@ if __name__=='__main__':
                 update_Qs(rb.buffer,step_counter,step,rb.buffer_size)
                 break
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
-        print("epsilon ", epsilon)
+        print("episide ", game,"score", np.average( avg_reward), "epsilon",epsilon )
+        avg_reward = 0
+        # print("epsilon ", epsilon)
