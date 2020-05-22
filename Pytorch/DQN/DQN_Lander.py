@@ -196,7 +196,8 @@ if __name__=='__main__':
     EPSILON_START = 0.3
     EPSLILON_COUNT = 2000 #Games
     RANDOM_GAME_EVERY = 20
-    TRAIN_EVERY_N_STEPS = 15
+    TRAIN_EVERY_N_STEPS = 8
+    TRAINING_SAMPLE_SIZE = 2
     PRINT_EVERY = 10
 
     epsilon = EPSILON_START
@@ -227,7 +228,7 @@ if __name__=='__main__':
             env.render()
             # import ipdb; ipdb.set_trace()
             action = 0
-            if step_counter<1000 or random()<epsilon or game%RANDOM_GAME_EVERY==0:
+            if step_counter<2000 or random()<epsilon or game%RANDOM_GAME_EVERY==0:
                 action = env.action_space.sample()
                 # print("random action")
             else:
@@ -245,7 +246,7 @@ if __name__=='__main__':
             #     print("Adding -100 ",reward)
             if rb.index > 3000 and step_counter%TRAIN_EVERY_N_STEPS==0:
                 # print("rb sample", rb.sample(1))
-                train_step(agent.model,rb.sample(1,step),agent.targetModel,env.action_space.n)
+                train_step(agent.model,rb.sample(TRAINING_SAMPLE_SIZE,step),agent.targetModel,env.action_space.n)
                 # print("training  size ",rb.index%rb.buffer_size, " - ",rb.index , "")
             observation = observation_next
             step_counter+=1
