@@ -289,7 +289,8 @@ if __name__=='__main__':
                     rb.insert(episode_sars[j])
 
                 if(SAVE_MODEL and game%SAVE_MODEL_EVERY==0 and game>50):
-                    torch.save(agent.model.state_dict(),""+MODEL_ID+MODEL_FILE_NAME)
+                    # torch.save(agent.model.state_dict(),""+MODEL_ID+MODEL_FILE_NAME)
+                    torch.save(agent.model,""+MODEL_ID+MODEL_FILE_NAME)
 
 
                 observation = env.reset()

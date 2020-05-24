@@ -44,7 +44,6 @@ class Model(nn.Module):
             torch.nn.Linear(obs_shape[0],32),
             torch.nn.ReLU(),
             torch.nn.Linear(32,num_actions)
-            # torch.nn.ReLU()
         )
         self.opt = optim.Adam(self.net.parameters(),lr=lr)
         if torch.cuda.is_available():
@@ -228,8 +227,9 @@ if __name__=='__main__':
     agent = DQNAgent(Model(env.observation_space.shape,env.action_space.n,lr=0.001), Model(env.observation_space.shape,env.action_space.n,lr=0.001) )
     if LOAD_MODEL:
         print("Loading Model ", ""+MODEL_ID+MODEL_FILE_NAME)
-        agent.model.load_state_dict(torch.load(""+MODEL_ID+MODEL_FILE_NAME))
-        # agent.model.eval()
+        agent.model = torch.load(""+MODEL_ID+MODEL_FILE_NAME)
+        # agent.model.load_state_dict(torch.load(""+MODEL_ID+MODEL_FILE_NAME))
+        agent.model.eval()
     step_counter = 0
     avg_reward = []
     # qeval = m(torch.Tensor(allObs))
@@ -246,14 +246,14 @@ if __name__=='__main__':
             action = agent.get_actions(observation).item()
 
 
-            observation_next, reward, done, info = env.step(action)
+            observation, reward, done, info = env.step(action)
 
             if done:
 
-                observation = env.reset()
+
                 break
 
-
+        observation = env.reset()
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
         if (game%PRINT_EVERY==0):
             print("episide ", game,"last score",reward ,"episode_len",  "score", np.average( avg_reward) )
