@@ -118,29 +118,29 @@ def train_step(model, state_transitions, tgt, num_actions):
 
     one_hot_actions = F.one_hot(torch.LongTensor(actions),num_actions).to(model.device)
     # loss = torch.mean(torch.sqrt((torch.sum(pred_qvals*one_hot_actions,-1) - actual_Q_values.view(-1) )**2)).to(model.device)
-    loss = F.smooth_l1_loss(torch.sum(pred_qvals*one_hot_actions,-1), actual_Q_values[0] )
+    loss = F.smooth_l1_loss(torch.sum(pred_qvals*one_hot_actions,-1), actual_Q_values.view(-1) )
     loss.backward()
     model.opt.step()
     return loss
 
-def train_step3(model, state_transitions, tgt, num_actions):
-    cur_states = torch.stack( ([torch.Tensor(s.state) for s in state_transitions]) ).to(model.device)
-    rewards = torch.stack( ([torch.Tensor([s.reward]) for s in state_transitions]) ).to(model.device)
-    Qs = torch.stack( ([torch.Tensor([s.qval]) for s in state_transitions]) ).to(model.device)
-    mask = torch.stack(([torch.Tensor([0]) if s.done else torch.Tensor([1]) for s in state_transitions])).to(model.device)
-    next_states = torch.stack( ([torch.Tensor(s.next_state) for s in state_transitions]) ).to(model.device)
-    actions = [s.action for s in state_transitions]
-    with torch.no_grad():
-        qvals_next = tgt(next_states).max(-1)[0]
-    model.opt.zero_grad()
-    qvals = model(cur_states)
-    one_hot_actions = F.one_hot(torch.LongTensor(actions),num_actions).to(model.device)
-    loss = (
-            ( rewards + mask[:,0]*qvals_next - torch.sum(qvals*one_hot_actions,-1) )
-        ).mean()
-    loss.backward()
-    model.opt.step()
-    return loss
+# def train_step3(model, state_transitions, tgt, num_actions):
+#     cur_states = torch.stack( ([torch.Tensor(s.state) for s in state_transitions]) ).to(model.device)
+#     rewards = torch.stack( ([torch.Tensor([s.reward]) for s in state_transitions]) ).to(model.device)
+#     Qs = torch.stack( ([torch.Tensor([s.qval]) for s in state_transitions]) ).to(model.device)
+#     mask = torch.stack(([torch.Tensor([0]) if s.done else torch.Tensor([1]) for s in state_transitions])).to(model.device)
+#     next_states = torch.stack( ([torch.Tensor(s.next_state) for s in state_transitions]) ).to(model.device)
+#     actions = [s.action for s in state_transitions]
+#     with torch.no_grad():
+#         qvals_next = tgt(next_states).max(-1)[0]
+#     model.opt.zero_grad()
+#     qvals = model(cur_states)
+#     one_hot_actions = F.one_hot(torch.LongTensor(actions),num_actions).to(model.device)
+#     loss = (
+#             ( rewards + mask[:,0]*qvals_next - torch.sum(qvals*one_hot_actions,-1) )
+#         ).mean()
+#     loss.backward()
+#     model.opt.step()
+#     return loss
 
 
 
@@ -160,44 +160,44 @@ def update_Qs(replay_buffer,step_counter,episode_len,buffer_size):
                 print("i",i,"q ",replay_buffer[index].qval)
     return replay_buffer
 
-def train_step2(model,state_transitions,targetModel,num_actions):
-    # print("state_transitions" , state_transitions)
-    cur_states = torch.stack(([torch.Tensor(s.state) for s in state_transitions]))
-    next_states = torch.stack(([torch.Tensor(s.next_state) for s in state_transitions]))
-
-    rewards = torch.stack(([torch.Tensor([s.reward]) for s in state_transitions]))
-    # act = torch.Tensor(np.zeros(num_actions))
-    actions = torch.stack([torch.Tensor(get_one_hot(action,num_actions)) for s in state_transitions])
-
-    mask = torch.stack([torch.Tensor([0]) if s.done else torch.Tensor([1]) for s in state_transitions])
-
-    with torch.no_grad():
-        # qevals_next = targetModel(next_states).max(-1)
-        qevals_next = targetModel(next_states)
-        # print("qevals_next",qevals_next)
-        qevals_next = qevals_next.max(axis=1)[0]
-        # print("qevals_next . max",qevals_next)
-
-    model.opt.zero_grad()
-    qevals = model(cur_states)
-
-    # print("rewards ",rewards.shape, rewards)
-    # print("qevals ",qevals.shape,qevals)
-    # # print("maks ",mask.shape,mask)
-    # print("actions ",actions.shape,actions)
-    print("qevals_next",qevals_next)
-    #
-    print("qeval*actions ",  torch.sum(qevals*actions,axis=1) )
-    # print("qeval*actions . mean() ",  torch.sum(qevals*actions,axis=1).mean() )
-
-
-    loss =  ( (rewards + 0.98 * qevals_next*mask[:,0] ) - (torch.sum(qevals*actions,axis=1)) ).mean()
-    # loss =  ( (rewards + 0.98 * qevals_next*mask) - qevals*actions ).mean()
-    loss.backward()
-    model.opt.step()
-
-    print("Loss ", loss)
-    return loss
+# def train_step2(model,state_transitions,targetModel,num_actions):
+#     # print("state_transitions" , state_transitions)
+#     cur_states = torch.stack(([torch.Tensor(s.state) for s in state_transitions]))
+#     next_states = torch.stack(([torch.Tensor(s.next_state) for s in state_transitions]))
+#
+#     rewards = torch.stack(([torch.Tensor([s.reward]) for s in state_transitions]))
+#     # act = torch.Tensor(np.zeros(num_actions))
+#     actions = torch.stack([torch.Tensor(get_one_hot(action,num_actions)) for s in state_transitions])
+#
+#     mask = torch.stack([torch.Tensor([0]) if s.done else torch.Tensor([1]) for s in state_transitions])
+#
+#     with torch.no_grad():
+#         # qevals_next = targetModel(next_states).max(-1)
+#         qevals_next = targetModel(next_states)
+#         # print("qevals_next",qevals_next)
+#         qevals_next = qevals_next.max(axis=1)[0]
+#         # print("qevals_next . max",qevals_next)
+#
+#     model.opt.zero_grad()
+#     qevals = model(cur_states)
+#
+#     # print("rewards ",rewards.shape, rewards)
+#     # print("qevals ",qevals.shape,qevals)
+#     # # print("maks ",mask.shape,mask)
+#     # print("actions ",actions.shape,actions)
+#     print("qevals_next",qevals_next)
+#     #
+#     print("qeval*actions ",  torch.sum(qevals*actions,axis=1) )
+#     # print("qeval*actions . mean() ",  torch.sum(qevals*actions,axis=1).mean() )
+#
+#
+#     loss =  ( (rewards + 0.98 * qevals_next*mask[:,0] ) - (torch.sum(qevals*actions,axis=1)) ).mean()
+#     # loss =  ( (rewards + 0.98 * qevals_next*mask) - qevals*actions ).mean()
+#     loss.backward()
+#     model.opt.step()
+#
+#     print("Loss ", loss)
+#     return loss
 
 
 if __name__=='__main__':
@@ -230,7 +230,7 @@ if __name__=='__main__':
 
 
 
-    rb = ReplayBuffer(4000)
+    rb = ReplayBuffer(30000)
     agent = DQNAgent(Model(env.observation_space.shape,env.action_space.n,lr=0.01), Model(env.observation_space.shape,env.action_space.n,lr=0.01) )
     if LOAD_MODEL:
         agent.model.load_state_dict(torch.load(""+MODEL_ID+MODEL_FILE_NAME))
