@@ -228,12 +228,13 @@ if __name__=='__main__':
     EPSILON_MIN = 0.05
     EPSILON_START = 0.5
     EPSLILON_COUNT = 6000 #Games
+    INITIAL_RANDOM_STEPS = 5000
     RANDOM_GAME_EVERY = 20
-    TRAIN_ACTOR_EVERY_N_GAME = 2
-    TRAIN_CRITIC_EVERY_N_STEP = 200
+    TRAIN_CRITIC_EVERY_N_STEP = 300
     CRITIC_TRAINING_SAMPLE_SIZE = 256
+    TRAIN_ACTOR_EVERY_N_GAME = 1
     ACTOR_TRAINING_SAMPLE_SIZE = 8
-    NUM_ACTOR_TRAINING_SAMPLES = 20
+    NUM_ACTOR_TRAINING_SAMPLES = 40
     TRAINING_ITTERATIONS = 1
     NUM_ACTOR_TRAINING_SAMPLES = 128
     PRINT_EVERY = 2
@@ -284,7 +285,7 @@ if __name__=='__main__':
                 env.render()
             # import ipdb; ipdb.set_trace()
             action = []
-            if step_counter<1000 or random()<epsilon or game%RANDOM_GAME_EVERY==0:
+            if step_counter<INITIAL_RANDOM_STEPS or random()<epsilon or game%RANDOM_GAME_EVERY==0:
                 action = env.action_space.sample()
                 # print("random action")
             else:
@@ -299,7 +300,7 @@ if __name__=='__main__':
             avg_reward.append([reward])
             # if(reward==-100):
             #     print("Adding -100 ",reward)
-            if rb.index > 1000 and step_counter%TRAIN_CRITIC_EVERY_N_STEP==0:
+            if rb.index > INITIAL_RANDOM_STEPS and step_counter%TRAIN_CRITIC_EVERY_N_STEP==0:
                 # import ipdb; ipdb.set_trace()
                 print("Training critic.")
                 for s in range(TRAINING_ITTERATIONS):
@@ -328,7 +329,7 @@ if __name__=='__main__':
                 break
 
         samples = rb.sample(ACTOR_TRAINING_SAMPLE_SIZE,0)
-        if rb.index > 1000 and game%TRAIN_ACTOR_EVERY_N_GAME==0 :
+        if rb.index > INITIAL_RANDOM_STEPS and game%TRAIN_ACTOR_EVERY_N_GAME==0 :
             print("Training actor")
             train_actor(agent.actor_model, agent.critic_model, samples, NUM_ACTOR_TRAINING_SAMPLES, env.action_space.shape[0])
 
