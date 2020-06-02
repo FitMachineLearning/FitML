@@ -243,7 +243,7 @@ if __name__=='__main__':
     SAVE_MODEL = True
     MODEL_FILE_NAME = "TDQN_RL_MODEL.trl"
     MODEL_ID = "01"
-    SAVE_MODEL_EVERY = 25
+    SAVE_MODEL_EVERY = 10
 
     epsilon = EPSILON_START
     env = gym.make('LunarLanderContinuous-v2')
@@ -257,7 +257,7 @@ if __name__=='__main__':
     # import ipdb;ipdb.set_trace()
     rb = ReplayBuffer(30000)
     print("env action space ", env.action_space.shape)
-    am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.0001)
+    am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.001)
     cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
     agent = DQNAgent( am , cm )
     # import ipdb;ipdb.set_trace()

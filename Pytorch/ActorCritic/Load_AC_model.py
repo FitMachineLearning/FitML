@@ -238,7 +238,7 @@ if __name__=='__main__':
     NUM_ACTOR_TRAINING_SAMPLES = 40
     TRAINING_ITTERATIONS = 1
     NUM_ACTOR_TRAINING_SAMPLES = 128
-    PRINT_EVERY = 2
+    PRINT_EVERY = 1
     RENDER_ENV = True
     LOAD_MODEL = True
     SAVE_MODEL = False
