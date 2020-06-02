@@ -39,9 +39,9 @@ class Model(nn.Module):
         self.num_action = num_actions
 
         self.net = torch.nn.Sequential(
-            torch.nn.Linear(obs_shape[0],32),
+            torch.nn.Linear(obs_shape[0],128),
             torch.nn.ReLU(),
-            torch.nn.Linear(32,num_actions)
+            torch.nn.Linear(128,num_actions)
         )
         self.opt = optim.Adam(self.net.parameters(),lr=lr)
         if torch.cuda.is_available():
@@ -170,13 +170,14 @@ if __name__=='__main__':
     # env = gym.make('CartPole-v1')
 
     observation = env.reset()
-    agent = DQNAgent(Model(env.observation_space.shape,env.action_space.n,lr=0.001), Model(env.observation_space.shape,env.action_space.n,lr=0.001) )
+    agent = DQNAgent(Model(env.observation_space.shape,env.action_space.n,lr=0.0001), Model(env.observation_space.shape,env.action_space.n,lr=0.0001) )
     if LOAD_MODEL:
         print("Loading Model ", ""+MODEL_ID+MODEL_FILE_NAME)
         agent.model = torch.load(""+MODEL_ID+MODEL_FILE_NAME)
         agent.model.eval()
     step_counter = 0
     avg_reward = []
+    last_step_count = 0
     # qeval = m(torch.Tensor(allObs))
     # # print("allObs ", allObs)
     # # print("qeval ",qeval)
@@ -201,6 +202,7 @@ if __name__=='__main__':
 
             observation = observation_next
             step_counter+=1
+            last_step_count = step
             if done:
 
                 observation = env.reset()
@@ -209,6 +211,6 @@ if __name__=='__main__':
 
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
         if (game%PRINT_EVERY==0):
-            print("episide ", game,"last score",reward, "game score ", score ,"episode_len", "epsilon",epsilon )
+            print("episide ", game,"last score",reward, "game score ", score ,"episode_len",last_step_count, "epsilon",epsilon )
         avg_reward = []
         # print("epsilon ", epsilon)
