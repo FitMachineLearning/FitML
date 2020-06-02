@@ -1,5 +1,5 @@
 ## DQN Tutorial
-## https://www.youtube.com/watch?v=WHRQUZrxxGw
+## Implementation from https://github.com/FitMachineLearning
 import torch
 import gym
 import torch.nn as nn
