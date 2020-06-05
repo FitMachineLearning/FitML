@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 from random import random
 from agent_and_model import sars,DQNAgent,ActorModel,CriticModel,ReplayBuffer
+import plotly.graph_objects as go
 
 
 def calc_advantage(agent , sars_recorded, action_predicted ):
@@ -167,7 +168,9 @@ def update_Qs(replay_buffer,step_counter,episode_len,buffer_size):
     return replay_buffer
 
 
-
+def plot_score(all_scores):
+    fig = go.Figure(data=go.Bar(y=all_scores.tolist()))
+    fig.write_html('Trend_figure.html')
 
 if __name__=='__main__':
     DEBUGER_ON = True
@@ -184,6 +187,7 @@ if __name__=='__main__':
     CRITIC_TRAINING_SAMPLE_SIZE = 256
     TRAIN_ACTOR_EVERY_N_GAME = 1
     ACTOR_TRAINING_SAMPLE_SIZE = 1
+    ACTOR_TRAINING_ITTERTIONS = 8
     NUM_ACTOR_TRAINING_SAMPLES = 40
     TRAINING_ITTERATIONS = 8
     NUM_ACTOR_TRAINING_SAMPLES = 128
@@ -209,8 +213,8 @@ if __name__=='__main__':
     # import ipdb;ipdb.set_trace()
     rb = ReplayBuffer(100000)
     print("env action space ", env.action_space.shape)
-    am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.000101)
-    cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.001)
+    am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.0101)
+    cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
     agent = DQNAgent( am , cm )
     n_am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.008)
     n_cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
@@ -230,6 +234,7 @@ if __name__=='__main__':
     # # print("allObs ", allObs)
     # # print("qeval ",qeval)
     action = []
+    all_scores = []
     for game in range (NUM_GAMES):
         # if game == 8:
         #     print("rb ",rb.buffer)
@@ -296,15 +301,17 @@ if __name__=='__main__':
 
                 observation = env.reset()
                 break
+        for s in range(ACTOR_TRAINING_ITTERTIONS):
+            samples = rb.sample(ACTOR_TRAINING_SAMPLE_SIZE,0)
+            if rb.index > INITIAL_RANDOM_STEPS and game%TRAIN_ACTOR_EVERY_N_GAME==0 :
+                # print("Training actor")
 
-        samples = rb.sample(ACTOR_TRAINING_SAMPLE_SIZE,0)
-        if rb.index > INITIAL_RANDOM_STEPS and game%TRAIN_ACTOR_EVERY_N_GAME==0 :
-            # print("Training actor")
-
-            # train_actor_with_advantage(agent,  samples)
-            train_actor(agent.actor_model, agent.critic_model, noisy_agent.actor_model, samples, ACTOR_TRAINING_SAMPLE_SIZE, env.action_space.shape[0])
+                # train_actor_with_advantage(agent,  samples)
+                train_actor(agent.actor_model, agent.critic_model, noisy_agent.actor_model, samples, ACTOR_TRAINING_SAMPLE_SIZE, env.action_space.shape[0])
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
+        all_scores.append(score)
         if (game%PRINT_EVERY==0):
+            plot_score(all_scores)
             print("episide ", game,"score",score ,"episode_len", len(episode_sars),"buffer",len(rb.buffer), "score", np.average( avg_reward), "epsilon",epsilon )
         avg_reward = []
         # print("epsilon ", epsilon)
