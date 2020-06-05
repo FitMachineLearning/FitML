@@ -120,7 +120,7 @@ def update_Qs(replay_buffer,step_counter,episode_len,buffer_size):
 
 if __name__=='__main__':
     DEBUGER_ON = True
-    NUM_GAMES = 50000
+    NUM_GAMES = 100
     MAX_EPISODE_STEPS = 1450
     TARGET_MODEL_UPDATE_INTERVAL = 50
     EPSILON_MIN = 0.05
