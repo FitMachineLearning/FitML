@@ -207,10 +207,10 @@ if __name__=='__main__':
 
 
     # import ipdb;ipdb.set_trace()
-    rb = ReplayBuffer(10000)
+    rb = ReplayBuffer(100000)
     print("env action space ", env.action_space.shape)
-    am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.0101)
-    cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
+    am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.000101)
+    cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.001)
     agent = DQNAgent( am , cm )
     n_am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.008)
     n_cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
