@@ -81,6 +81,8 @@ def train_actor(actor_model, critic_model,noisy_actor_model, state_transitions, 
         random_actions.append( np.random.rand(num_actions)*2-1 )
         # import ipdb; ipdb.set_trace()
     #Get random observations
+    for i in range(len(state_transitions)):
+        random_actions.append(state_transitions[i].action)
     random_states = [s.state for s in state_transitions]
 
     # import ipdb; ipdb.set_trace()
@@ -169,7 +171,7 @@ def update_Qs(replay_buffer,step_counter,episode_len,buffer_size):
 
 
 def plot_score(all_scores):
-    fig = go.Figure(data=go.Bar(y=all_scores.tolist()))
+    fig = go.Figure(data=go.Bar(y=all_scores))
     fig.write_html('Trend_figure.html')
 
 if __name__=='__main__':
@@ -183,8 +185,8 @@ if __name__=='__main__':
     INITIAL_RANDOM_STEPS = 1000
     RANDOM_GAME_EVERY = 10
     NOISY_AGENT_GAME_EVERY = 4
-    TRAIN_CRITIC_EVERY_N_STEP = 300
-    CRITIC_TRAINING_SAMPLE_SIZE = 256
+    TRAIN_CRITIC_EVERY_N_STEP = 15
+    CRITIC_TRAINING_SAMPLE_SIZE = 1
     TRAIN_ACTOR_EVERY_N_GAME = 1
     ACTOR_TRAINING_SAMPLE_SIZE = 1
     ACTOR_TRAINING_ITTERTIONS = 8
@@ -304,8 +306,6 @@ if __name__=='__main__':
         for s in range(ACTOR_TRAINING_ITTERTIONS):
             samples = rb.sample(ACTOR_TRAINING_SAMPLE_SIZE,0)
             if rb.index > INITIAL_RANDOM_STEPS and game%TRAIN_ACTOR_EVERY_N_GAME==0 :
-                # print("Training actor")
-
                 # train_actor_with_advantage(agent,  samples)
                 train_actor(agent.actor_model, agent.critic_model, noisy_agent.actor_model, samples, ACTOR_TRAINING_SAMPLE_SIZE, env.action_space.shape[0])
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
