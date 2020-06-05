@@ -213,7 +213,7 @@ if __name__=='__main__':
 
 
     # import ipdb;ipdb.set_trace()
-    rb = ReplayBuffer(100000)
+    rb = ReplayBuffer(8000)
     print("env action space ", env.action_space.shape)
     am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.0101)
     cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
