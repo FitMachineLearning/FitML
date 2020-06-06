@@ -183,7 +183,7 @@ if __name__=='__main__':
     EPSILON_START = 0.15
     EPSLILON_COUNT = 5000 #Games
     INITIAL_RANDOM_STEPS = 1000
-    RANDOM_GAME_EVERY = 50
+    RANDOM_GAME_EVERY = 10
     NOISY_AGENT_GAME_EVERY = 4
     TRAIN_CRITIC_EVERY_N_STEP = 15
     CRITIC_TRAINING_SAMPLE_SIZE = 1
@@ -213,10 +213,10 @@ if __name__=='__main__':
 
 
     # import ipdb;ipdb.set_trace()
-    rb = ReplayBuffer(8000)
+    rb = ReplayBuffer(30000)
     print("env action space ", env.action_space.shape)
     am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.0101)
-    cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
+    cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.001)
     agent = DQNAgent( am , cm )
     n_am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.008)
     n_cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
@@ -312,6 +312,6 @@ if __name__=='__main__':
         all_scores.append(score)
         if (game%PRINT_EVERY==0):
             plot_score(all_scores)
-            print("episide ", game,"score",score ,"episode_len", len(episode_sars),"buffer",len(rb.buffer), "score", np.average( avg_reward), "epsilon",epsilon )
+            print("episide ", game,"score",score ,"episode_len", len(episode_sars),"buffer",min(rb.index,rb.buffer_size), "score", np.average( avg_reward), "epsilon",epsilon )
         avg_reward = []
         # print("epsilon ", epsilon)

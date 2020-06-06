@@ -88,9 +88,10 @@ class CriticModel(nn.Module):
 
 class ReplayBuffer:
     def __init__(self, buffer_size = 1000):
+        # self.buffer_size = buffer_size
         self.buffer_size = buffer_size
-        # self.buffer = [None]*buffer_size
-        self.buffer = []
+        self.buffer = [None]*buffer_size
+        # self.buffer = []
         self.index = 0
 
     def insert(self, sars):
@@ -105,19 +106,19 @@ class ReplayBuffer:
         #     print("last 10 ",self.buffer[-10:])
         #     print("")
         #     import ipdb; ipdb.set_trace()
-        # self.buffer[self.index%self.buffer_size] = sars
+        self.buffer[self.index%self.buffer_size] = sars
         self.index+=1
-        self.buffer.append(sars)
-        if(len(self.buffer)>self.buffer_size):
-            self.buffer = self.buffer[1:]
-            # print("Clipping Buffer at size", len(self.buffer))
+        # self.buffer.append(sars)
+        # if(len(self.buffer)>self.buffer_size):
+        #     self.buffer = self.buffer[1:]
+        #     # print("Clipping Buffer at size", len(self.buffer))
 
     def sample(self, num_samples,current_episode_steps):
         # assert num_samples < min(len(self.buffer),self.index)
         # if num_samples>self.index:
         # print("sampling n ",min(num_samples,self.index))
-        # a = self.buffer[0:((self.index-current_episode_steps)%self.buffer_size)]
+        a = self.buffer[0:min(self.index,self.buffer_size)]
         if len(self.buffer) > 0:
-            return np.random.choice(self.buffer, min(num_samples,self.index))
+            return np.random.choice(a, min(num_samples,self.index))
         else:
             return []
