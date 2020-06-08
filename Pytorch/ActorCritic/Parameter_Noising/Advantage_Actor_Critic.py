@@ -174,6 +174,8 @@ def plot_score(all_scores):
     fig = go.Figure(data=go.Bar(y=all_scores))
     fig.write_html('Trend_figure.html')
 
+
+
 if __name__=='__main__':
     DEBUGER_ON = True
     NUM_GAMES = 80000
@@ -185,13 +187,17 @@ if __name__=='__main__':
     INITIAL_RANDOM_STEPS = 5000
     RANDOM_GAME_EVERY = 10
     NOISY_AGENT_GAME_EVERY = 3
+
     CRITIC_TRAINING_ITTERATIONS = 8
     TRAIN_CRITIC_EVERY_N_STEP = 15
     CRITIC_TRAINING_SAMPLE_SIZE = 1
+
+
     TRAIN_ACTOR_EVERY_N_STEP = 50
     TRAIN_ACTOR_EVERY_N_GAME = 1
     ACTOR_TRAINING_SAMPLE_SIZE = 1
     ACTOR_TRAINING_ITTERTIONS = 8
+
     LAST_EPISODE_TRAINING_SAMPLE_SIZE = 8
     # NUM_ACTOR_TRAINING_SAMPLES = 40
     # NUM_ACTOR_TRAINING_SAMPLES = 128
@@ -318,6 +324,17 @@ if __name__=='__main__':
             if rb.index > INITIAL_RANDOM_STEPS and game%TRAIN_ACTOR_EVERY_N_GAME==0 :
                 # train_actor_with_advantage(agent,  samples)
                 train_actor(agent.actor_model, agent.critic_model, noisy_agent.actor_model, samples, ACTOR_TRAINING_SAMPLE_SIZE, env.action_space.shape[0])
+
+
+        if rb.index > INITIAL_RANDOM_STEPS and step_counter%TRAIN_CRITIC_EVERY_N_STEP==0:
+            # import ipdb; ipdb.set_trace()
+            # print("Training critic.")
+            for s in range(CRITIC_TRAINING_ITTERATIONS):
+                samples = rb.sample(CRITIC_TRAINING_SAMPLE_SIZE,step)
+                train_critic(agent.critic_model, samples, env.action_space.shape[0])
+
+
+
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
         all_scores.append(score)
         if (game%PRINT_EVERY==0):
