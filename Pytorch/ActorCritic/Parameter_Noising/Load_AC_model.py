@@ -121,7 +121,7 @@ def update_Qs(replay_buffer,step_counter,episode_len,buffer_size):
 if __name__=='__main__':
     DEBUGER_ON = True
     NUM_GAMES = 100
-    MAX_EPISODE_STEPS = 1450
+    MAX_EPISODE_STEPS = 10000
     TARGET_MODEL_UPDATE_INTERVAL = 50
     EPSILON_MIN = 0.05
     EPSILON_START = 0.5
@@ -176,8 +176,9 @@ if __name__=='__main__':
             if random()<-0.1:
                 action = env.action_space.sample()
             else:
+                # import ipdb; ipdb.set_trace()
                 action = agent.get_actions(observation).cpu().detach().numpy()
-
+                # print("action ", action)
             observation_next, reward, done, info = env.step(action)
             score += reward
 

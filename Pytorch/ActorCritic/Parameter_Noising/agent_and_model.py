@@ -47,11 +47,11 @@ class ActorModel(nn.Module):
 
         # import ipdb; ipdb.set_trace()
         self.net = torch.nn.Sequential(
-            torch.nn.Linear(obs_shape[0],2048),
+            torch.nn.Linear(obs_shape[0],512),
             torch.nn.ReLU(),
-            # torch.nn.Linear(1024,256),
-            # torch.nn.ReLU(),
-            torch.nn.Linear(2048,action_shape[0])
+            torch.nn.Linear(512,512),
+            torch.nn.ReLU(),
+            torch.nn.Linear(512,action_shape[0])
         )
         self.opt = optim.Adam(self.net.parameters(),lr=lr)
         if torch.cuda.is_available():
@@ -71,11 +71,11 @@ class CriticModel(nn.Module):
         self.action_shape = action_shape
 
         self.net = torch.nn.Sequential(
-            torch.nn.Linear(obs_shape[0]+action_shape[0],4096),
+            torch.nn.Linear(obs_shape[0]+action_shape[0],512),
             torch.nn.ReLU(),
-            # torch.nn.Linear(2048,512),
-            # torch.nn.ReLU(),
-            torch.nn.Linear(4096,1) # one out put because we are predicting Q values
+            torch.nn.Linear(512,512),
+            torch.nn.ReLU(),
+            torch.nn.Linear(512,1) # one out put because we are predicting Q values
         )
         self.opt = optim.Adam(self.net.parameters(),lr=lr)
         if torch.cuda.is_available():
@@ -90,7 +90,8 @@ class ReplayBuffer:
     def __init__(self, buffer_size = 1000):
         # self.buffer_size = buffer_size
         self.buffer_size = buffer_size
-        self.buffer = [None]*buffer_size
+        self.buffer = np.empty((buffer_size),dtype=object)
+
         # self.buffer = []
         self.index = 0
 

@@ -177,21 +177,23 @@ def plot_score(all_scores):
 if __name__=='__main__':
     DEBUGER_ON = True
     NUM_GAMES = 80000
-    MAX_EPISODE_STEPS = 1400
+    MAX_EPISODE_STEPS = 400
     TARGET_MODEL_UPDATE_INTERVAL = 50
     EPSILON_MIN = 0.05
-    EPSILON_START = 0.15
-    EPSLILON_COUNT = 5000 #Games
-    INITIAL_RANDOM_STEPS = 1000
+    EPSILON_START = 0.25
+    EPSLILON_COUNT = 1000 #Games
+    INITIAL_RANDOM_STEPS = 5000
     RANDOM_GAME_EVERY = 10
-    NOISY_AGENT_GAME_EVERY = 4
+    NOISY_AGENT_GAME_EVERY = 3
+    CRITIC_TRAINING_ITTERATIONS = 8
     TRAIN_CRITIC_EVERY_N_STEP = 15
     CRITIC_TRAINING_SAMPLE_SIZE = 1
+    TRAIN_ACTOR_EVERY_N_STEP = 50
     TRAIN_ACTOR_EVERY_N_GAME = 1
     ACTOR_TRAINING_SAMPLE_SIZE = 1
     ACTOR_TRAINING_ITTERTIONS = 8
+    LAST_EPISODE_TRAINING_SAMPLE_SIZE = 8
     # NUM_ACTOR_TRAINING_SAMPLES = 40
-    TRAINING_ITTERATIONS = 8
     # NUM_ACTOR_TRAINING_SAMPLES = 128
     PRINT_EVERY = 1
     RENDER_ENV = False
@@ -213,10 +215,10 @@ if __name__=='__main__':
 
 
     # import ipdb;ipdb.set_trace()
-    rb = ReplayBuffer(30000)
+    rb = ReplayBuffer(400000)
     print("env action space ", env.action_space.shape)
-    am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.0101)
-    cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.001)
+    am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.000101)
+    cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.0001)
     agent = DQNAgent( am , cm )
     n_am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.008)
     n_cm = CriticModel(env.observation_space.shape,env.action_space.shape,lr=0.01)
@@ -249,7 +251,7 @@ if __name__=='__main__':
             #add nois to the copy of the policy model
             with torch.no_grad():
                 for param in noisy_agent.actor_model.parameters():
-                    param.add_(torch.randn(param.size()).to(noisy_agent.actor_model.device) * 0.1)
+                    param.add_(torch.randn(param.size()).to(noisy_agent.actor_model.device) * 0.02)
         for step in range (MAX_EPISODE_STEPS):
             if RENDER_ENV:
                 env.render()
@@ -258,7 +260,7 @@ if __name__=='__main__':
             if step_counter<INITIAL_RANDOM_STEPS or random()<epsilon or game%RANDOM_GAME_EVERY==0:
                 action = env.action_space.sample()
                 # print("random action")
-            elif game%NOISY_AGENT_GAME_EVERY ==0:
+            elif step_counter>=INITIAL_RANDOM_STEPS and  game%NOISY_AGENT_GAME_EVERY ==0:
                 if step%100==0:
                     print("noisy agent acting")
                 action = noisy_agent.get_actions(observation).cpu().detach().numpy()
@@ -279,9 +281,16 @@ if __name__=='__main__':
             if rb.index > INITIAL_RANDOM_STEPS and step_counter%TRAIN_CRITIC_EVERY_N_STEP==0:
                 # import ipdb; ipdb.set_trace()
                 # print("Training critic.")
-                for s in range(TRAINING_ITTERATIONS):
+                for s in range(CRITIC_TRAINING_ITTERATIONS):
                     samples = rb.sample(CRITIC_TRAINING_SAMPLE_SIZE,step)
                     train_critic(agent.critic_model, samples, env.action_space.shape[0])
+
+            if rb.index > INITIAL_RANDOM_STEPS and step_counter%TRAIN_ACTOR_EVERY_N_STEP==0:
+                for s in range(ACTOR_TRAINING_ITTERTIONS):
+                    samples = rb.sample(ACTOR_TRAINING_SAMPLE_SIZE,0)
+                    if rb.index > INITIAL_RANDOM_STEPS and game%TRAIN_ACTOR_EVERY_N_GAME==0 :
+                        # train_actor_with_advantage(agent,  samples)
+                        train_actor(agent.actor_model, agent.critic_model, noisy_agent.actor_model, samples, ACTOR_TRAINING_SAMPLE_SIZE, env.action_space.shape[0])
 
                     # print("training  size ",rb.index%rb.buffer_size, " - sample ",dick)
             observation = observation_next
@@ -301,8 +310,9 @@ if __name__=='__main__':
                     torch.save(agent.critic_model,"A2C_critic"+MODEL_ID+MODEL_FILE_NAME)
 
 
-                observation = env.reset()
                 break
+        observation = env.reset()
+
         for s in range(ACTOR_TRAINING_ITTERTIONS):
             samples = rb.sample(ACTOR_TRAINING_SAMPLE_SIZE,0)
             if rb.index > INITIAL_RANDOM_STEPS and game%TRAIN_ACTOR_EVERY_N_GAME==0 :
