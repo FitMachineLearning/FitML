@@ -10,114 +10,10 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Any
 from random import random
-
-@dataclass
-class sars:
-    state: Any
-    action: Any
-    reward: float
-    next_state: Any
-    done: bool
-    qval: float
-
-class DQNAgent:
-    def __init__(self,actor_model,critic_model):
-        self.actor_model = actor_model
-        self.critic_model = critic_model
-
-    def get_actions(self, observations):
-        # import ipdb; ipdb.set_trace()
-        guessed_actions = self.actor_model(torch.Tensor(observations).to(self.actor_model.device))
-        return guessed_actions
-
-    def get_predicted_Q_values(self,observation_and_action):
-        guessed_Qs = self.crtic_model(torch.Tensor(observation_and_actioner))
-        return guessed_Qs(-1)[1]
-
-    def update_target_model(self):
-        self.targetModel.load_state_dict(self.model.state_dict())
+from agent_and_model import sars,DQNAgent,CriticModel,ActorModel, ReplayBuffer
 
 
-class ActorModel(nn.Module):
-    def __init__(self, obs_shape, action_shape,lr):
-        super(ActorModel,self).__init__()
-        assert len(obs_shape) ==1, "This network only works on flat observations"
-        self.obs_shape = obs_shape
-        self.action_shape = action_shape
 
-        # import ipdb; ipdb.set_trace()
-        self.net = torch.nn.Sequential(
-            torch.nn.Linear(obs_shape[0],256),
-            torch.nn.ReLU(),
-            torch.nn.Linear(256,action_shape[0])
-        )
-        self.opt = optim.Adam(self.net.parameters(),lr=lr)
-        if torch.cuda.is_available():
-            print("Using CUDA")
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cuda:1')
-        self.to(self.device)
-
-    def forward(self, x):
-        return self.net(x)
-
-
-class CriticModel(nn.Module):
-    def __init__(self, obs_shape, action_shape,lr):
-        super(CriticModel,self).__init__()
-        assert len(obs_shape) ==1, "This network only works on flat observations"
-        self.obs_shape = obs_shape
-        self.action_shape = action_shape
-
-        self.net = torch.nn.Sequential(
-            torch.nn.Linear(obs_shape[0]+action_shape[0],512),
-            torch.nn.ReLU(),
-            torch.nn.Linear(512,1) # one out put because we are predicting Q values
-        )
-        self.opt = optim.Adam(self.net.parameters(),lr=lr)
-        if torch.cuda.is_available():
-            print("Using CUDA")
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cuda:1')
-        self.to(self.device)
-
-    def forward(self, x):
-        return self.net(x)
-
-
-class ReplayBuffer:
-    def __init__(self, buffer_size = 1000):
-        self.buffer_size = buffer_size
-        # self.buffer = [None]*buffer_size
-        self.buffer = []
-        self.index = 0
-
-    def insert(self, sars):
-        # self.buffer.append(sars)
-        # print("inserting index ", self.index, "@",self.index%self.buffer_size)
-        if(self.index == 10):
-            print("first 10 ",self.buffer[0:10])
-            # import ipdb; ipdb.set_trace()
-
-        # if(self.index > self.buffer_size and self.index%self.buffer_size==0):
-        #     print("first 10 ",self.buffer[0:10])
-        #     print("last 10 ",self.buffer[-10:])
-        #     print("")
-        #     import ipdb; ipdb.set_trace()
-        # self.buffer[self.index%self.buffer_size] = sars
-        self.index+=1
-        self.buffer.append(sars)
-        if(len(self.buffer)>self.buffer_size):
-            self.buffer = self.buffer[1:]
-            # print("Clipping Buffer at size", len(self.buffer))
-
-    def sample(self, num_samples,current_episode_steps):
-        # assert num_samples < min(len(self.buffer),self.index)
-        # if num_samples>self.index:
-        # print("sampling n ",min(num_samples,self.index))
-        # a = self.buffer[0:((self.index-current_episode_steps)%self.buffer_size)]
-        if len(self.buffer) > 0:
-            return np.random.choice(self.buffer, min(num_samples,self.index))
-        else:
-            return []
 
 
 
@@ -224,8 +120,8 @@ def update_Qs(replay_buffer,step_counter,episode_len,buffer_size):
 
 if __name__=='__main__':
     DEBUGER_ON = True
-    NUM_GAMES = 50000
-    MAX_EPISODE_STEPS = 1400
+    NUM_GAMES = 100
+    MAX_EPISODE_STEPS = 10000
     TARGET_MODEL_UPDATE_INTERVAL = 50
     EPSILON_MIN = 0.05
     EPSILON_START = 0.5
@@ -249,6 +145,8 @@ if __name__=='__main__':
 
     epsilon = EPSILON_START
     env = gym.make('LunarLanderContinuous-v2')
+    # env = gym.make('BipedalWalker-v3')
+
     observation = env.reset()
     print("env action space ", env.action_space.shape)
     am = ActorModel(env.observation_space.shape,env.action_space.shape,lr=0.008)
@@ -257,8 +155,8 @@ if __name__=='__main__':
     # import ipdb;ipdb.set_trace()
 
     if LOAD_MODEL:
-        agent.actor_model = torch.load("actor"+MODEL_ID+MODEL_FILE_NAME)
-        agent.critic_model = torch.load("critic"+MODEL_ID+MODEL_FILE_NAME)
+        agent.actor_model = torch.load("A2C_actor"+MODEL_ID+MODEL_FILE_NAME)
+        agent.critic_model = torch.load("A2C_critic"+MODEL_ID+MODEL_FILE_NAME)
 
         agent.actor_model.eval()
         agent.critic_model.eval()
@@ -275,8 +173,12 @@ if __name__=='__main__':
             if RENDER_ENV:
                 env.render()
 
-            action = agent.get_actions(observation).cpu().detach().numpy()
-
+            if random()<-0.1:
+                action = env.action_space.sample()
+            else:
+                # import ipdb; ipdb.set_trace()
+                action = agent.get_actions(observation).cpu().detach().numpy()
+                # print("action ", action)
             observation_next, reward, done, info = env.step(action)
             score += reward
 
