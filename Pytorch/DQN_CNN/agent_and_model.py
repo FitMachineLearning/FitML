@@ -1,0 +1,122 @@
+## DQN Tutorial
+## Implementation from https://github.com/FitMachineLearning
+import torch
+import gym
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import numpy as np
+from dataclasses import dataclass
+from typing import Any
+from random import random
+from PIL import Image
+
+
+@dataclass
+class sars:
+    state: Any
+    action: int
+    reward: float
+    next_state: Any
+    done: bool
+    qval: float
+
+class DQNAgent:
+    def __init__(self,model,targetModel):
+        self.model = model
+        self.targetModel = targetModel
+
+    def get_actions(self, observations):
+        q_vals = self.model(torch.Tensor(observations).to(self.model.device))
+        return q_vals.max(-1)[1]
+
+    def update_target_model(self):
+        self.targetModel.load_state_dict(self.model.state_dict())
+
+    def process_frame(self,frame):
+        img = Image.fromarray(frame, 'RGB')
+        width, height = img.size
+        frame =  img.crop((5,35,width-15,height-15))
+        return frame
+
+class Model(nn.Module):
+    def __init__(self, obs_shape, num_actions,lr):
+        super(Model,self).__init__()
+        # assert len(obs_shape) ==1, "This network only works on flat observations"
+        self.obs_shape = obs_shape
+        self.num_action = num_actions
+        # import ipdb; ipdb.set_trace()
+
+        self.conv_net = torch.nn.Sequential(
+            nn.BatchNorm2d(3),
+            nn.Conv2d(3, 32, 8, 4),
+            nn.ReLU(),
+            # nn.MaxPool2d(4),
+            nn.Conv2d(32, 64, 4, 2),
+            nn.ReLU(),
+            # nn.MaxPool2d(4),
+            nn.Conv2d(64, 64, 3,1),
+            nn.ReLU()
+
+        )
+        self.linear_layer = torch.nn.Sequential(
+            torch.nn.Linear(50176,128),
+            torch.nn.ReLU(),
+            torch.nn.Linear(128,256),
+            torch.nn.ReLU(),
+            torch.nn.Linear(256,num_actions)
+        )
+        self.opt = optim.Adam(self.conv_net.parameters(),lr=lr)
+        self.opt2 = optim.Adam(self.linear_layer.parameters(),lr=lr)
+
+        if torch.cuda.is_available():
+            print("Using CUDA")
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cuda:1')
+        self.to(self.device)
+
+
+    def forward(self, x):
+        x = self.conv_net(x)
+        x = x.view(x.size(0),-1)
+        x = self.linear_layer(x)
+        return x
+
+
+
+class ReplayBuffer:
+    def __init__(self, buffer_size = 1000):
+        # self.buffer_size = buffer_size
+        self.buffer_size = buffer_size
+        self.buffer = np.empty((buffer_size),dtype=object)
+
+        # self.buffer = []
+        self.index = 0
+
+    def insert(self, sars):
+        # self.buffer.append(sars)
+        # print("inserting index ", self.index, "@",self.index%self.buffer_size)
+        if(self.index == 10):
+            print("first 10 ",self.buffer[0:10])
+            # import ipdb; ipdb.set_trace()
+
+        # if(self.index > self.buffer_size and self.index%self.buffer_size==0):
+        #     print("first 10 ",self.buffer[0:10])
+        #     print("last 10 ",self.buffer[-10:])
+        #     print("")
+        #     import ipdb; ipdb.set_trace()
+        self.buffer[self.index%self.buffer_size] = sars
+        self.index+=1
+        # self.buffer.append(sars)
+        # if(len(self.buffer)>self.buffer_size):
+        #     self.buffer = self.buffer[1:]
+        #     # print("Clipping Buffer at size", len(self.buffer))
+
+    def sample(self, num_samples,current_episode_steps):
+        # assert num_samples < min(len(self.buffer),self.index)
+        # if num_samples>self.index:
+        # print("sampling n ",min(num_samples,self.index))
+        a = self.buffer[0:min(self.index,self.buffer_size)]
+        if len(self.buffer) > 0:
+            return np.random.choice(a, min(num_samples,self.index))
+        else:
+            return []
