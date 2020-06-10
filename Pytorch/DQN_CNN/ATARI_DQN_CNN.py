@@ -55,12 +55,12 @@ def update_Qs(replay_buffer,step_counter,episode_len,buffer_size):
         next_index = index+1
         if i==0:
             replay_buffer[index].qval = replay_buffer[index].reward
-            if(step_counter%2000==0):
-                print("i",i,"q ",replay_buffer[index].qval)
+            # if(step_counter%2000==0):
+            #     # print("i",i,"q ",replay_buffer[index].qval)
         else:
             replay_buffer[index].qval = replay_buffer[index].reward + 0.98 * replay_buffer[next_index].qval
-            if(step_counter%2000==0):
-                print("i",i,"q ",replay_buffer[index].qval)
+            # if(step_counter%2000==0):
+            #     # print("i",i,"q ",replay_buffer[index].qval)
     return replay_buffer
 
 def plot_score(all_scores):
@@ -72,15 +72,15 @@ if __name__=='__main__':
     NUM_GAMES = 50000
     INITIAL_RANDOM_STEPS = 20000
     MAX_EPISODE_STEPS = 4000
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.0001
     TARGET_MODEL_UPDATE_INTERVAL = 50
     GAMMA_DISCOUNT_FACTOR = 0.98
-    EPSILON_MIN = 0.05
-    EPSILON_START = 0.2
+    EPSILON_MIN = 0.15
+    EPSILON_START = 0.6
     EPSLILON_COUNT = 500 #Games
     RANDOM_GAME_EVERY = 5
     TRAIN_EVERY_N_STEPS = 15
-    TRAINING_SAMPLE_SIZE = 1
+    TRAINING_SAMPLE_SIZE = 128
     TRAINING_ITTERATIONS = 1
     PRINT_EVERY = 1
     RENDER_ENV = False
@@ -104,7 +104,7 @@ if __name__=='__main__':
 
 
 
-    rb = ReplayBuffer(15000)
+    rb = ReplayBuffer(10000)
     agent = DQNAgent(Model(env.observation_space.shape,env.action_space.n,lr=LEARNING_RATE), Model(env.observation_space.shape,env.action_space.n,lr=LEARNING_RATE) )
     noisy_agent = DQNAgent(Model(env.observation_space.shape,env.action_space.n,lr=LEARNING_RATE), Model(env.observation_space.shape,env.action_space.n,lr=LEARNING_RATE) )
 
