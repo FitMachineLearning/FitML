@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
+from agent_and_model import Policy
 
 
 parser = argparse.ArgumentParser(description='PyTorch REINFORCE example')
@@ -31,32 +32,14 @@ env.seed(args.seed)
 torch.manual_seed(args.seed)
 
 
-class Policy(nn.Module):
-    def __init__(self):
-        super(Policy, self).__init__()
-        self.affine1 = nn.Linear(8, 128)
-        self.dropout = nn.Dropout(p=0.6)
-        self.affine2 = nn.Linear(128, 4)
-
-        self.saved_log_probs = []
-        self.rewards = []
-
-    def forward(self, x):
-        x = self.affine1(x)
-        x = self.dropout(x)
-        x = F.relu(x)
-        action_scores = self.affine2(x)
-        return F.softmax(action_scores, dim=1)
-
-
 policy = Policy()
-optimizer = optim.Adam(policy.parameters(), lr=1e-2)
+optimizer = optim.Adam(policy.parameters(), lr=1e-3)
 eps = np.finfo(np.float32).eps.item()
 
 
 def select_action(state):
     state = torch.from_numpy(state).float().unsqueeze(0)
-    probs = policy(state)
+    probs = policy(state.to(policy.device))
     m = Categorical(probs)
     action = m.sample()
     policy.saved_log_probs.append(m.log_prob(action))
@@ -70,7 +53,7 @@ def finish_episode():
     for r in policy.rewards[::-1]:
         R = r + args.gamma * R
         returns.insert(0, R)
-    returns = torch.tensor(returns)
+    returns = torch.tensor(returns).to(policy.device)
     returns = (returns - returns.mean()) / (returns.std() + eps)
     for log_prob, R in zip(policy.saved_log_probs, returns):
         policy_loss.append(-log_prob * R)
@@ -86,11 +69,11 @@ def main():
     running_reward = 10
     for i_episode in count(1):
         state, ep_reward = env.reset(), 0
-        for t in range(1, 10000):  # Don't infinite loop while learning
+        for t in range(1, 20000):  # Don't infinite loop while learning
             action = select_action(state)
             state, reward, done, _ = env.step(action)
-            if True or args.render:
-                env.render()
+            # if True or args.render:
+            #     env.render()
             policy.rewards.append(reward)
             ep_reward += reward
             if done:
@@ -102,6 +85,9 @@ def main():
         if i_episode % 1 == 0:
             print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
                   i_episode, ep_reward, running_reward))
+
+        if i_episode % 10 ==0:
+            torch.save(policy,"pg_policy.trl")
         if running_reward > env.spec.reward_threshold:
             print("Solved! Running reward is now {} and "
                   "the last episode runs to {} time steps!".format(running_reward, t))
