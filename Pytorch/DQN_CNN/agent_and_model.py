@@ -50,19 +50,24 @@ class Model(nn.Module):
         self.conv_net = torch.nn.Sequential(
             nn.BatchNorm2d(3),
             nn.Conv2d(3, 32, 8, 4),
-            nn.ReLU(),
             # nn.MaxPool2d(4),
+            # nn.Dropout(0.2),
+            nn.ReLU(),
             nn.Conv2d(32, 64, 4, 2),
+            # nn.Dropout(0.2),
             nn.ReLU(),
-            # nn.MaxPool2d(4),
             nn.Conv2d(64, 64, 3,1),
+            # nn.MaxPool2d(4),
+            # nn.Dropout(0.2),
             nn.ReLU()
 
         )
         self.linear_layer = torch.nn.Sequential(
-            torch.nn.Linear(50176,128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(128,256),
+            torch.nn.Linear(50176,256),
+            # nn.Dropout(0.6),
+            # torch.nn.ReLU(),
+            # torch.nn.Linear(128,256),
+            # nn.Dropout(0.2),
             torch.nn.ReLU(),
             torch.nn.Linear(256,num_actions)
         )
@@ -93,26 +98,36 @@ class ReplayBuffer:
         self.index = 0
 
     def insert(self, sars):
-        # self.buffer.append(sars)
-        # print("inserting index ", self.index, "@",self.index%self.buffer_size)
-        if(self.index == 10):
-            print("first 10 ",self.buffer[0:10])
-            # import ipdb; ipdb.set_trace()
 
-        # if(self.index > self.buffer_size and self.index%self.buffer_size==0):
-        #     print("first 10 ",self.buffer[0:10])
-        #     print("last 10 ",self.buffer[-10:])
-        #     print("")
-        #     import ipdb; ipdb.set_trace()
+        # if self.index>1000:
+        #     # import ipdb; ipdb.set_trace()
+        #     Qs = np.array([s.qval for s in self.buffer[0:(min(self.index,self.buffer_size))]])
+        #     Qs_threshold = Qs.mean() + Qs.var()/4
+        #     select_prob = 1 - ( ( sars.qval - Qs_threshold ) / Qs_threshold)
+        #     select_prob = max(0.15,select_prob)
+        #     if random()<select_prob:
+        #         return
+
+
+
         self.buffer[self.index%self.buffer_size] = sars
         self.index+=1
-        # self.buffer.append(sars)
-        # if(len(self.buffer)>self.buffer_size):
-        #     self.buffer = self.buffer[1:]
-        #     # print("Clipping Buffer at size", len(self.buffer))
 
     def sample(self, num_samples,current_episode_steps):
         # assert num_samples < min(len(self.buffer),self.index)
+        # if num_samples>self.index:
+        # print("sampling n ",min(num_samples,self.index))
+        a = self.buffer[0:min(self.index,self.buffer_size)]
+        if len(self.buffer) > 0:
+            return np.random.choice(a, min(num_samples,self.index))
+        else:
+            return []
+
+    def sample_top(self, num_samples,current_episode_steps):
+        import ipdb; ipdb.set_trace()
+        Qs = np.array([s.qvals for s in self.buffer])
+        Qs_threshold = Qs.mean() + Qs.var()/3
+
         # if num_samples>self.index:
         # print("sampling n ",min(num_samples,self.index))
         a = self.buffer[0:min(self.index,self.buffer_size)]
