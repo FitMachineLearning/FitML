@@ -10,7 +10,7 @@ from typing import Any
 from random import random
 from PIL import Image
 from agent_and_model import DQNAgent,sars, Model, ReplayBuffer
-
+import plotly.express as px
 
 def get_one_hot(action,n_dim):
     retval = np.zeros(n_dim)
@@ -18,7 +18,9 @@ def get_one_hot(action,n_dim):
     return retval
 
 
-
+def plot_score(all_scores):
+    fig = px.line(x=np.arange(len(all_scores)),y=all_scores)
+    fig.write_html('Play_DQN_CNN_Trend_figure.html')
 
 if __name__=='__main__':
     DEBUGER_ON = True
@@ -32,7 +34,7 @@ if __name__=='__main__':
     TRAIN_EVERY_N_STEPS = 10
     TRAINING_SAMPLE_SIZE = 1
     TRAINING_ITTERATIONS = 1
-    PRINT_EVERY = 2
+    PRINT_EVERY = 1
     RENDER_ENV = True
     LOAD_MODEL = True
     SAVE_MODEL = True
@@ -70,6 +72,7 @@ if __name__=='__main__':
     for game in range (NUM_GAMES):
         episode_steps = 0
         score = 0.0
+        all_scores = []
         for step in range (MAX_EPISODE_STEPS):
             if RENDER_ENV:
                 env.render()
@@ -97,7 +100,7 @@ if __name__=='__main__':
             #     reward = -300
             observation_next = observation_next.reshape((1,3,160,140*3))
 
-            reward *= 100
+            # reward *= 100
             avg_reward.append([reward])
 
             observation = observation_next
@@ -118,7 +121,9 @@ if __name__=='__main__':
 
 
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
+        all_scores.append(score)
         if (game%PRINT_EVERY==0):
-            print("episide ", game,"last score",reward ,"episode_len", episode_steps , "score", np.average( avg_reward), "epsilon",epsilon )
+            plot_score(all_scores)
+            print("episide ", game,"last score",reward ,"episode_len", episode_steps , "score", score, "epsilon",epsilon )
         avg_reward = []
         # print("epsilon ", epsilon)
