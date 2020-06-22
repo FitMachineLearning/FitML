@@ -155,6 +155,7 @@ if __name__=='__main__':
     # # print("allObs ", allObs)
     # # print("qeval ",qeval)
     all_scores = []
+    rolling_average = 0
 
 
     for game in range (NUM_GAMES):
@@ -249,9 +250,10 @@ if __name__=='__main__':
                 break
 
         all_scores.append(score)
+        rolling_average = score*0.05 + (1-0.05)*rolling_average
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
         if (game%PRINT_EVERY==0):
             plot_score(all_scores)
-            print("episide ", game,"game score",score ,"episode_len", len(episode_sars),"buffer",min(rb.index,rb.buffer_size), "score", np.average( avg_reward), "epsilon",epsilon )
+            print("episide ", game,"game score",score, "rolling score", rolling_average ,"episode_len", len(episode_sars),"buffer",min(rb.index,rb.buffer_size), "score", np.average( avg_reward), "epsilon",epsilon )
         avg_reward = []
         # print("epsilon ", epsilon)

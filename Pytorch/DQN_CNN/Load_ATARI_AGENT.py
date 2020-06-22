@@ -66,7 +66,7 @@ if __name__=='__main__':
         agent.model.eval()
     step_counter = 0
     avg_reward = []
-
+    rolling_average = 0
 
 
     for game in range (NUM_GAMES):
@@ -119,11 +119,11 @@ if __name__=='__main__':
                 observation = observation.reshape((1,3,160,140*3))
                 break
 
-
+        rolling_average = 0.05*score + (1-0.05)*rolling_average
         epsilon = max(EPSILON_MIN, epsilon-((EPSILON_START-EPSILON_MIN)/EPSLILON_COUNT) )
         all_scores.append(score)
         if (game%PRINT_EVERY==0):
             plot_score(all_scores)
-            print("episide ", game,"last score",reward ,"episode_len", episode_steps , "score", score, "epsilon",epsilon )
+            print("episide ", game,"last score",reward,"rolling score ", rolling_average ,"episode_len", episode_steps , "score", score, "epsilon",epsilon )
         avg_reward = []
         # print("epsilon ", epsilon)
