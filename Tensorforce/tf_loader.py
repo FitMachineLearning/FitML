@@ -19,10 +19,11 @@ agent = Agent.create(
         dict(type='dense', size=64),
         dict(type='dense', size=64)
     ],
-    learning_rate=1e-3
+    learning_rate=1e-3,
+    name='agent_loader'
 
 )
-
+# import ipdb;ipdb.set_trace()
 agent = agent.load()
 
 running_score = 0.0
@@ -35,10 +36,10 @@ for i_epoch in range(50000):
 
     while not terminal:
         # Episode timestep
-        actions = agent.act(states=states)
+        actions = agent.act(states=states,evaluation=True)
         states, terminal, reward = environment.execute(actions=actions)
         game_score+=reward
-        agent.observe(terminal=terminal, reward=reward)
+        # agent.observe(terminal=terminal, reward=reward)
 
     running_score = 0.95*running_score + 0.05*game_score
     if i_epoch%5==0:
