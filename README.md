@@ -12,7 +12,7 @@ model.fit(Machine_Learning, epochs=Inf)
 </Table>
 
 ### What is Fit ML
-Fit Machine Learning (FitML) is blog that houses a collection of python Machine Learning articles and examples, often focusing on Reinforcement Learning. Here, you will find code related to Q Learning, Actor-Critic, MDP, Bellman, OpenAI solutions and custom implemented approaches to solving some of the toughest and most interesting problems to date (Yes, I am "baised").
+Fit Machine Learning (FitML) is blog that houses a collection of python Machine Learning articles and examples, often focusing on Reinforcement Learning. Here, you will find code related to Q Learning, Actor-Critic, MDP, Bellman, OpenAI solutions and custom implemented approaches to solving some of the toughest and most interesting problems to date (Yes, I am "baised"). 
 
 ### Who is Michel Aka
 *Michel is an AI researcher and a graduate from University of Montreal who currently works in the Healthcare industry.*
