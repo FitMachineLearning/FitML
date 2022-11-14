@@ -8,7 +8,7 @@ model.fit(Machine_Learning, epochs=Inf)
     <th><img src="/img/cWalker.jpg" width="250"/></th>       
   </tr>
 </Table>
-
+ 
 https://youtu.be/hKrFFeZqq3E
 
 #### How does Selective Memory work?
