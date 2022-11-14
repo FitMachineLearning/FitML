@@ -11,7 +11,7 @@ Using Q as feature dicriminator
 Adagrad
 0.99 delta
 0.1 dropout
-
+ 
 '''
 import numpy as np
 import keras
